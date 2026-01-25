@@ -428,6 +428,10 @@
                 background: var(--luxury-gold);
                 color: #000;
             }
+            /* Tambahkan baris ini di sini */
+    .btn-header {
+        flex-shrink: 1; /* tombol otomatis mengecil jika ruang sempit */
+    }
 
             .hero { padding-top: 80px; padding-left: 5%; padding-right: 5%; }
             .hero h1 { font-size: 2rem; line-height: 1.2; }
@@ -559,6 +563,13 @@
             const fadeElements = document.querySelectorAll('.fade-on-scroll');
             fadeElements.forEach(el => observer.observe(el));
         }
+        // 🔹 Tambahan untuk tombol login mobile
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            window.scrollTo(0, 0);
+            initScrollAnimations();
+        }
+    });
     </script>
 
 </body>
