@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Otentikasi - Aurora Store</title>
     
-    <!-- Link CSS External (Pastikan folder css ada jika ingin pakai file luar) -->
+    <!-- Link CSS External -->
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 
@@ -13,7 +13,7 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
     <style>
-        /* Style Internal (Untuk memastikan tampilan tetap bagus) */
+        /* Style Internal */
         :root {
             --primary: #6a2c91;
             --primary-dark: #4a1b63;
@@ -50,16 +50,6 @@
             transform: translateY(40px) scale(0.95);
             transition: opacity 0.8s ease-out, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        @media (max-width: 480px) {
-    .login-bg {
-        justify-content: flex-start; /* geser card sedikit ke kiri */
-        padding-left: 15px;
-        padding-right: 15px;
-    }
-    .card-container {
-        padding: 40px 15px; /* lebih ramping di mobile */
-        margin-left: 0; /* pastikan tidak ada offset ke kanan */
-    }
         .card-container.visible {
             opacity: 1;
             transform: translateY(0) scale(1);
@@ -109,6 +99,12 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1.1); } }
+
+        /* Mobile Responsiveness Fix */
+        @media (max-width: 480px) {
+            .login-bg { justify-content: center; padding-left: 15px; padding-right: 15px; }
+            .card-container { padding: 40px 15px; }
+        }
     </style>
 </head>
 <body>
@@ -135,8 +131,8 @@
         </div>
     </div>
 
-    <!-- Menggunakan SDK SANDBOX -->
-    <script src="https://sandbox.minepi.com/pi-sdk.js"></script>
+    <!-- SDK URL Stabil (CDN) -->
+    <script src="https://cdn.minepi.com/sdk/pi-sdk.js"></script>
 
     <script>
         // --- KONFIGURASI SUPABASE ---
@@ -145,7 +141,7 @@
         const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
         // --- KONFIGURASI PI SDK ---
-        // Menggunakan App ID dari Slug Sandbox Anda
+        // Pastikan App ID ini sesuai dengan Slug di dashboard Sandbox Anda
         const APP_ID = "aurora-4c073a664f9faa3a"; 
 
         window.addEventListener('load', () => {
@@ -156,7 +152,7 @@
             }, 100);
 
             // Jalankan proses login otomatis
-            setTimeout(autoLoginProcess, 800);
+            setTimeout(autoLoginProcess, 1000);
         });
 
         function updateStatus(title, subtitle) {
@@ -180,33 +176,33 @@
 
         async function autoLoginProcess() {
             try {
+                // 1. Cek apakah Pi SDK terdeteksi
                 if (!window.Pi) {
-    showError("Browser Tidak Didukung", "Login hanya bisa di Pi Browser. Silakan buka halaman ini dari aplikasi Pi Network.");
-    return;
-}
+                    throw new Error("Gagal memuat Pi SDK. Pastikan membuka di Pi Browser.");
+                }
                 
                 updateStatus("Mengamankan Koneksi...", "Menghubungi Server Sandbox");
                 
-                // Inisialisasi Pi
-await Pi.init(APP_ID, { version: "2.0" });
+                // 2. Inisialisasi Pi
+                await Pi.init(APP_ID, { version: "2.0" });
+                
+                // 3. Cek Network
+                const network = await Pi.getNetwork();
+                console.log("Terkoneksi ke:", network);
+                
+                updateStatus("Memverifikasi Identitas...", "Harap setujui popup di Pi Browser Anda");
+                
+                // 4. Authenticate
+                const authResult = await Pi.authenticate(['username', 'payments']);
+                const user = authResult.user;
 
-// Cek Network
-const network = await Pi.getNetwork();
-console.log("Terkoneksi ke:", network);
-
-updateStatus("Memverifikasi Identitas...", "Harap setujui popup di Pi Browser Anda");
-
-// Authenticate
-const authResult = await Pi.authenticate(['username', 'payments']);
-const user = authResult.user;
-
-console.log("User Pi Login:", user);
+                console.log("User Pi Login:", user);
                 
                 // Simpan data sesi
                 localStorage.setItem('aurora_user', JSON.stringify(user));
                 localStorage.setItem('aurora_token', authResult.accessToken);
 
-                // --- CEK ADMIN ---
+                // 5. CEK ADMIN
                 const { data: adminData, error } = await supabase
                     .from('admins')
                     .select('*')
@@ -215,6 +211,7 @@ console.log("User Pi Login:", user);
 
                 if (error) {
                     console.error("Error cek admin:", error);
+                    // Jika error database, anggap user biasa agar tidak stuck
                     localStorage.setItem('is_admin', 'false');
                     redirectToStore();
                     return;
