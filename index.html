@@ -1,10 +1,12 @@
-<!DOCTYPE html>    <html lang="id">    
+<!DOCTYPE html>    
+<html lang="id">    
 <head>    
     <meta charset="UTF-8">    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">    
     <title>Aurora Store - Exclusive Fragrances</title>    
     <!-- Font Google -->    
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">    <style>    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">    
+    <style>    
     /* --- 1. VARIABLE & RESET --- */    
     :root {    
         --luxury-gold: #d4af37;    
@@ -30,14 +32,15 @@
         line-height: 1.6;    
     }    
 
-    /* --- 2. HEADER --- */    
+    /* --- 2. HEADER (PERBAIKAN DI SINI) --- */    
     header {    
         background: rgba(15, 12, 21, 0.9);    
         backdrop-filter: blur(10px);    
         border-bottom: 1px solid rgba(255,255,255,0.05);    
         padding: 15px 5%;     
         display: flex;    
-        justify-content: space-between;    
+        /* PERUBAHAN 1: DARI space-between MENJADI flex-start */
+        justify-content: flex-start;     
         align-items: center;    
         position: fixed;    
         top: 0;    
@@ -45,6 +48,8 @@
         z-index: 1000;     
         transition: 0.3s;    
         box-sizing: border-box;     
+        /* PERUBAHAN 2: TAMBAHKAN GAP AGAR LOGO DAN NAV TIDAK Nempel */
+        gap: 50px; 
     }    
 
     .logo {    
@@ -306,13 +311,12 @@
     .feature-card:nth-child(3).visible { transition-delay: 0.3s; }    
 
     .feature-card.visible:hover {    
-transform: translateY(-10px); /* Hover aman dengan scroll animasi */    
-border-color: rgba(212, 175, 55, 0.3);    
-box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        transform: translateY(-10px); /* Hover aman dengan scroll animasi */    
+        border-color: rgba(212, 175, 55, 0.3);    
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);    
+    }
 
-}
-
-.feature-icon {    
+    .feature-icon {    
         font-size: 2rem;    
         margin-bottom: 20px;    
         background: -webkit-linear-gradient(var(--luxury-gold), #fff);    
@@ -431,9 +435,9 @@ box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             text-align: center;    
         }    
         /* Tambahkan baris ini di sini */    
-.btn-header {    
-    flex-shrink: 1; /* tombol otomatis mengecil jika ruang sempit */    
-}    
+        .btn-header {    
+            flex-shrink: 1; /* tombol otomatis mengecil jika ruang sempit */    
+        }    
 
         .hero { padding-top: 80px; padding-left: 5%; padding-right: 5%; }    
         .hero h1 { font-size: 2rem; line-height: 1.2; }    
@@ -455,122 +459,123 @@ box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 </style>
 
 </head>    
-<body>    <!-- Header -->    
-<header>    
-    <a href="#" class="logo">Aurora ⚡</a>    
-    <nav class="nav-links">    
-        <a href="store.html">Store</a>    
-        <a href="login.html" class="btn-header">Login</a>    
-    </nav>    
-</header>    
+<body>    
+    <!-- Header -->    
+    <header>    
+        <a href="#" class="logo">Aurora ⚡</a>    
+        <nav class="nav-links">    
+            <a href="store.html">Store</a>    
+            <a href="login.html" class="btn-header">Login</a>    
+        </nav>    
+    </header>    
 
-<!-- Hero Section -->    
-<section class="hero">    
-    <div class="glow-bg"></div>    
-    <div class="hero-container">    
-        <!-- Kiri: Teks -->    
-        <div class="hero-text">    
-            <span class="hero-tag">Koleksi Eksklusif</span>    
-            <h1>Esensi Kemewahan<br>Abadi</h1>    
-            <p>    
-                Temukan aroma yang mendefinisikan karakter. Dari Baccarat Rouge hingga Black Opium, kami hadirkan kualitas parfum dunia dengan pembayaran modern.    
-            </p>    
-        </div>    
-            
-        <!-- Tombol (Animasi delay) -->    
-        <div class="hero-buttons">    
-            <a href="store.html" class="btn-primary">Lihat Koleksi</a>    
-            <a href="about.html" class="btn-outline">Tentang Kami</a>    
-        </div>    
+    <!-- Hero Section -->    
+    <section class="hero">    
+        <div class="glow-bg"></div>    
+        <div class="hero-container">    
+            <!-- Kiri: Teks -->    
+            <div class="hero-text">    
+                <span class="hero-tag">Koleksi Eksklusif</span>    
+                <h1>Esensi Kemewahan<br>Abadi</h1>    
+                <p>    
+                    Temukan aroma yang mendefinisikan karakter. Dari Baccarat Rouge hingga Black Opium, kami hadirkan kualitas parfum dunia dengan pembayaran modern.    
+                </p>    
+            </div>    
+                
+            <!-- Tombol (Animasi delay) -->    
+            <div class="hero-buttons">    
+                <a href="store.html" class="btn-primary">Lihat Koleksi</a>    
+                <a href="about.html" class="btn-outline">Tentang Kami</a>    
+            </div>    
 
-        <!-- Kanan: Visual -->    
-        <div class="hero-visual">
-
-   <img src="https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Luxury Perfume" class="hero-img" loading="lazy">    
+            <!-- Kanan: Visual -->    
+            <div class="hero-visual">
+                <img src="https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Luxury Perfume" class="hero-img" loading="lazy">    
             </div>    
         </div>    
-    </section>    <!-- Features Section -->    
-<section class="features">    
-    <div class="section-header fade-on-scroll">    
-        <h2>Standar Aurora</h2>    
-        <p>Mengapa kami berbeda dari yang lain.</p>    
-    </div>    
-
-    <div class="features-grid">    
-        <!-- Card 1 -->    
-        <div class="feature-card fade-on-scroll">    
-            <div class="feature-icon">💎</div>    
-            <h3>Originalitas Terjamin</h3>    
-            <p>Setiap botol yang Anda terima adalah produk asli 100%. Kami bekerja sama dengan distributor resmi internasional.</p>    
+    </section>    
+    <!-- Features Section -->    
+    <section class="features">    
+        <div class="section-header fade-on-scroll">    
+            <h2>Standar Aurora</h2>    
+            <p>Mengapa kami berbeda dari yang lain.</p>    
         </div>    
 
-        <!-- Card 2 -->    
-        <div class="feature-card fade-on-scroll">    
-            <div class="feature-icon">🌙</div>    
-            <h3>Aroma Tahan Lama</h3>    
-            <p>Konsentrat essence tinggi (Eau De Parfum) yang dirancang untuk bertahan hingga 12 jam pada kulit Anda.</p>    
+        <div class="features-grid">    
+            <!-- Card 1 -->    
+            <div class="feature-card fade-on-scroll">    
+                <div class="feature-icon">💎</div>    
+                <h3>Originalitas Terjamin</h3>    
+                <p>Setiap botol yang Anda terima adalah produk asli 100%. Kami bekerja sama dengan distributor resmi internasional.</p>    
+            </div>    
+
+            <!-- Card 2 -->    
+            <div class="feature-card fade-on-scroll">    
+                <div class="feature-icon">🌙</div>    
+                <h3>Aroma Tahan Lama</h3>    
+                <p>Konsentrat essence tinggi (Eau De Parfum) yang dirancang untuk bertahan hingga 12 jam pada kulit Anda.</p>    
+            </div>    
+
+            <!-- Card 3 -->    
+            <div class="feature-card fade-on-scroll">    
+                <div class="feature-icon">π</div>    
+                <h3>Pembayaran Modern</h3>    
+                <p>Transparan, aman, dan mendukung masa depan. Bayar menggunakan Pi Network tanpa biaya tersembunyi.</p>    
+            </div>    
         </div>    
+    </section>    
 
-        <!-- Card 3 -->    
-        <div class="feature-card fade-on-scroll">    
-            <div class="feature-icon">π</div>    
-            <h3>Pembayaran Modern</h3>    
-            <p>Transparan, aman, dan mendukung masa depan. Bayar menggunakan Pi Network tanpa biaya tersembunyi.</p>    
+    <!-- Footer -->    
+    <footer class="fade-on-scroll">    
+        <p style="font-family: 'Playfair Display'; font-size: 1.2rem; color: var(--luxury-gold); margin-bottom: 20px;">Aurora Parfumerie</p>    
+            
+        <div class="footer-links" style="margin-bottom: 20px;">    
+            <a href="privacy.html">Privacy Policy</a> |     
+            <a href="terms.html">Terms & Conditions</a>    
         </div>    
-    </div>    
-</section>    
+            
+        <p>&copy; 2026 Aurora Store. All rights reserved.</p>    
+    </footer>    
 
-<!-- Footer -->    
-<footer class="fade-on-scroll">    
-    <p style="font-family: 'Playfair Display'; font-size: 1.2rem; color: var(--luxury-gold); margin-bottom: 20px;">Aurora Parfumerie</p>    
-        
-    <div class="footer-links" style="margin-bottom: 20px;">    
-        <a href="privacy.html">Privacy Policy</a> |     
-        <a href="terms.html">Terms & Conditions</a>    
-    </div>    
-        
-    <p>&copy; 2026 Aurora Store. All rights reserved.</p>    
-</footer>    
-
-<!-- SCRIPT ANIMASI SCROLL (PERBAIKAN UTAMA) -->    
-<script>    
-    // 1. Pastikan scroll reset saat load    
-    window.onload = function() {    
-        window.scrollTo(0, 0);    
-        initScrollAnimations();    
-    };    
-
-    // 2. Fungsi Intersection Observer untuk animasi Fade In saat scroll    
-    function initScrollAnimations() {    
-        // Mengambil semua elemen yang memiliki kelas 'fade-on-scroll'    
-        const observerOptions = {    
-            root: null, // viewport    
-            rootMargin: '0px',    
-            threshold: 0.1 // Memicu animasi ketika 10% elemen terlihat    
+    <!-- SCRIPT ANIMASI SCROLL (PERBAIKAN UTAMA) -->    
+    <script>    
+        // 1. Pastikan scroll reset saat load    
+        window.onload = function() {    
+            window.scrollTo(0, 0);    
+            initScrollAnimations();    
         };    
 
-        const observer = new IntersectionObserver((entries, observer) => {    
-            entries.forEach(entry => {    
-                if (entry.isIntersecting) {    
-                    // Menambahkan kelas 'visible' untuk memicu CSS transition    
-                    entry.target.classList.add('visible');    
-                    // Opsional: Hentikan observasi setelah animasi berjalan sekali    
-                    // observer.unobserve(entry.target);     
-                }    
-            });    
-        }, observerOptions);    
+        // 2. Fungsi Intersection Observer untuk animasi Fade In saat scroll    
+        function initScrollAnimations() {    
+            // Mengambil semua elemen yang memiliki kelas 'fade-on-scroll'    
+            const observerOptions = {    
+                root: null, // viewport    
+                rootMargin: '0px',    
+                threshold: 0.1 // Memicu animasi ketika 10% elemen terlihat    
+            };    
 
-        const fadeElements = document.querySelectorAll('.fade-on-scroll');    
-        fadeElements.forEach(el => observer.observe(el));    
-    }    
-    // 🔹 Tambahan untuk tombol login mobile    
-window.addEventListener('pageshow', function(event) {    
-    if (event.persisted) {    
-        window.scrollTo(0, 0);    
-        initScrollAnimations();    
-    }    
-});    
-</script>
+            const observer = new IntersectionObserver((entries, observer) => {    
+                entries.forEach(entry => {    
+                    if (entry.isIntersecting) {    
+                        // Menambahkan kelas 'visible' untuk memicu CSS transition    
+                        entry.target.classList.add('visible');    
+                        // Opsional: Hentikan observasi setelah animasi berjalan sekali    
+                        // observer.unobserve(entry.target);     
+                    }    
+                });    
+            }, observerOptions);    
+
+            const fadeElements = document.querySelectorAll('.fade-on-scroll');    
+            fadeElements.forEach(el => observer.observe(el));    
+        }    
+        // 🔹 Tambahan untuk tombol login mobile    
+        window.addEventListener('pageshow', function(event) {    
+            if (event.persisted) {    
+                window.scrollTo(0, 0);    
+                initScrollAnimations();    
+            }    
+        });    
+    </script>    
 
 </body>    
-</html>    
+</html>
