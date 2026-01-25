@@ -4,13 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Otentikasi - Aurora Store</title>
-    <link rel="stylesheet" href="../css/style.css">
+    
+    <!-- Link CSS External (Pastikan folder css ada jika ingin pakai file luar) -->
+    <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 
     <!-- Script Supabase Client -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
     <style>
+        /* Style Internal (Untuk memastikan tampilan tetap bagus) */
         :root {
             --primary: #6a2c91;
             --primary-dark: #4a1b63;
@@ -111,7 +114,7 @@
             </div>
             <div class="status-text-group">
                 <h2 id="main-status" class="main-title">Menghubungkan...</h2>
-                <p id="sub-status" class="sub-title">Mendeteksi Pi Network Anda</p>
+                <p id="sub-status" class="sub-title">Mendeteksi Pi Network Sandbox</p>
             </div>
             <div id="error-box" class="error-box">
                 <p><strong>Koneksi Gagal</strong></p>
@@ -122,62 +125,80 @@
         </div>
     </div>
 
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <!-- Menggunakan SDK SANDBOX -->
+    <script src="https://sandbox.minepi.com/pi-sdk.js"></script>
 
     <script>
         // --- KONFIGURASI SUPABASE ---
         const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co'; 
-        const supabaseKey = 'PASTE_ANON_KEY_ANDA_DISINI'; 
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA'; 
         const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
         // --- KONFIGURASI PI SDK ---
-        const APP_ID = "MASUKKAN_APP_ID_PI_ANDA_DISINI";
+        // Menggunakan App ID dari Slug Sandbox Anda
+        const APP_ID = "pak-tani-marketplace"; 
 
         window.addEventListener('load', () => {
-            setTimeout(() => document.getElementById('loginCard').classList.add('visible'), 100);
-            setTimeout(autoLoginProcess, 800); 
+            // Animasi muncul kartu
+            setTimeout(() => {
+                const card = document.getElementById('loginCard');
+                if(card) card.classList.add('visible');
+            }, 100);
+
+            // Jalankan proses login otomatis
+            setTimeout(autoLoginProcess, 800);
         });
 
         function updateStatus(title, subtitle) {
             const titleEl = document.getElementById('main-status');
             const subEl = document.getElementById('sub-status');
-            titleEl.style.opacity = '0';
-            subEl.style.opacity = '0';
-            setTimeout(() => {
-                titleEl.innerText = title;
-                subEl.innerText = subtitle;
-                titleEl.style.opacity = '1';
-                subEl.style.opacity = '1';
-            }, 300);
+            if(titleEl) titleEl.innerText = title;
+            if(subEl) subEl.innerText = subtitle;
+        }
+
+        function showError(title, message) {
+            updateStatus(title, "");
+            const spinnerWrapper = document.querySelector('.pi-spinner-wrapper');
+            if(spinnerWrapper) spinnerWrapper.style.display = 'none';
+            
+            const errorBox = document.getElementById('error-box');
+            const errorMsg = document.getElementById('error-msg');
+            
+            if(errorBox) errorBox.style.display = 'block';
+            if(errorMsg) errorMsg.innerText = message;
         }
 
         async function autoLoginProcess() {
-            const errorBox = document.getElementById('error-box');
-            const errorMsg = document.getElementById('error-msg');
-            const spinnerWrapper = document.querySelector('.pi-spinner-wrapper');
-
             try {
-                if (!window.Pi) throw new Error("Gagal memuat Pi SDK.");
+                if (!window.Pi) throw new Error("Gagal memuat Pi SDK. Pastikan membuka di Pi Browser.");
                 
-                updateStatus("Mengamankan Koneksi...", "Menghubungi Server");
+                updateStatus("Mengamankan Koneksi...", "Menghubungi Server Sandbox");
                 
+                // Inisialisasi Pi
                 await Pi.init(APP_ID, { version: "2.0" });
+                
+                // Cek Network
                 const network = await Pi.getNetwork();
+                console.log("Terkoneksi ke:", network);
                 
                 updateStatus("Memverifikasi Identitas...", "Harap setujui popup di Pi Browser Anda");
+                
+                // Authenticate
                 const authResult = await Pi.authenticate(['username', 'payments']);
                 const user = authResult.user;
 
                 console.log("User Pi Login:", user);
+                
+                // Simpan data sesi
                 localStorage.setItem('aurora_user', JSON.stringify(user));
                 localStorage.setItem('aurora_token', authResult.accessToken);
 
-                // --- CEK ADMIN: USERNAME + UID ---
+                // --- CEK ADMIN ---
                 const { data: adminData, error } = await supabase
                     .from('admins')
                     .select('*')
                     .eq('username', user.username)
-                    .eq('pi_uid', user.uid);  // Double-check UID
+                    .eq('pi_uid', user.uid);
 
                 if (error) {
                     console.error("Error cek admin:", error);
@@ -197,27 +218,21 @@
                         alert("Maaf, akun admin Anda sedang dinonaktifkan.");
                     }
                 } else {
-                    // --- USER BIASA ---
                     localStorage.setItem('is_admin', 'false');
                     redirectToStore();
                 }
 
             } catch (err) {
                 console.error(err);
-                spinnerWrapper.innerHTML = '!';
-                spinnerWrapper.style.color = '#c53030';
-                spinnerWrapper.style.fontSize = '3rem';
-                document.querySelector('.pi-spinner').style.display = 'none';
-                document.querySelector('.pi-icon').style.display = 'none';
-                updateStatus("Terjadi Kesalahan", "");
-                errorBox.style.display = 'block';
-                errorMsg.innerText = err.message || "Tidak dapat terhubung ke Pi Network.";
+                showError("Terjadi Kesalahan", err.message || "Pastikan Anda menggunakan Pi Browser untuk login.");
             }
         }
 
         function redirectToStore() {
             updateStatus("Login Berhasil", "Mengalihkan ke Toko...");
-            setTimeout(() => window.location.href = 'store.html', 1500);
+            setTimeout(() => {
+                window.location.href = 'store.html';
+            }, 1500);
         }
     </script>
 </body>
