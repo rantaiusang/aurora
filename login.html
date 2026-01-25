@@ -178,19 +178,19 @@
                 updateStatus("Mengamankan Koneksi...", "Menghubungi Server Sandbox");
                 
                 // Inisialisasi Pi
-                await Pi.init(APP_ID, { version: "2.0" });
-                
-                // Cek Network
-                const network = await Pi.getNetwork();
-                console.log("Terkoneksi ke:", network);
-                
-                updateStatus("Memverifikasi Identitas...", "Harap setujui popup di Pi Browser Anda");
-                
-                // Authenticate
-                const authResult = await Pi.authenticate(['username', 'payments']);
-                const user = authResult.user;
+await Pi.init(APP_ID, { version: "2.0" });
 
-                console.log("User Pi Login:", user);
+// Cek Network
+const network = await Pi.getNetwork();
+console.log("Terkoneksi ke:", network);
+
+updateStatus("Memverifikasi Identitas...", "Harap setujui popup di Pi Browser Anda");
+
+// Authenticate
+const authResult = await Pi.authenticate(['username', 'payments']);
+const user = authResult.user;
+
+console.log("User Pi Login:", user);
                 
                 // Simpan data sesi
                 localStorage.setItem('aurora_user', JSON.stringify(user));
