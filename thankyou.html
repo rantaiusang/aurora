@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terima Kasih - Aurora Store</title>
+    
+    <!-- Font (Sama dengan Store) -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- VARIABLES (SAMA DENGAN STORE) --- */
+        :root {
+            --luxury-gold: #d4af37;
+            --luxury-gold-light: #f3e5ab;
+            --dark-bg: #0f0c15;
+            --card-bg: #161216;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: #ffffff;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 40px 5%; /* Responsif */
+        }
+
+        /* Container Utama */
+        .thankyou-wrapper {
+            max-width: 700px;
+            margin: 0 auto;
+            width: 100%;
+            flex-grow: 1; /* Agar footer rata bawah jika konten sedikit */
+        }
+
+        /* Bagian Sukses */
+        .success-header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeInDown 0.8s ease forwards;
+        }
+
+        .big-check {
+            font-size: 5rem;
+            color: #4CAF50;
+            margin-bottom: 20px;
+            display: inline-block;
+            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 3rem;
+            color: var(--luxury-gold);
+            margin: 0 0 10px 0;
+        }
+
+        .order-number {
+            color: #888;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        /* Kartu Detail Pesanan (Invoice) */
+        .invoice-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.8s ease forwards 0.3s;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .invoice-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+            align-items: center; /* Agar text rapi */
+        }
+
+        .detail-label { color: #aaa; }
+        .detail-value { color: #fff; text-align: right; font-weight: 500; word-break: break-word; }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px dashed rgba(255,255,255,0.1);
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .total-price { color: var(--luxury-gold); }
+
+        /* Area Cek Resi */
+        .tracking-section {
+            background: rgba(255, 215, 0, 0.05);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 40px;
+            animation: slideUp 0.8s ease forwards 0.5s;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .resi-input {
+            width: 100%;
+            max-width: 300px;
+            padding: 12px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            border-radius: 6px;
+            text-align: center;
+            margin: 15px 0;
+            font-family: monospace;
+            letter-spacing: 1px;
+            font-size: 1rem;
+        }
+
+        .btn-track {
+            background: var(--luxury-gold);
+            color: #000;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 1rem;
+        }
+
+        .btn-track:hover {
+            background: #ffed4a;
+            transform: scale(1.05);
+        }
+        
+        .btn-track:disabled {
+            background: #555;
+            cursor: wait;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            font-weight: 600;
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+            border: 1px solid #4CAF50;
+        }
+
+        /* Tombol Kembali */
+        .home-btn {
+            display: block;
+            width: 100%;
+            text-align: center;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 10px;
+            transition: 0.3s;
+            font-weight: 600;
+        }
+
+        .home-btn:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        /* Animasi */
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { 0% { transform: scale(0); } 80% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            body { padding: 20px 5%; }
+            h1 { font-size: 2rem; }
+            .detail-value { max-width: 60%; font-size: 0.85rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="thankyou-wrapper">
+        
+        <!-- Header Sukses -->
+        <div class="success-header">
+            <div class="big-check">✅</div>
+            <h1>Terima Kasih!</h1>
+            <p class="order-number" id="orderNumber">Order No: #INV-2024000</p>
+            <p style="color: #888;">Pesanan Anda telah kami terima.</p>
+        </div>
+
+        <!-- Kartu Invoice / Detail Pesanan -->
+        <div class="invoice-card">
+            <div class="invoice-title">Detail Pesanan</div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Nama Penerima</span>
+                <span class="detail-value" id="custName">Loading...</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">No. Telepon</span>
+                <span class="detail-value" id="custPhone">Loading...</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Alamat</span>
+                <span class="detail-value" id="custAddress" style="max-width: 60%;">Loading...</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Metode Pembayaran</span>
+                <span class="detail-value" style="color: var(--luxury-gold);">Pi Network</span>
+            </div>
+            
+            <!-- Item (Diambil dari LocalStorage) -->
+            <div class="detail-row" style="margin-top: 20px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); flex-direction: column; align-items: flex-start;">
+                <span class="detail-label">Barang</span>
+                <span class="detail-value" id="itemName" style="text-align: left; color: #ccc; font-weight: 400; font-size: 0.9rem;">Loading...</span>
+            </div>
+
+            <div class="total-row">
+                <span>Total Bayar</span>
+                <span class="total-price" id="totalPaid">0.00 π</span>
+            </div>
+        </div>
+
+        <!-- Bagian Cek Resi -->
+        <div class="tracking-section">
+            <h3 style="color: #fff; margin-bottom: 5px;">Lacak Pengiriman</h3>
+            <p style="font-size: 0.9rem; color: #aaa;">Masukkan nomor resi untuk memantau paket Anda.</p>
+            
+            <!-- Nomor Resi yang Di-generate Acak -->
+            <input type="text" id="resiInput" class="resi-input" readonly>
+            
+            <button class="btn-track" id="btnTrack" onclick="checkResi()">Cek Status</button>
+            
+            <div id="trackingResult" style="display: none; margin-top: 20px; text-align: left; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+                <div class="status-badge">Sedang Diproses</div>
+                <p style="color: #ccc; font-size: 0.9rem; margin-top: 5px;">
+                    Paket Anda telah diterima di gudang Aurora dan sedang dilakukan pengecekan kualitas sebelum dikirim.
+                </p>
+            </div>
+        </div>
+
+        <a href="store.html" class="home-btn">Kembali ke Store</a>
+
+    </div>
+
+    <script>
+        // 1. Generate Nomor Order Unik & Resi
+        // Menggunakan waktu agar unik
+        const timestamp = Date.now();
+        const randomNum = Math.floor(1000 + Math.random() * 9000);
+        const orderID = `INV-${timestamp}-${randomNum}`;
+        const resiNumber = `JTR-${timestamp}`; // Format Resi Dummy
+
+        // Tampilkan Nomor
+        document.getElementById('orderNumber').innerText = `Order No: #${orderID}`;
+        document.getElementById('resiInput').value = resiNumber;
+
+        // 2. Ambil Data Customer & Order DARI LocalStorage (Disimpan di payment.html)
+        const tempOrderData = JSON.parse(localStorage.getItem('temp_order_data'));
+
+        if (tempOrderData) {
+            // Masukkan data ke HTML
+            document.getElementById('custName').innerText = tempOrderData.name;
+            document.getElementById('custPhone').innerText = tempOrderData.phone;
+            document.getElementById('custAddress').innerText = tempOrderData.address;
+            
+            // Format Total
+            const total = parseFloat(tempOrderData.total) || 0;
+            document.getElementById('totalPaid').innerText = total.toFixed(2) + ' π';
+
+            // --- PERBAIKAN LOGIKA BARANG ---
+            // Cek apakah 'cart' ada (Array item) atau 'itemName' ada (String item tunggal)
+            if (tempOrderData.cart && Array.isArray(tempOrderData.cart)) {
+                // Jika ada array cart, gabungkan nama barangnya
+                const itemNames = tempOrderData.cart.map(item => item.name || item.product_name || "Produk").join(", ");
+                document.getElementById('itemName').innerText = itemNames + (tempOrderData.cart.length > 1 ? ` (${tempOrderData.cart.length} Barang)` : "");
+            } else if (tempOrderData.itemName) {
+                // Jika hanya string (fallback logika lama)
+                document.getElementById('itemName').innerText = tempOrderData.itemName;
+            } else {
+                document.getElementById('itemName').innerText = "-";
+            }
+
+            // --- LOGIKA PENTING: KOSONGKAN KERANJANG SETELAH ORDER SUKSES ---
+            // Ini membuat UX "Checkout" terasa nyata. Keranjang jadi kosong di Store.
+            localStorage.removeItem('aurora_cart');
+            
+            // Opsional: Hapus juga data sementara agar jika user refresh, datanya tetap ada 
+            // (di sini kita tidak hapus 'temp_order_data' agar jika user refresh F5, invoice tetap muncul)
+
+        } else {
+            // Jika tidak ada data (misal dibuka langsung), tampilkan data dummy
+            console.warn("Data order sementara tidak ditemukan, menggunakan default.");
+            document.getElementById('custName').innerText = "Guest User";
+            document.getElementById('custPhone').innerText = "-";
+            document.getElementById('custAddress').innerText = "-";
+            document.getElementById('totalPaid').innerText = "0.00 π";
+            document.getElementById('itemName').innerText = "-";
+        }
+
+        // 3. Fungsi Cek Resi (Simulasi Klik Tombol)
+        function checkResi() {
+            const resultDiv = document.getElementById('trackingResult');
+            const btn = document.getElementById('btnTrack');
+            const resi = document.getElementById('resiInput').value;
+
+            if(!resi) {
+                alert("Masukkan nomor resi!");
+                return;
+            }
+
+            // Efek Loading
+            btn.innerText = "Mencari...";
+            btn.disabled = true;
+
+            // Simulasi delay jaringan
+            setTimeout(() => {
+                resultDiv.style.display = 'block';
+                resultDiv.style.animation = 'fadeInDown 0.5s ease forwards';
+                btn.innerText = "Cek Status";
+                btn.disabled = false;
+            }, 1500); // Delay 1.5 detik
+        }
+
+        // Simpan Resi ini ke LocalStorage agar halaman resi.html bisa membaca otomatis saat diklik nanti
+        localStorage.setItem('last_order_resi', resiNumber);
+
+    </script>
+</body>
+</html>

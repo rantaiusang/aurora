@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pembayaran - Aurora Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- TAMBAHAN: LIBRARY SUPABASE -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
+    <style>
+        /* --- VARIABLES (SAMA STORE) --- */
+        :root {
+            --luxury-gold: #d4af37;
+            --dark-bg: #0f0c15;
+            --card-bg: #1a1620;
+            --danger-color: #ff4d4d;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: #ffffff;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: rgba(15, 12, 21, 0.95);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            padding: 20px 8%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .back-link {
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.3s;
+        }
+        .back-link:hover { color: var(--luxury-gold); }
+
+        .brand-name {
+            font-family: 'Playfair Display', serif;
+            color: var(--luxury-gold);
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .payment-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 8%;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        /* Dekorasi Background */
+        .bg-glow {
+            position: fixed;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.15), transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            animation: pulseGlow 4s infinite;
+            pointer-events: none;
+        }
+
+        .payment-card {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 600px;
+            padding: 50px 40px;
+            border-radius: 20px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            position: relative;
+            opacity: 0;
+            transform: translateY(40px);
+            animation: slideUpFade 0.8s ease forwards;
+        }
+
+        /* Pi Coin Visual */
+        .coin-visual {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--luxury-gold), #b8860b);
+            border-radius: 50%;
+            margin: 0 auto 30px;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            color: white;
+            font-weight: bold;
+            animation: floatCoin 3s ease-in-out infinite;
+        }
+
+        h2 {
+            font-family: 'Playfair Display', serif;
+            text-align: center;
+            color: var(--luxury-gold);
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        .sub-text {
+            text-align: center;
+            color: #aaa;
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .form-section-title {
+            color: var(--luxury-gold);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 25px 0 15px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ccc;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .input-box {
+            width: 100%;
+            padding: 14px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.95rem;
+            font-family: 'Poppins', sans-serif;
+            transition: 0.3s;
+            box-sizing: border-box;
+        }
+
+        .input-box:focus {
+            outline: none;
+            border-color: var(--luxury-gold);
+            background: rgba(255,255,255,0.1);
+        }
+
+        .input-box::placeholder { color: #666; }
+        .input-box:disabled { background: rgba(0,0,0,0.2); color: #888; cursor: not-allowed; }
+
+        /* Wallet Input khusus Monospace */
+        #walletAddress {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
+
+        textarea.input-box {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Item List Summary */
+        .item-summary {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            font-size: 0.85rem;
+            color: #ccc;
+            max-height: 100px;
+            overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.05);
+            display: none; /* Default hidden */
+        }
+        .item-summary::-webkit-scrollbar { width: 4px; }
+        .item-summary::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 5px;
+        }
+        .item-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+        .total-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        .total-label { color: #ccc; font-weight: 500; }
+        .total-amount { font-size: 1.5rem; color: var(--luxury-gold); font-weight: 700; }
+
+        .btn-pay {
+            width: 100%;
+            padding: 18px;
+            background: var(--luxury-gold);
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.3s;
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.2);
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .btn-pay:hover:not(:disabled) {
+            background: #ffed4a;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-pay:disabled {
+            background: #444;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            color: #888;
+            border: 1px solid #555;
+        }
+
+        /* Success State */
+        .success-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--card-bg);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.5s;
+        }
+        
+        .success-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .check-icon {
+            font-size: 4rem;
+            color: #4CAF50;
+            margin-bottom: 20px;
+            animation: scaleUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* Animations */
+        @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
+        @keyframes floatCoin { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes pulseGlow { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        @keyframes scaleUp { from { transform: scale(0); } to { transform: scale(1); } }
+
+        /* Mobile */
+        @media (max-width: 600px) {
+            .payment-card { padding: 30px 20px; }
+            h2 { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="store.html" class="back-link">
+            <span>&larr;</span> Kembali
+        </a>
+        <div class="brand-name">Aurora Parfumerie</div>
+    </header>
+
+    <div class="payment-wrapper">
+        <div class="bg-glow"></div>
+
+        <div class="payment-card">
+            <div class="coin-visual">π</div>
+
+            <h2>Konfirmasi Pembayaran</h2>
+            <p class="sub-text">Lengkapi data pengiriman dan wallet Anda untuk menyelesaikan transaksi.</p>
+
+            <!-- Error Message -->
+            <div id="error-message" style="display:none; background:rgba(255, 77, 77, 0.15); border:1px solid var(--danger-color); color:#ffcccc; padding:15px; border-radius:8px; margin-bottom:25px; font-size:0.9rem; text-align:center;"></div>
+
+            <form id="paymentForm" onsubmit="handlePayment(event)">
+                
+                <!-- BAGIAN 1: DATA PENGIRIMAN -->
+                <div class="form-section-title">Informasi Pengiriman</div>
+
+                <div class="form-group">
+                    <label for="fullName">Nama Lengkap</label>
+                    <input type="text" id="fullName" class="input-box" placeholder="Contoh: Budi Santoso" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="phoneNumber">Nomor WhatsApp</label>
+                    <input type="tel" id="phoneNumber" class="input-box" placeholder="Contoh: 0812xxxx" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="fullAddress">Alamat Lengkap</label>
+                    <textarea id="fullAddress" class="input-box" rows="3" placeholder="Jalan, No Rumah, Kelurahan, Kota, Kode Pos" required></textarea>
+                </div>
+
+                <!-- BAGIAN 2: DATA PEMBAYARAN -->
+                <div class="form-section-title">Detail Pembayaran Pi</div>
+
+                <div class="form-group">
+                    <label for="walletAddress">Alamat Wallet Pi (Tujuan)</label>
+                    <input type="text" id="walletAddress" class="input-box" placeholder="GBVW..." required>
+                </div>
+
+                <div class="form-group">
+                    <label for="passphrase">Passphrase (Opsional)</label>
+                    <input type="password" id="passphrase" class="input-box" placeholder="Keamanan tambahan">
+                </div>
+
+                <!-- TAMPILAN TOTAL & ITEM -->
+                <div class="item-summary" id="itemSummaryContainer">
+                    <strong style="color:var(--luxury-gold); display:block; margin-bottom:10px;">Ringkasan Pesanan:</strong>
+                    <div id="summaryList"></div>
+                </div>
+
+                <div class="total-display">
+                    <span class="total-label">Total Pembayaran</span>
+                    <span class="total-amount" id="displayTotal">0.00 π</span>
+                </div>
+
+                <button type="submit" class="btn-pay" id="payBtn">Bayar Sekarang</button>
+            </form>
+
+            <!-- Overlay Sukses -->
+            <div class="success-overlay" id="successOverlay">
+                <div class="check-icon">✅</div>
+                <h2 style="margin-bottom: 10px;">Pembayaran Berhasil!</h2>
+                <p style="color: #aaa; margin-bottom: 20px; text-align: center; padding: 0 20px;">
+                    Terima kasih <span id="successName"></span>. Pesanan Anda sedang diproses.
+                </p>
+                <button class="btn-pay" style="padding: 12px 30px; font-size: 1rem;" onclick="redirectToThankYou()">Lihat Detail Pesanan</button>
+            </div>
+        </div>
+    </div>    
+
+    <!-- Script Mockup Pi SDK -->
+    <script>
+        // --- MOCK PI SDK (SIMULASI) ---
+        // Hapus script ini jika menggunakan SDK asli Pi
+        const Pi = {
+            createPayment: async ({ amount, memo, metadata }) => {
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        resolve({
+                            identifier: "PAY-" + Date.now(), // Payment ID dummy
+                            txid: "TX-" + Math.floor(Math.random() * 1000000)
+                        });
+                    }, 2000); // Simulasi delay 2 detik
+                });
+            }
+        };
+        // ------------------------------------
+    </script>
+    
+    <script>
+        // --- KONFIGURASI SUPABASE UNTUK MENYIMPAN ORDER ---
+        // Gunakan 'Anon Key' atau 'Public Key' untuk frontend
+        const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
+        // Pastikan key ini valid dan tidak expired
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
+        
+        // Membuat klien Supabase
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- 1. LOAD DATA KERANJANG & HITUNG TOTAL ---
+        let total = 0;
+        let cartItems = [];
+        let itemNameStr = ""; 
+
+        window.onload = function() {
+            const cartData = localStorage.getItem('aurora_cart');
+            const summaryDiv = document.getElementById('summaryList');
+            const summaryContainer = document.getElementById('itemSummaryContainer');
+
+            if (cartData) {
+                cartItems = JSON.parse(cartData);
+                
+                if (cartItems.length > 0) {
+                    summaryContainer.style.display = 'block';
+                    let html = '';
+                    
+                    cartItems.forEach(item => {
+                        const itemTotal = item.price * item.qty;
+                        total += itemTotal;
+                        
+                        html += `
+                            <div class="item-row">
+                                <span>${item.name} (x${item.qty})</span>
+                                <span>${itemTotal.toFixed(2)} π</span>
+                            </div>
+                        `;
+                        itemNameStr += item.name + (item.qty > 1 ? ` (${item.qty})` : "") + ", ";
+                    });
+
+                    itemNameStr = itemNameStr.slice(0, -2);
+                    summaryDiv.innerHTML = html;
+                    document.getElementById('displayTotal').innerText = total.toFixed(2) + " π";
+                } else {
+                    location.href = 'store.html';
+                }
+            } else {
+                location.href = 'store.html';
+            }
+        }
+
+        // --- 2. FUNGSI SIMPAN ORDER KE SUPABASE ---
+        async function saveOrderToSupabase(orderData, paymentId) {
+            try {
+                console.log("Menyimpan order ke Supabase...");
+                
+                const { data, error } = await supabaseClient
+                    .from('orders')
+                    .insert([{
+                        order_id: orderData.orderId,
+                        customer_name: orderData.name,
+                        customer_phone: orderData.phone,
+                        customer_address: orderData.address,
+                        payment_txid: paymentId, 
+                        total_amount: parseFloat(orderData.total),
+                        items: cartItems, 
+                        status: 'paid'
+                    }])
+                    .select();
+
+                if (error) {
+                    console.error("Gagal menyimpan ke Supabase:", error);
+                    alert("Peringatan: Data tersimpan, tapi gagal tersinkron ke server sistem.");
+                } else {
+                    console.log("Order berhasil disimpan:", data);
+                }
+            } catch (e) {
+                console.error("Supabase Script Error:", e);
+            }
+        }
+
+        // --- 3. FUNGSI HANDLE PAYMENT ---
+        async function handlePayment(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('fullName').value;
+            const phone = document.getElementById('phoneNumber').value;
+            const address = document.getElementById('fullAddress').value;
+            const wallet = document.getElementById('walletAddress').value;
+            const btn = document.getElementById('payBtn');
+            const errorMsg = document.getElementById('error-message');
+
+            // Validasi
+            if (name.length < 3) return showError("Nama terlalu pendek.");
+            if (phone.length < 10) return showError("Nomor WhatsApp tidak valid.");
+            if (address.length < 10) return showError("Alamat terlalu singkat.");
+            if (wallet.length < 10) return showError("Alamat Wallet tidak valid.");
+
+            errorMsg.style.display = "none";
+
+            // Efek Loading
+            btn.disabled = true;
+            btn.innerHTML = `<span style="display:inline-block; animation: spin 1s linear infinite;">π</span> Memproses Pembayaran...`;
+            btn.style.cursor = "wait";
+
+            try {
+                // A. Buat Pembayaran (Mock)
+                const payment = await Pi.createPayment({
+                    amount: total.toFixed(2),
+                    memo: "Pembayaran Aurora Store",
+                    metadata: {
+                        orderId: "ORD-" + Date.now(),
+                        name,
+                        phone
+                    }
+                });
+
+                console.log("Payment ID:", payment.identifier);
+                console.log("TxID:", payment.txid);
+
+                // B. Siapkan Data Object
+                const orderData = {
+                    orderId: "ORD-" + Date.now(),
+                    date: new Date().toLocaleDateString('id-ID'),
+                    name: name,
+                    phone: phone,
+                    address: address,
+                    wallet: wallet,
+                    total: total.toFixed(2),
+                    itemName: itemNameStr,
+                    cart: cartItems,
+                    paymentId: payment.identifier
+                };
+
+                // C. Simpan ke LocalStorage (Untuk Thankyou Page)
+                orderData.paymentId = payment.identifier;
+                localStorage.setItem('temp_order_data', JSON.stringify(orderData));
+
+                // D. SIMPAN KE SUPABASE (PENTING)
+                await saveOrderToSupabase(orderData, payment.identifier);
+
+                // E. TAMPILKAN SUKSES
+                document.getElementById('successName').innerText = name;
+                document.getElementById('successOverlay').classList.add('show');
+
+            } catch (err) {
+                console.error(err);
+                showError("Transaksi dibatalkan atau gagal.");
+                btn.disabled = false;
+                btn.innerText = "Bayar Sekarang";
+                btn.style.cursor = "pointer";
+            }
+        }
+
+        function showError(msg) {
+            const div = document.getElementById('error-message');
+            div.innerText = msg;
+            div.style.display = 'block';
+            // Animasi shake sederhana
+            div.animate([
+                { transform: 'translateX(-10px)' },
+                { transform: 'translateX(10px)' },
+                { transform: 'translateX(0)' }
+            ], { duration: 300 });
+        }
+
+        function redirectToThankYou() {
+            window.location.href = 'thankyou.html';
+        }
+
+        // Keyframe tambahan untuk spinner
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            @keyframes spin { 100% { transform: rotate(360deg); } }
+        `;
+        document.head.appendChild(styleSheet);
+    </script>
+</body>
+</html>

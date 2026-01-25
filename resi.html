@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cek Resi - Aurora Store</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --luxury-gold: #ffd700;
+            --dark-bg: #0f0c15;
+            --card-bg: #1a1620;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: #ffffff;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            padding: 40px 8%;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            color: var(--luxury-gold);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        /* Input Section */
+        .search-box {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            display: flex;
+            gap: 15px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: monospace;
+            letter-spacing: 1px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--luxury-gold);
+        }
+
+        .btn-search {
+            background: var(--luxury-gold);
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.3s;
+        }
+
+        .btn-search:hover {
+            background: #ffed4a;
+            transform: translateY(-2px);
+        }
+
+        /* Result Section */
+        .result-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            padding: 40px;
+            display: none; /* Hidden by default */
+            animation: slideUp 0.5s ease forwards;
+        }
+
+        .result-header {
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .resi-number {
+            font-family: monospace;
+            font-size: 1.2rem;
+            color: var(--luxury-gold);
+            letter-spacing: 1px;
+        }
+
+        .courier-badge {
+            display: inline-block;
+            background: #fff;
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+
+        /* TIMELINE CSS */
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 5px;
+            bottom: 0;
+            width: 2px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -31px;
+            top: 0;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--card-bg);
+            border: 2px solid #555;
+            z-index: 2;
+        }
+
+        .timeline-item.latest .timeline-dot {
+            background: var(--luxury-gold);
+            border-color: var(--luxury-gold);
+            box-shadow: 0 0 10px var(--luxury-gold);
+        }
+
+        .timeline-date {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .timeline-status {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .timeline-desc {
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        .error-msg {
+            text-align: center;
+            padding: 40px;
+            color: #ff6b6b;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #888;
+            text-decoration: none;
+            border-bottom: 1px solid #555;
+            padding-bottom: 2px;
+        }
+        .back-link:hover { color: var(--luxury-gold); border-color: var(--luxury-gold); }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        @media (max-width: 600px) {
+            .search-box { flex-direction: column; }
+            .btn-search { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Lacak Pesanan</h1>
+            <p style="color: #888;">Masukkan nomor resi untuk melihat status pengiriman parfum Anda.</p>
+        </header>
+
+        <div class="search-box">
+            <input type="text" id="resiInput" class="search-input" placeholder="Masukkan Nomor Resi (Contoh: JTR-88291023)">
+            <button class="btn-search" onclick="checkResi()">Cek Sekarang</button>
+        </div>
+
+        <!-- Kartu Hasil Pencarian -->
+        <div class="result-card" id="resultCard">
+            <div class="result-header">
+                <div style="font-size: 0.9rem; color: #aaa; text-transform: uppercase; letter-spacing: 1px;">Nomor Resi</div>
+                <div class="resi-number" id="displayResi">JTR-88291023</div>
+                <div class="courier-badge" id="displayCourier">JNE Trucking</div>
+            </div>
+
+            <!-- Timeline Akan Di-render di sini oleh JS -->
+            <div class="timeline" id="timelineContainer"></div>
+        </div>
+
+        <!-- Pesan Error -->
+        <div class="error-msg" id="errorMsg">
+            <h3 style="font-size: 1.5rem; margin-bottom: 10px;">Data Tidak Ditemukan</h3>
+            <p>Nomor resi ini belum tersedia di database kami.</p>
+            <p style="font-size: 0.9rem; color: #888;">Pastikan nomor resi benar, atau tunggu admin mengupdate status pengiriman.</p>
+        </div>
+
+        <div style="text-align: center;">
+            <a href="thankyou.html" class="back-link">&larr; Kembali ke Pesanan Saya</a>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. DATABASE SIMULASI (MENGGANTIKAN DATABASE SERVER) ---
+        // Di aplikasi nyata, data ini diambil dari:
+        // A. Backend Database (Order Table)
+        // B. API Ekspedisi (JNE/J&T/SiCepat) setelah Admin menginput Resi di Dashboard Admin.
+        
+        const trackingDatabase = {
+            // Resi Dummy yang sama dengan generated di thankyou.html
+            "JTR-88291023": {
+                courier: "J&T Express",
+                history: [
+                    { date: "24 Okt 2024, 10:00", status: "Pesanan Dikonfirmasi", desc: "Aurora Store telah menerima pesanan Anda." },
+                    { date: "24 Okt 2024, 14:30", status: "Dikemas", desc: "Parfum sedang dikemas dengan bubble wrap premium." },
+                    { date: "25 Okt 2024, 08:00", status: "Dikirim", desc: "Barang telah diserahkan ke kurir J&T." },
+                    { date: "25 Okt 2024, 15:20", status: "Dalam Perjalanan", desc: "Paket sedang menuju kota tujuan." }
+                ]
+            },
+            // Contoh Resi Lain (Bisa ditambah manual)
+            "JNE-88291099": {
+                courier: "JNE",
+                history: [
+                    { date: "20 Okt 2024, 09:00", status: "Pesanan Masuk", desc: "Order diterima sistem." },
+                    { date: "21 Okt 2024, 13:00", status: "Manifested", desc: "Paket telah diterima di gerai JNE." },
+                    { date: "22 Okt 2024, 04:00", status: "Delivered", desc: "Paket telah diterima oleh Budi Santoso." }
+                ]
+            }
+        };
+
+        // --- 2. LOGIKA CEK RESI ---
+        function checkResi() {
+            const inputVal = document.getElementById('resiInput').value.trim();
+            const resultCard = document.getElementById('resultCard');
+            const errorMsg = document.getElementById('errorMsg');
+            const timelineContainer = document.getElementById('timelineContainer');
+            
+            // Reset tampilan
+            resultCard.style.display = 'none';
+            errorMsg.style.display = 'none';
+            timelineContainer.innerHTML = '';
+
+            if (!inputVal) {
+                alert("Mohon masukkan nomor resi!");
+                return;
+            }
+
+            // Cari data di database
+            const data = trackingDatabase[inputVal];
+
+            if (data) {
+                // --- JIKA DATA DITEMUKAN ---
+                document.getElementById('displayResi').innerText = inputVal;
+                document.getElementById('displayCourier').innerText = data.courier;
+                
+                // Render Timeline
+                data.history.forEach((step, index) => {
+                    const isLast = index === data.history.length - 1;
+                    
+                    const html = `
+                        <div class="timeline-item ${isLast ? 'latest' : ''}">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-date">${step.date}</div>
+                            <div class="timeline-status">${step.status}</div>
+                            <div class="timeline-desc">${step.desc}</div>
+                        </div>
+                    `;
+                    timelineContainer.innerHTML += html;
+                });
+
+                resultCard.style.display = 'block';
+
+            } else {
+                // --- JIKA DATA TIDAK DITEMUKAN ---
+                errorMsg.style.display = 'block';
+            }
+        }
+
+        // Auto-fill jika user datang dari thankyou.html (via URL param atau localStorage - opsional)
+        // Contoh sederhana:
+        const tempResi = localStorage.getItem('last_order_resi');
+        if(tempResi) {
+            document.getElementById('resiInput').value = tempResi;
+        }
+
+    </script>
+</body>
+</html>

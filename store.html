@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koleksi Aurora - Store</title>
+    
+    <!-- 1. OPTIMASI PERFORMA: PRECONNECT -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    
+    <!-- 2. OPTIMASI PERFORMA: PRELOAD SCRIPT -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" as="script">
+
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <!-- LIBRARY SUPABASE JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --luxury-gold: #d4af37;
+            --dark-bg: #0f0c15;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --panel-bg: #1a1620;
+        }
+        
+        body {
+            background-color: var(--dark-bg);
+            color: #f0f0f0;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden; 
+        }
+
+        /* Header Navigasi */
+        header {
+            background: rgba(15, 12, 21, 0.95);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            padding: 15px 8%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .back-link {
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.3s;
+            font-family: 'Poppins', sans-serif;
+            cursor: pointer;
+        }
+        .back-link:hover { color: var(--luxury-gold); }
+        
+        .store-nav { display: flex; gap: 30px; align-items: center; }
+        .store-nav a { color: #ccc; text-decoration: none; font-size: 0.95rem; transition: color 0.3s; cursor: pointer; }
+        .store-nav a:hover, .store-nav a.active { color: var(--luxury-gold); }
+
+        /* User Menu */
+        .user-menu-container { position: relative; }
+        .user-btn { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 8px 12px; border-radius: 20px; transition: background 0.3s; }
+        .user-btn:hover { background: rgba(255,255,255,0.1); }
+        .user-avatar { width: 35px; height: 35px; background: var(--luxury-gold); color: #000; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 0.9rem; }
+        
+        .dropdown-menu { position: absolute; top: 120%; right: 0; width: 200px; background: #1a1a1a; border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; flex-direction: column; overflow: hidden; z-index: 10; }
+        .dropdown-menu.show { display: flex; animation: fadeIn 0.3s ease; transform-origin: top right; }
+        .dropdown-item { padding: 12px 20px; color: #ccc; text-decoration: none; font-size: 0.9rem; transition: 0.2s; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .dropdown-item:last-child { border-bottom: none; }
+        .dropdown-item:hover { background: var(--luxury-gold); color: #000; }
+        .dropdown-item.logout { color: #ff6b6b; font-weight: 600; }
+        .dropdown-item.logout:hover { background: #ff6b6b; color: #fff; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-overlay.show { display: flex; }
+        .modal-content { background: #1a1a1a; border: 1px solid var(--luxury-gold); padding: 30px; width: 90%; max-width: 500px; border-radius: 15px; color: #fff; position: relative; }
+        .modal-header { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--luxury-gold); margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .close-modal { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; color: #888; }
+        .close-modal:hover { color: #fff; }
+
+        .profile-detail-row { margin-bottom: 15px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
+        .profile-label { color: #888; font-size: 0.9rem; }
+        .profile-value { font-weight: 600; color: var(--luxury-gold); }
+
+        /* Main Layout */
+        .main-layout { display: flex; gap: 40px; padding: 40px 8%; max-width: 1600px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+        .catalog-section { flex: 3; padding-right: 20px; }
+
+        .page-entry { opacity: 0; animation: slideUpFade 0.8s ease-out forwards; }
+        .delay-1 { animation-delay: 0.2s; }
+        .delay-2 { animation-delay: 0.4s; }
+        .delay-3 { animation-delay: 0.6s; }
+
+        .store-header { text-align: center; margin-bottom: 50px; }
+        .store-header h1 { font-family: 'Playfair Display', serif; font-size: 3rem; color: var(--luxury-gold); margin-bottom: 10px; font-weight: 700; letter-spacing: -1px; }
+        .store-header p { color: #888; font-style: italic; line-height: 1.5rem; }
+
+        .filter-bar { display: flex; justify-content: center; gap: 15px; margin-bottom: 50px; flex-wrap: wrap; }
+        .filter-btn { padding: 10px 25px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255, 0.05); color: #aaa; border-radius: 30px; cursor: pointer; transition: all 0.3s; font-size: 0.9rem; }
+        .filter-btn.active, .filter-btn:hover { background: var(--luxury-gold); color: #000; border-color: var(--luxury-gold); font-weight: 600; }
+
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 25px; }
+
+        .product-card { background: var(--card-bg); border: 1px solid rgba(212, 175, 55, 0.1); border-radius: 8px; overflow: hidden; transition: all 0.4s ease; position: relative; display: flex; flex-direction: column; }
+        .product-card:hover { transform: translateY(-5px); border-color: var(--luxury-gold); box-shadow: 0 10px 30px rgba(0,0,0, 0.5); }
+        
+        .product-img-wrapper { width: 100%; height: 250px; overflow: hidden; position: relative; background: #000; }
+        .product-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; display: block; }
+        .product-card:hover .product-img { transform: scale(1.05); }
+        
+        .product-info { padding: 20px; text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .product-name { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: #fff; margin-bottom: 5px; }
+        .product-desc { font-size: 0.8rem; color: #888; margin-bottom: 5px; height: 35px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        
+        .product-stock { font-size: 0.8rem; color: #888; margin-bottom: 10px; }
+        .product-stock.out-of-stock { color: #ff6b6b; font-weight: 600; }
+
+        .product-price { font-size: 1rem; color: var(--luxury-gold); font-weight: 700; margin-bottom: 15px; display: block; }
+        
+        .btn-buy { width: 100%; padding: 10px; background: transparent; border: 1px solid var(--luxury-gold); color: var(--luxury-gold); font-weight: 600; cursor: pointer; transition: 0.3s; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; border-radius: 5px; }
+        .btn-buy:hover:not(:disabled) { background: var(--luxury-gold); color: #000; }
+        
+        .btn-buy:disabled { border-color: #444; color: #666; cursor: not-allowed; background: transparent; }
+        .category-badge { position: absolute; top: 10px; left: 10px; background: rgba(0, 0, 0, 0.7); color: #fff; padding: 4px 10px; font-size: 0.65rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; z-index: 2; }
+
+        /* Cart Sidebar (TOTAL DIHAPUS, CHECKOUT LANGSUNG) */
+        .cart-section { flex: 1; min-width: 320px; position: relative; }
+        
+        .cart-sidebar { 
+            background: var(--panel-bg); 
+            border: 1px solid rgba(212, 175, 55, 0.2); 
+            border-radius: 15px; 
+            padding: 25px; 
+            position: sticky; 
+            top: 100px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3); 
+            max-height: calc(100vh - 140px); 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        .sidebar-title { 
+            font-family: 'Playfair Display', serif; 
+            font-size: 1.5rem; 
+            color: var(--luxury-gold); 
+            margin-bottom: 20px; 
+            border-bottom: 1px solid rgba(255,255,255,0.1); 
+            padding-bottom: 10px;
+            flex-shrink: 0; 
+        }
+
+        /* Area daftar barang */
+        .cart-items-scroll { 
+            overflow-y: auto; 
+            margin-bottom: 20px; 
+            padding-right: 5px; 
+            flex: 1; /* Mengisi ruang kosong agar tombol tetap di bawah */
+            min-height: 0; /* Penting untuk scroll di flexbox */
+        }
+        .cart-items-scroll::-webkit-scrollbar { width: 5px; }
+        .cart-items-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+
+        .sidebar-cart-item { display: flex; gap: 12px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 10px; border: 1px solid transparent; transition: 0.3s; }
+        .sidebar-cart-item:hover { border-color: rgba(212, 175, 55, 0.3); background: rgba(255,255,255,0.06); }
+        .sidebar-item-img { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; border: 1px solid #333; }
+        .sidebar-item-details { flex: 1; }
+        .sidebar-item-name { font-size: 0.9rem; font-weight: 600; color: #fff; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+        .sidebar-item-meta { font-size: 0.8rem; color: #aaa; display: flex; justify-content: space-between; }
+        .sidebar-remove-btn { background: none; border: none; color: #666; font-size: 1.2rem; cursor: pointer; line-height: 1; }
+        .sidebar-remove-btn:hover { color: #ff6b6b; }
+
+        /* Footer Keranjang (Checkout Saja) */
+        .cart-footer { 
+            margin-top: auto; 
+            flex-shrink: 0; /* Mencegah penyusutan */
+        }
+
+        /* --- KOLOM TOTAL DIHAPUS --- */
+        
+        /* Tombol Checkout memenuhi lebar penuh */
+        .btn-checkout { 
+            width: 100%; 
+            padding: 20px; /* Padding lebih besar agar menonjol */
+            background: linear-gradient(135deg, var(--luxury-gold), #b8860b); 
+            color: #000; 
+            border: none; 
+            border-radius: 8px; 
+            font-size: 1.1rem; 
+            font-weight: 700; 
+            cursor: pointer; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            transition: 0.3s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-checkout span {
+            font-size: 0.8rem;
+            text-transform: none;
+            font-weight: 400;
+            color: rgba(0,0,0,0.6);
+        }
+
+        .btn-checkout:hover { 
+            background: #ffed4a; 
+            transform: translateY(-2px); 
+            box-shadow: 0 5px 20px rgba(255,215,0,0.3); 
+        }
+        
+        .btn-checkout:disabled { 
+            background: #2a2a2a; 
+            color: #666; 
+            cursor: not-allowed; 
+            transform: none; 
+            box-shadow: none; 
+            border: 1px solid #333;
+        }
+
+        .empty-msg { text-align: center; color: #666; font-size: 0.9rem; margin-top: 20px; font-style: italic; }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUpFade { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-layout { flex-direction: column-reverse; }
+            .cart-section { width: 100%; }
+            .cart-sidebar { position: static; margin-bottom: 30px; max-height: 500px; }
+            .catalog-section { padding-right: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="index.html" class="back-link">
+            <span>&larr;</span>Back
+        </a>
+        
+        <div class="store-nav">
+            <a href="#" class="active">Store</a>
+            
+            <div class="user-menu-container">
+                <div class="user-btn" onclick="toggleDropdown()">
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <span id="userName" style="color: #fff; font-size: 0.9rem;">User</span>
+                    <span style="color: #666;">▼</span>
+                </div>
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <div class="dropdown-item" onclick="openProfileModal()">Profil Saya</div>
+                    <div class="dropdown-item" onclick="openHistoryModal()">Riwayat Pesanan</div>
+                    <div class="dropdown-item logout" onclick="handleLogout()">Keluar (Logout)</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        
+        <!-- KIRI: KATALOG PRODUK -->
+        <div class="catalog-section">
+            <div class="store-header page-entry delay-1">
+                <h1>Exklusive Collection</h1>
+                <p>Aroma yang mendefinisikan karakter Anda.</p>
+            </div>
+
+            <div class="filter-bar page-entry delay-2">
+                <button class="filter-btn active" onclick="filterProducts('all', this)">Semua</button>
+                <button class="filter-btn" onclick="filterProducts('women', this)">Women</button>
+                <button class="filter-btn" onclick="filterProducts('men', this)">Men</button>
+                <button class="filter-btn" onclick="filterProducts('unisex', this)">Unisex</button>
+            </div>
+
+            <div class="product-grid" id="productGrid">
+                <p style="text-align:center; width:100%; grid-column: 1/-1; color: #888;">Memuat produk...</p>
+            </div>
+        </div>
+
+        <!-- KANAN: RINGKASAN KERANJANG -->
+        <div class="cart-section">
+            <div class="cart-sidebar page-entry delay-3">
+                <div class="sidebar-title">Keranjang</div>
+                
+                <!-- Daftar Barang -->
+                <div class="cart-items-scroll" id="sidebarCartList">
+                    <p class="empty-msg">Keranjang masih kosong.</p>
+                </div>
+
+                <!-- Footer Keranjang (Hanya Tombol Checkout) -->
+                <div class="cart-footer">
+                    <!-- Kolom Total Dihapus. Tombol Checkout memenuhi kotak -->
+                    <button class="btn-checkout" id="btnCheckoutSidebar" onclick="validateAndCheckout()" disabled>
+                        Checkout
+                        <!-- Total tidak ditampilkan di sini -->
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MODAL PROFIL -->
+    <div class="modal-overlay" id="profileModal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('profileModal')">&times;</span>
+            <div class="modal-header">Profil Saya</div>
+            <div id="profileContent"></div>
+        </div>
+    </div>
+
+    <!-- MODAL RIWAYAT PESANANAN -->
+    <div class="modal-overlay" id="historyModal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('historyModal')">&times;</span>
+            <div class="modal-header">Riwayat Pesanan</div>
+            <div id="historyContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. KONFIGURASI SUPABASE
+        // ==========================================
+        const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
+        
+        // Inisialisasi Client
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Variabel Global
+        let productsData = [];
+
+        const productGrid = document.getElementById('productGrid');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+        const sidebarCartList = document.getElementById('sidebarCartList');
+        // sidebarTotal dihapus karena tidak ada elemen HTML lagi
+        const btnCheckoutSidebar = document.getElementById('btnCheckoutSidebar');
+
+        // --- FUNGSI PENGECILAN FORMAT HARGA ---
+        function formatPrice(price) {
+            let numPrice = parseFloat(price);
+            if (isNaN(numPrice)) return "0.00";
+            if (numPrice < 0.01) {
+                return numPrice.toString();
+            } else {
+                return numPrice.toFixed(2);
+            }
+        }
+
+        // --- FUNGSI AMBIL PRODUK DARI SUPABASE ---
+        async function fetchProducts() {
+            console.log("DEBUG: Memulai fetch...");
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('products')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error("Supabase Error:", error);
+                    productGrid.innerHTML = `<p style="text-align:center; width:100%; grid-column: 1/-1; color: #ff6b6b; padding: 20px;">
+                        <b>Gagal Memuat Data</b><br>${error.message}<br><small>Cek Console (F12) untuk detail.</small>
+                    </p>`;
+                    return [];
+                } else {
+                    console.log("Data Berhasil Diambil:", data);
+                    productsData = data;
+                    return data;
+                }
+            } catch (e) {
+                console.error("Script Crash:", e);
+                productGrid.innerHTML = `<p style="text-align:center; width:100%; grid-column: 1/-1; color: #ff6b6b;">Script Error: ${e.message}</p>`;
+                return [];
+            }
+        }
+
+        window.addEventListener('load', async () => {
+            // Setup User
+            const userDataStr = localStorage.getItem('aurora_user');
+            if (userDataStr) {
+                const user = JSON.parse(userDataStr);
+                document.getElementById('userName').innerText = user.username || "Guest";
+                document.getElementById('userAvatar').innerText = user.username ? user.username.charAt(0).toUpperCase() : "?";
+            } else {
+                document.getElementById('userName').innerText = "Guest";
+                document.getElementById('userAvatar').innerText = "?";
+            }
+
+            // Fetch Produk
+            await fetchProducts();
+            renderProducts('all');
+            renderSidebarCart();
+        });
+
+        // --- FUNGSI HELPER ---
+        function getSafeValue(obj, key1, key2, fallback) {
+            if (obj && obj[key1]) return obj[key1];
+            if (obj && obj[key2]) return obj[key2];
+            return fallback || '';
+        }
+
+        function openProfileModal() {
+            const userDataStr = localStorage.getItem('aurora_user');
+            const contentDiv = document.getElementById('profileContent');
+            const modal = document.getElementById('profileModal');
+            if (!userDataStr) { alert("Anda belum login."); return; }
+            const user = JSON.parse(userDataStr);
+            contentDiv.innerHTML = `
+                <div class="profile-detail-row"><span class="profile-label">Username</span><span class="profile-value">${user.username || "-"}</span></div>
+                <div class="profile-detail-row"><span class="profile-label">Email / ID</span><span class="profile-value">${user.email || user.pi_id || "-"}</span></div>
+                <div class="profile-detail-row"><span class="profile-label">Status</span><span class="profile-value" style="color: #4CAF50;">Aktif</span></div>
+            `;
+            modal.classList.add('show');
+        }
+
+        function openHistoryModal() {
+            const userDataStr = localStorage.getItem('aurora_user');
+            const contentDiv = document.getElementById('historyContent');
+            const modal = document.getElementById('historyModal');
+            if (!userDataStr) { alert("Anda harus login."); return; }
+            const lastOrderStr = localStorage.getItem('last_order');
+            if (!lastOrderStr) {
+                contentDiv.innerHTML = '<p style="text-align:center; color:#888;">Belum ada riwayat pesanan.</p>';
+            } else {
+                const order = JSON.parse(lastOrderStr);
+                const formattedTotal = formatPrice(parseFloat(order.total));
+                contentDiv.innerHTML = `
+                    <div class="history-item">
+                        <div class="history-header"><span>Order ID: ${order.orderId}</span><span>${order.date}</span></div>
+                        <div style="margin-top:10px; color:#ccc; font-size:0.9rem;">Total: <span class="history-total">${formattedTotal} π</span></div>
+                        <div style="margin-top:5px; font-size:0.8rem;">Status: <span class="history-status">Berhasil</span></div>
+                    </div>`;
+            }
+            modal.classList.add('show');
+        }
+
+        function closeModal(modalId) { document.getElementById(modalId).classList.remove('show'); }
+
+        // ==========================================
+        // FUNGSI TAMBAH KE KERANJANG
+        // ==========================================
+        function addToCart(clickedId) {
+            const product = productsData.find(p => String(p.id) === String(clickedId));
+            if (!product) { alert("Terjadi kesalahan: Produk tidak ditemukan."); return; }
+            
+            const currentStock = parseInt(product.stock) || 0;
+            if (currentStock <= 0) { alert("Maaf, stok produk sedang habis."); return; }
+
+            let cart = JSON.parse(localStorage.getItem('aurora_cart')) || [];
+            const existingItem = cart.find(item => String(item.id) === String(clickedId));
+
+            if (existingItem) {
+                existingItem.qty++;
+            } else {
+                cart.push({ ...product, qty: 1 });
+            }
+            
+            localStorage.setItem('aurora_cart', JSON.stringify(cart));
+            renderSidebarCart();
+
+            // Efek Visual pada Tombol
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            const originalBg = btn.style.background;
+            btn.innerHTML = "✓ Masuk Keranjang";
+            btn.style.background = "var(--luxury-gold)";
+            btn.style.color = "#000";
+            setTimeout(() => { 
+                btn.innerHTML = originalText; 
+                btn.style.background = "transparent";
+                btn.style.color = "var(--luxury-gold)";
+            }, 1000);
+        }
+
+        function removeFromSidebar(productId) {
+            let cart = JSON.parse(localStorage.getItem('aurora_cart')) || [];
+            const index = cart.findIndex(item => String(item.id) === String(productId));
+            if (index !== -1) {
+                cart.splice(index, 1);
+                localStorage.setItem('aurora_cart', JSON.stringify(cart));
+                renderSidebarCart();
+            }
+        }
+
+        // --- RENDER SIDEBAR (TOTAL DIHAPUS) ---
+        function renderSidebarCart() {
+            const cart = JSON.parse(localStorage.getItem('aurora_cart')) || [];
+
+            if (cart.length === 0) {
+                sidebarCartList.innerHTML = '<p class="empty-msg">Keranjang masih kosong.</p>';
+                // Total tidak diupdate karena elemen sudah dihapus
+                btnCheckoutSidebar.disabled = true;
+                return;
+            }
+
+            let html = '';
+            cart.forEach(item => {
+                let itemName = getSafeValue(item, 'name', 'product_name', 'Produk Tanpa Nama');
+                if (!itemName) itemName = getSafeValue(item, 'title', '', 'Produk Tanpa Nama');
+                const imgSrc = getSafeValue(item, 'image_url', 'img', ''); 
+                const formattedPrice = formatPrice(item.price);
+
+                html += `
+                    <div class="sidebar-cart-item">
+                        <img src="${imgSrc}" alt="${itemName}" class="sidebar-item-img" onerror="this.src='https://via.placeholder.com/50?text=No+Img'">
+                        <div class="sidebar-item-details">
+                            <div class="sidebar-item-name">${itemName}</div>
+                            <div class="sidebar-item-meta">
+                                <span>${item.qty} x ${formattedPrice}</span>
+                                <span style="color:var(--luxury-gold)">${formatPrice(item.price * item.qty)} π</span>
+                            </div>
+                        </div>
+                        <button class="sidebar-remove-btn" onclick="removeFromSidebar('${item.id}')" title="Hapus">&times;</button>
+                    </div>`;
+            });
+
+            sidebarCartList.innerHTML = html;
+            btnCheckoutSidebar.disabled = false;
+        }
+
+        // --- FUNGSI RENDER PRODUK ---
+        function renderProducts(filter) {
+            productGrid.innerHTML = ''; 
+            
+            let categoryKey = 'category';
+            if (productsData.length > 0) {
+                const sample = productsData[0];
+                if (sample.kategori) categoryKey = 'kategori';
+                else if (sample.type) categoryKey = 'type';
+                else if (sample.jenis) categoryKey = 'jenis';
+            }
+
+            const filteredData = filter === 'all' 
+                ? productsData 
+                : productsData.filter(p => {
+                    const pCat = p[categoryKey] ? p[categoryKey].toLowerCase() : '';
+                    return pCat === filter.toLowerCase();
+                });
+
+            if (!filteredData || filteredData.length === 0) {
+                if(productsData.length === 0) {
+                     productGrid.innerHTML = '<p style="text-align:center; width:100%; grid-column: 1/-1; color: #888;">Data produk kosong atau gagal diambil.</p>';
+                } else {
+                     productGrid.innerHTML = '<p style="text-align:center; width:100%; grid-column: 1/-1; color: #888;">Tidak ada produk ditemukan untuk kategori ini.</p>';
+                }
+                return;
+            }
+
+            let delay = 0;
+            filteredData.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                card.style.opacity = '0'; 
+                card.style.animation = `slideUpFade 0.6s ease forwards ${0.7 + delay}s`;
+
+                let displayName = getSafeValue(product, 'name', '', '');
+                if (!displayName) displayName = getSafeValue(product, 'product_name', '', '');
+                if (!displayName) displayName = getSafeValue(product, 'title', '', '');
+                if (!displayName) displayName = "Tanpa Nama";
+
+                let displayCategory = product[categoryKey] || "Uncategorized";
+
+                const stockVal = parseInt(product.stock);
+                const isOutOfStock = isNaN(stockVal) || stockVal <= 0;
+                const stockText = isOutOfStock ? "Stok Habis" : `Stok: ${stockVal}`;
+                const stockClass = isOutOfStock ? "product-stock out-of-stock" : "product-stock";
+                const btnDisabled = isOutOfStock ? "disabled" : "";
+                const btnText = isOutOfStock ? "Habis" : "Beli Sekarang";
+
+                const displayPrice = formatPrice(product.price);
+                const imgSrc = getSafeValue(product, 'image_url', 'img', 'https://via.placeholder.com/250?text=No+Image');
+                const descText = getSafeValue(product, 'description', 'desc', 'Tidak ada deskripsi.');
+                const productId = String(product.id);
+
+                card.innerHTML = `
+                    <div class="category-badge">${displayCategory}</div>
+                    <div class="product-img-wrapper">
+                        <img src="${imgSrc}" alt="${displayName}" class="product-img" onerror="this.src='https://via.placeholder.com/250?text=Image+Error'">
+                    </div>
+                    <div class="product-info">
+                        <div>
+                            <h3 class="product-name">${displayName}</h3>
+                            <p class="product-desc" title="${descText}">${descText}</p>
+                            <span class="product-price">${displayPrice} π</span>
+                            <div class="${stockClass}">${stockText}</div>
+                        </div>
+                        <button class="btn-buy" onclick="addToCart('${productId}')" ${btnDisabled}>${btnText}</button>
+                    </div>`;
+                productGrid.appendChild(card);
+                delay += 0.05; 
+            });
+        }
+
+        function filterProducts(category, btnElement) {
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+            renderProducts(category);
+        }
+
+        // --- VALIDASI CHECKOUT ---
+        function validateAndCheckout() {
+            const userData = localStorage.getItem('aurora_user');
+            if (!userData) {
+                if (confirm("Anda harus login terlebih dahulu untuk melakukan checkout. Apakah Anda ingin masuk sekarang?")) {
+                    window.location.href = 'login.html';
+                }
+            } else {
+                // Langsung pindah ke payment.html (Total akan muncul di sana)
+                window.location.href = 'payment.html';
+            }
+        }
+
+        function toggleDropdown() { dropdownMenu.classList.toggle('show'); }
+
+        function handleLogout() {
+            if (confirm("Apakah Anda yakin ingin keluar?")) {
+                localStorage.removeItem('aurora_user');
+                localStorage.removeItem('aurora_token');
+                localStorage.removeItem('is_admin');
+                window.location.href = 'index.html'; 
+            }
+        }
+
+        window.onclick = function(event) {
+            if (!event.target.closest('.user-menu-container')) {
+                if (dropdownMenu.classList.contains('show')) {
+                    dropdownMenu.classList.remove('show');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
