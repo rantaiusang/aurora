@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Terima Kasih - Aurora Store</title>
     
-    <!-- Font (Sama dengan Store) -->
+    <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     
     <style>
-        /* --- VARIABLES (SAMA DENGAN STORE) --- */
+        /* --- VARIABLES --- */
         :root {
             --luxury-gold: #d4af37;
             --luxury-gold-light: #f3e5ab;
@@ -25,7 +25,7 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            padding: 40px 5%; /* Responsif */
+            padding: 40px 5%;
         }
 
         /* Container Utama */
@@ -33,7 +33,7 @@
             max-width: 700px;
             margin: 0 auto;
             width: 100%;
-            flex-grow: 1; /* Agar footer rata bawah jika konten sedikit */
+            flex-grow: 1;
         }
 
         /* Bagian Sukses */
@@ -59,10 +59,16 @@
         }
 
         .order-number {
-            color: #888;
-            font-size: 1.1rem;
+            color: var(--luxury-gold);
+            font-size: 1.2rem;
             letter-spacing: 1px;
             margin-bottom: 10px;
+            font-family: monospace;
+            background: rgba(212, 175, 55, 0.1);
+            padding: 5px 15px;
+            border-radius: 4px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            display: inline-block;
         }
 
         /* Kartu Detail Pesanan (Invoice) */
@@ -92,7 +98,7 @@
             justify-content: space-between;
             margin-bottom: 15px;
             font-size: 0.95rem;
-            align-items: center; /* Agar text rapi */
+            align-items: center;
         }
 
         .detail-label { color: #aaa; }
@@ -150,16 +156,9 @@
             font-size: 1rem;
         }
 
-        .btn-track:hover {
-            background: #ffed4a;
-            transform: scale(1.05);
-        }
+        .btn-track:hover { background: #ffed4a; transform: scale(1.05); }
+        .btn-track:disabled { background: #555; cursor: wait; }
         
-        .btn-track:disabled {
-            background: #555;
-            cursor: wait;
-        }
-
         .status-badge {
             display: inline-block;
             padding: 5px 12px;
@@ -185,10 +184,7 @@
             transition: 0.3s;
             font-weight: 600;
         }
-
-        .home-btn:hover {
-            background: rgba(255,255,255,0.1);
-        }
+        .home-btn:hover { background: rgba(255,255,255,0.1); }
 
         /* Animasi */
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
@@ -211,8 +207,8 @@
         <div class="success-header">
             <div class="big-check">✅</div>
             <h1>Terima Kasih!</h1>
-            <p class="order-number" id="orderNumber">Order No: #INV-2024000</p>
-            <p style="color: #888;">Pesanan Anda telah kami terima.</p>
+            <p class="order-number" id="orderNumber">Loading Order ID...</p>
+            <p style="color: #888;">Pesanan Anda telah berhasil diproses.</p>
         </div>
 
         <!-- Kartu Invoice / Detail Pesanan -->
@@ -236,7 +232,7 @@
                 <span class="detail-value" style="color: var(--luxury-gold);">Pi Network</span>
             </div>
             
-            <!-- Item (Diambil dari LocalStorage) -->
+            <!-- Item -->
             <div class="detail-row" style="margin-top: 20px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); flex-direction: column; align-items: flex-start;">
                 <span class="detail-label">Barang</span>
                 <span class="detail-value" id="itemName" style="text-align: left; color: #ccc; font-weight: 400; font-size: 0.9rem;">Loading...</span>
@@ -251,17 +247,17 @@
         <!-- Bagian Cek Resi -->
         <div class="tracking-section">
             <h3 style="color: #fff; margin-bottom: 5px;">Lacak Pengiriman</h3>
-            <p style="font-size: 0.9rem; color: #aaa;">Masukkan nomor resi untuk memantau paket Anda.</p>
+            <p style="font-size: 0.9rem; color: #aaa;">Klik tombol di bawah untuk mengecek status terbaru dari Admin.</p>
             
-            <!-- Nomor Resi yang Di-generate Acak -->
+            <!-- INPUT RESI OTOMATIS -->
             <input type="text" id="resiInput" class="resi-input" readonly>
             
             <button class="btn-track" id="btnTrack" onclick="checkResi()">Cek Status</button>
             
             <div id="trackingResult" style="display: none; margin-top: 20px; text-align: left; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
-                <div class="status-badge">Sedang Diproses</div>
-                <p style="color: #ccc; font-size: 0.9rem; margin-top: 5px;">
-                    Paket Anda telah diterima di gudang Aurora dan sedang dilakukan pengecekan kualitas sebelum dikirim.
+                <div class="status-badge" id="trackingBadge">Sedang Diproses</div>
+                <p style="color: #ccc; font-size: 0.9rem; margin-top: 5px;" id="trackingDesc">
+                    Menunggu admin memasukkan nomor resi...
                 </p>
             </div>
         </div>
@@ -271,87 +267,100 @@
     </div>
 
     <script>
-        // 1. Generate Nomor Order Unik & Resi
-        // Menggunakan waktu agar unik
-        const timestamp = Date.now();
-        const randomNum = Math.floor(1000 + Math.random() * 9000);
-        const orderID = `INV-${timestamp}-${randomNum}`;
-        const resiNumber = `JTR-${timestamp}`; // Format Resi Dummy
+        // --- KONFIGURASI SUPABASE ---
+        const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-        // Tampilkan Nomor
-        document.getElementById('orderNumber').innerText = `Order No: #${orderID}`;
-        document.getElementById('resiInput').value = resiNumber;
-
-        // 2. Ambil Data Customer & Order DARI LocalStorage (Disimpan di payment.html)
+        // 1. AMBIL DATA DARI LOCALSTORAGE
         const tempOrderData = JSON.parse(localStorage.getItem('temp_order_data'));
 
+        let displayOrderID = "UNKNOWN";
+        let displayResi = "UNKNOWN";
+        let displayItems = "-";
+
         if (tempOrderData) {
-            // Masukkan data ke HTML
-            document.getElementById('custName').innerText = tempOrderData.name;
-            document.getElementById('custPhone').innerText = tempOrderData.phone;
-            document.getElementById('custAddress').innerText = tempOrderData.address;
+            displayOrderID = tempOrderData.orderId || "N/A";
+            displayResi = "Menunggu Admin..."; // Default text
             
-            // Format Total
+            document.getElementById('custName').innerText = tempOrderData.name || "-";
+            document.getElementById('custPhone').innerText = tempOrderData.phone || "-";
+            document.getElementById('custAddress').innerText = tempOrderData.address || "-";
+            
             const total = parseFloat(tempOrderData.total) || 0;
             document.getElementById('totalPaid').innerText = total.toFixed(2) + ' π';
 
-            // --- PERBAIKAN LOGIKA BARANG ---
-            // Cek apakah 'cart' ada (Array item) atau 'itemName' ada (String item tunggal)
             if (tempOrderData.cart && Array.isArray(tempOrderData.cart)) {
-                // Jika ada array cart, gabungkan nama barangnya
-                const itemNames = tempOrderData.cart.map(item => item.name || item.product_name || "Produk").join(", ");
-                document.getElementById('itemName').innerText = itemNames + (tempOrderData.cart.length > 1 ? ` (${tempOrderData.cart.length} Barang)` : "");
+                const itemNames = tempOrderData.cart.map(item => item.name || "Produk").join(", ");
+                displayItems = itemNames + (tempOrderData.cart.length > 1 ? ` (${tempOrderData.cart.length} Barang)` : "");
             } else if (tempOrderData.itemName) {
-                // Jika hanya string (fallback logika lama)
-                document.getElementById('itemName').innerText = tempOrderData.itemName;
-            } else {
-                document.getElementById('itemName').innerText = "-";
+                displayItems = tempOrderData.itemName;
             }
-
-            // --- LOGIKA PENTING: KOSONGKAN KERANJANG SETELAH ORDER SUKSES ---
-            // Ini membuat UX "Checkout" terasa nyata. Keranjang jadi kosong di Store.
-            localStorage.removeItem('aurora_cart');
+            document.getElementById('itemName').innerText = displayItems;
             
-            // Opsional: Hapus juga data sementara agar jika user refresh, datanya tetap ada 
-            // (di sini kita tidak hapus 'temp_order_data' agar jika user refresh F5, invoice tetap muncul)
-
+            localStorage.removeItem('aurora_cart');
         } else {
-            // Jika tidak ada data (misal dibuka langsung), tampilkan data dummy
-            console.warn("Data order sementara tidak ditemukan, menggunakan default.");
-            document.getElementById('custName').innerText = "Guest User";
-            document.getElementById('custPhone').innerText = "-";
-            document.getElementById('custAddress').innerText = "-";
-            document.getElementById('totalPaid').innerText = "0.00 π";
-            document.getElementById('itemName').innerText = "-";
+            document.getElementById('custName').innerText = "Tidak ada data transaksi aktif.";
         }
 
-        // 3. Fungsi Cek Resi (Simulasi Klik Tombol)
-        function checkResi() {
+        document.getElementById('orderNumber').innerText = `Order ID: ${displayOrderID}`;
+        document.getElementById('resiInput').value = displayResi;
+
+        // 2. FUNGSI CEK RESI (READ REALTIME FROM DATABASE)
+        async function checkResi() {
             const resultDiv = document.getElementById('trackingResult');
             const btn = document.getElementById('btnTrack');
-            const resi = document.getElementById('resiInput').value;
-
-            if(!resi) {
-                alert("Masukkan nomor resi!");
-                return;
-            }
-
+            const badge = document.getElementById('trackingBadge');
+            const desc = document.getElementById('trackingDesc');
+            const orderIdSpan = document.getElementById('orderNumber').innerText.replace('Order ID: ', '');
+            
             // Efek Loading
             btn.innerText = "Mencari...";
             btn.disabled = true;
 
-            // Simulasi delay jaringan
-            setTimeout(() => {
-                resultDiv.style.display = 'block';
-                resultDiv.style.animation = 'fadeInDown 0.5s ease forwards';
+            try {
+                // Kita Cari Order Berdasarkan Order ID di Tabel 'orders'
+                // Kita tidak perlu backend khusus, supabase client bisa langsung read jika table-nya public.
+                const { data, error } = await supabaseClient
+                    .from('orders')
+                    .select('tracking_number, status, customer_address')
+                    .eq('order_id', orderIdSpan)
+                    .single();
+                
+                if (error) throw error;
+
+                if (data) {
+                    // Update Tampilan Resi
+                    document.getElementById('resiInput').value = data.tracking_number || "-";
+                    
+                    // Update Status Badge
+                    if (data.status === 'shipped' && data.tracking_number) {
+                        badge.style.background = 'rgba(76, 175, 80, 0.2)';
+                        badge.style.color = '#4CAF50';
+                        badge.style.borderColor = '#4CAF50';
+                        badge.innerText = 'Sedang Dikirim';
+                        desc.innerText = `Nomor resi ${data.tracking_number} terdaftar di sistem kurir.`;
+                    } else {
+                        badge.style.background = 'rgba(255, 165, 0, 0.2)';
+                        badge.style.color = '#FFA500';
+                        badge.style.borderColor = '#FFA500';
+                        badge.innerText = 'Sedang Diproses';
+                        desc.innerText = "Admin belum memasukkan nomor resi.";
+                    }
+                    
+                    resultDiv.style.display = 'block';
+                    resultDiv.style.animation = 'fadeInDown 0.5s ease forwards';
+                } else {
+                    throw new Error("Data pesanan tidak ditemukan.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Terjadi kesalahan koneksi server. Coba lagi nanti.");
+            } finally {
                 btn.innerText = "Cek Status";
                 btn.disabled = false;
-            }, 1500); // Delay 1.5 detik
+            }
         }
-
-        // Simpan Resi ini ke LocalStorage agar halaman resi.html bisa membaca otomatis saat diklik nanti
-        localStorage.setItem('last_order_resi', resiNumber);
-
     </script>
 </body>
 </html>
