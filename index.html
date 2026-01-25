@@ -303,10 +303,12 @@
             transform: translateY(0);
         }
 
-        /* Stagger delay untuk efek berurutan (menggunakan nth-child) */
-        .feature-card:nth-child(1).visible { transition-delay: 0.1s; }
-        .feature-card:nth-child(2).visible { transition-delay: 0.2s; }
-        .feature-card:nth-child(3).visible { transition-delay: 0.3s; }
+        /* Stagger delay untuk efek berurutan (menggunakan nth-child) */ 
+        const fadeElements = document.querySelectorAll('.fade-on-scroll');
+fadeElements.forEach((el, idx) => {
+    el.style.transitionDelay = `${idx * 0.15}s`; // otomatis stagger untuk semua card
+    observer.observe(el);
+});
 
         .feature-card.visible:hover {
     transform: translateY(-10px); /* Hover aman dengan scroll animasi */
@@ -354,9 +356,9 @@
             text-align: center;
             /* Initial state */
             opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 1s ease, transform 1s ease;
-        }
+            const footer = document.querySelector('footer.fade-on-scroll');
+footer.style.transitionDelay = `${fadeElements.length * 0.15}s`;
+observer.observe(footer);
 
         footer.visible {
             opacity: 1;
