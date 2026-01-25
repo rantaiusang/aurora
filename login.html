@@ -12,7 +12,7 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
     <style>
-        /* Style Internal */
+        /* Style tetap sama seperti yang Anda buat, sudah bagus */
         :root {
             --primary: #6a2c91;
             --primary-dark: #4a1b63;
@@ -49,10 +49,7 @@
             transform: translateY(40px) scale(0.95);
             transition: opacity 0.8s ease-out, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        .card-container.visible {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
+        .card-container.visible { opacity: 1; transform: translateY(0) scale(1); }
         .pi-spinner-wrapper {
             position: relative;
             width: 90px;
@@ -62,7 +59,6 @@
             align-items: center;
             justify-content: center;
         }
-        /* Lingkaran Luar (Spinner) */
         .pi-spinner {
             position: absolute;
             width: 100%;
@@ -72,12 +68,10 @@
             border-radius: 50%;
             animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
         }
-        /* Ikon Pi di Tengah */
         .pi-icon {
             font-size: 2.5rem;
             color: var(--primary);
             font-weight: bold;
-            /* Efek Pulse di ikon */
             animation: pulse 2.5s ease-in-out infinite; 
         }
         .status-text-group {
@@ -99,31 +93,16 @@
             font-size: 0.9rem;
             display: none;
         }
-        
-        /* Tombol Coba Lagi */
         .btn-submit {
-            padding: 8px 20px; 
-            font-size: 0.9rem; 
-            background: var(--primary); 
-            color: white; 
-            border: none; 
-            border-radius: 8px; 
-            cursor: pointer;
-            transition: 0.3s;
+            padding: 8px 20px; font-size: 0.9rem; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s;
         }
         .btn-submit:hover { background: var(--primary-dark); }
-
-        /* Animasi Keyframes */
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1.1); } }
-
-        /* Mobile Responsiveness Fix */
         @media (max-width: 480px) {
-            .login-bg { justify-content: center; padding-left: 15px; padding-right: 15px; }
+            .login-bg { padding: 15px; }
             .card-container { padding: 40px 15px; }
-            .pi-spinner-wrapper { width: 70px; height: 70px; margin: 0 auto 25px; }
-            .pi-icon { font-size: 2rem; }
-            .main-title { font-size: 1.4rem; }
+            .pi-spinner-wrapper { width: 70px; height: 70px; }
         }
     </style>
 </head>
@@ -135,14 +114,12 @@
     <div class="login-bg">
         <div class="card-container" id="loginCard">
             <div class="pi-spinner-wrapper">
-                <!-- Lingkaran Putar (Spinner) -->
                 <div class="pi-spinner"></div>
-                <!-- Ikon Pi di Tengah (Diam/berdenyut) -->
                 <div class="pi-icon">π</div>
             </div>
             <div class="status-text-group">
                 <h2 id="main-status" class="main-title">Menghubungkan...</h2>
-                <p id="sub-status" class="sub-title">Mendeteksi Pi Network Sandbox</p>
+                <p id="sub-status" class="sub-title">Mendeteksi Pi Network SDK</p>
             </div>
             <div id="error-box" class="error-box">
                 <p><strong>Koneksi Gagal</strong></p>
@@ -158,24 +135,26 @@
 
     <script>
         // --- KONFIGURASI SUPABASE ---
+        // PENTING: Ganti key di bawah ini dengan 'anon' / 'public' key Anda, bukan service_role!
         const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co'; 
+        // GANTI KEY INI DENGAN KEY ANON DASHBOARD SUPABASE ANDA
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA'; 
         const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
         // --- KONFIGURASI PI SDK ---
-        const APP_ID = "aurora-4c073a664f9faa3a"; 
-
+        // Di Pi SDK v2.0, APP_ID tidak perlu didefinisikan manual di sini, 
+        // Pi SDK otomatis mendeteksi App ID berdasarkan domain yang terdaftar di dashboard.
+        
         window.addEventListener('load', () => {
             console.log("Halaman dimuat. Menyiapkan login...");
             
-            // Animasi muncul kartu
             setTimeout(() => {
                 const card = document.getElementById('loginCard');
                 if(card) card.classList.add('visible');
             }, 100);
 
-            // Jalankan proses login otomatis
-            setTimeout(autoLoginProcess, 1000);
+            // Beri jeda sedikit agar SDK sempat loading sepenuhnya
+            setTimeout(autoLoginProcess, 1500);
         });
 
         function updateStatus(title, subtitle) {
@@ -199,42 +178,68 @@
 
         async function autoLoginProcess() {
             try {
-                // 1. Cek apakah Pi SDK terdeteksi
-                if (!window.Pi) {
-                    throw new Error("Gagal memuat Pi SDK. Pastikan membuka di Pi Browser.");
+                // 1. Cek apakah Pi SDK terdeteksi (Object 'Pi' harus ada)
+                if (typeof Pi === 'undefined') {
+                    throw new Error("Pi SDK tidak terdeteksi. Pastikan tidak ada AdBlocker dan koneksi internet stabil.");
                 }
                 
-                updateStatus("Mengamankan Koneksi...", "Menghubungi Server Sandbox");
+                updateStatus("Mengamankan Koneksi...", "Menghubungi Pi Network");
                 
-                // 2. Inisialisasi Pi
-                await Pi.init(APP_ID, { version: "2.0" });
+                // 2. Inisialisasi Pi (PERBAIKAN DI SINI)
+                // Di SDK v2.0, init hanya menerima object { version: "2.0" }
+                await Pi.init({ version: "2.0" });
                 
-                // 3. Cek Network
-                const network = await Pi.getNetwork();
-                console.log("Terkoneksi ke:", network);
+                // 3. Cek Network (Opsional, untuk debug)
+                // Pi.getNetwork() kadang tidak perlu dipanggil manual jika hanya butuh Auth,
+                // tapi berguna untuk cek koneksi.
+                try {
+                    const network = await Pi.getNetwork(); 
+                    console.log("Terkoneksi ke:", network);
+                } catch (netErr) {
+                    console.warn("Gagal cek network, melanjutkan auth...", netErr);
+                }
                 
                 updateStatus("Memverifikasi Identitas...", "Harap setujui popup di Pi Browser Anda");
                 
-                // 4. Authenticate
-                const authResult = await Pi.authenticate(['username', 'payments']);
-                const user = authResult.user;
+                // 4. Authenticate (PERBAIKAN DI SINI)
+                // scopes: ['username'] sudah cukup. 'payments' opsional untuk identitas.
+                const authResult = await Pi.authenticate(['username'], {
+                    onReadyForServerApproval: (paymentId) => { 
+                        // Callback ini opsional jika auth berhasil
+                        console.log("Payment ID received:", paymentId);
+                    },
+                    onPaymentCompleted: (paymentId, txid) => {
+                        console.log("Payment completed:", paymentId, txid);
+                    },
+                    onCancelled: (paymentId) => {
+                        throw new Error("Pembatalan oleh user atau Popup ditutup.");
+                    },
+                    onError: (error, payment) => {
+                        console.error("Pi Auth Error:", error);
+                        throw new Error(error.message || "Gagal autentikasi.");
+                    }
+                });
 
+                const user = authResult.user;
                 console.log("User Pi Login:", user);
                 
                 // Simpan data sesi
                 localStorage.setItem('aurora_user', JSON.stringify(user));
                 localStorage.setItem('aurora_token', authResult.accessToken);
 
-                // 5. CEK ADMIN
-                const { data: adminData, error } = await supabase
+                // 5. CEK ADMIN KE SUPABASE
+                updateStatus("Sinkronisasi Data...", "Mengecek hak akses...");
+                
+                // Perbaikan query Supabase: Pastikan kolom 'pi_uid' tipe datanya text di Supabase
+                const { data: adminData, error: adminError } = await supabase
                     .from('admins')
                     .select('*')
                     .eq('username', user.username)
                     .eq('pi_uid', user.uid);
 
-                if (error) {
-                    console.error("Error cek admin:", error);
-                    // Jika error database, anggap user biasa agar tidak stuck
+                if (adminError) {
+                    console.error("Error cek admin:", adminError);
+                    // Jika error database, anggap user biasa agar user tidak terjebak
                     localStorage.setItem('is_admin', 'false');
                     redirectToStore();
                     return;
@@ -249,6 +254,7 @@
                     } else {
                         updateStatus("Akses Ditolak", "Akun Admin Anda dinonaktifkan.");
                         alert("Maaf, akun admin Anda sedang dinonaktifkan.");
+                        // Jangan redirect, biarkan user baca pesan
                     }
                 } else {
                     localStorage.setItem('is_admin', 'false');
@@ -256,8 +262,11 @@
                 }
 
             } catch (err) {
-                console.error(err);
-                showError("Terjadi Kesalahan", err.message || "Pastikan Anda menggunakan Pi Browser untuk login.");
+                console.error("Critical Error:", err);
+                // Tangani pesan error agar lebih user friendly
+                let msg = err.message || "Terjadi kesalahan tak terduga.";
+                if(msg.includes("User denied")) msg = "Anda menolak akses login.";
+                showError("Gagal Login", msg);
             }
         }
 
