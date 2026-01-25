@@ -1,582 +1,576 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aurora Store - Exclusive Fragrances</title>
-    <!-- Font Google -->
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-    
-    <style>
-        /* --- 1. VARIABLE & RESET --- */
-        :root {
-            --luxury-gold: #d4af37;
-            --luxury-gold-light: #f3e5ab;
-            --luxury-red: #8a1c1c;
-            --dark-bg: #0f0c15;
-            --dark-card: #161216;
-            --text-gray: #a0a0a0;
-            --text-white: #ffffff;
-        }
+<!DOCTYPE html>    <html lang="id">    
+<head>    
+    <meta charset="UTF-8">    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">    
+    <title>Aurora Store - Exclusive Fragrances</title>    
+    <!-- Font Google -->    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">    <style>    
+    /* --- 1. VARIABLE & RESET --- */    
+    :root {    
+        --luxury-gold: #d4af37;    
+        --luxury-gold-light: #f3e5ab;    
+        --luxury-red: #8a1c1c;    
+        --dark-bg: #0f0c15;    
+        --dark-card: #161216;    
+        --text-gray: #a0a0a0;    
+        --text-white: #ffffff;    
+    }    
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }    
 
-        html {
-            scroll-behavior: smooth; /* Scroll halus saat klik link */
-        }
+    html {    
+        scroll-behavior: smooth; /* Scroll halus saat klik link */    
+    }    
 
-        body {
-            background-color: var(--dark-bg);
-            color: var(--text-white);
-            font-family: 'Poppins', sans-serif;
-            overflow-x: hidden; 
-            line-height: 1.6;
-        }
+    body {    
+        background-color: var(--dark-bg);    
+        color: var(--text-white);    
+        font-family: 'Poppins', sans-serif;    
+        overflow-x: hidden;     
+        line-height: 1.6;    
+    }    
 
-        /* --- 2. HEADER --- */
-        header {
-            background: rgba(15, 12, 21, 0.9);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            padding: 15px 5%; 
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: fixed;
-            top: 0;
-            width: 100%;
-            z-index: 1000; 
-            transition: 0.3s;
-            box-sizing: border-box; 
-        }
+    /* --- 2. HEADER --- */    
+    header {    
+        background: rgba(15, 12, 21, 0.9);    
+        backdrop-filter: blur(10px);    
+        border-bottom: 1px solid rgba(255,255,255,0.05);    
+        padding: 15px 5%;     
+        display: flex;    
+        justify-content: space-between;    
+        align-items: center;    
+        position: fixed;    
+        top: 0;    
+        width: 100%;    
+        z-index: 1000;     
+        transition: 0.3s;    
+        box-sizing: border-box;     
+    }    
 
-        .logo {
-            font-family: 'Playfair Display', serif;
-            font-size: 1.4rem; 
-            font-weight: 700;
-            color: var(--text-white);
-            text-decoration: none;
-            letter-spacing: 1px;
-            white-space: nowrap; 
-        }
+    .logo {    
+        font-family: 'Playfair Display', serif;    
+        font-size: 1.4rem;     
+        font-weight: 700;    
+        color: var(--text-white);    
+        text-decoration: none;    
+        letter-spacing: 1px;    
+        white-space: nowrap;     
+    }    
 
-        .nav-links {
-            display: flex;
-            gap: 20px; 
-            align-items: center;
-            flex-shrink: 0; 
-        }
+    .nav-links {    
+        display: flex;    
+        gap: 20px;     
+        align-items: center;    
+        flex-shrink: 0;     
+    }    
 
-        .nav-links a {
-            text-decoration: none;
-            color: var(--text-gray);
-            font-size: 0.85rem; 
-            font-weight: 500;
-            transition: 0.3s;
-            white-space: nowrap; 
-        }
-        .nav-links a:hover { color: var(--luxury-gold); }
+    .nav-links a {    
+        text-decoration: none;    
+        color: var(--text-gray);    
+        font-size: 0.85rem;     
+        font-weight: 500;    
+        transition: 0.3s;    
+        white-space: nowrap;     
+    }    
+    .nav-links a:hover { color: var(--luxury-gold); }    
 
-        /* Tombol Header */
-        .btn-header {
-            padding: 8px 20px; 
-            background: var(--luxury-gold);
-            color: #000;
-            border-radius: 30px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 0.8rem;
-            transition: transform 0.3s, background 0.3s;
-            white-space: nowrap;
-        }
-        .btn-header:hover { 
-            transform: translateY(-2px); 
-            background: #fff; 
-            color: #000;
-        }
+    /* Tombol Header */    
+    .btn-header {    
+        padding: 8px 20px;     
+        background: var(--luxury-gold);    
+        color: #000;    
+        border-radius: 30px;    
+        text-decoration: none;    
+        font-weight: 600;    
+        font-size: 0.8rem;    
+        transition: transform 0.3s, background 0.3s;    
+        white-space: nowrap;    
+    }    
+    .btn-header:hover {     
+        transform: translateY(-2px);     
+        background: #fff;     
+        color: #000;    
+    }    
 
-        /* --- 3. HERO SECTION --- */
-        .hero {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 120px 5% 80px; 
-            position: relative;
-        }
+    /* --- 3. HERO SECTION --- */    
+    .hero {    
+        display: flex;    
+        align-items: center;    
+        justify-content: center;    
+        min-height: 100vh;    
+        padding: 120px 5% 80px;     
+        position: relative;    
+    }    
 
-        .hero-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            align-items: center;
-            width: 100%;
-            max-width: 1400px;
-        }
+    .hero-container {    
+        display: grid;    
+        grid-template-columns: 1fr 1fr;    
+        gap: 40px;    
+        align-items: center;    
+        width: 100%;    
+        max-width: 1400px;    
+    }    
 
-        /* Dekorasi Background Halus */
-        .glow-bg {
-            position: absolute;
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 70%);
-            top: 20%;
-            left: -10%;
-            z-index: -1;
-            pointer-events: none;
-        }
+    /* Dekorasi Background Halus */    
+    .glow-bg {    
+        position: absolute;    
+        width: 500px;    
+        height: 500px;    
+        background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 70%);    
+        top: 20%;    
+        left: -10%;    
+        z-index: -1;    
+        pointer-events: none;    
+    }    
 
-        /* Teks Animasi Hero (Otomatis saat load) */
-        .hero-text {
-            opacity: 0;
-            transform: translateY(30px);
-            animation: fadeInUp 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-        }
+    /* Teks Animasi Hero (Otomatis saat load) */    
+    .hero-text {    
+        opacity: 0;    
+        transform: translateY(30px);    
+        animation: fadeInUp 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;    
+    }    
 
-        .hero-tag {
-            display: inline-block;
-            color: var(--luxury-red);
-            font-size: 0.7rem; 
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            padding: 4px 10px;
-            border: 1px solid rgba(138, 28, 28, 0.3);
-            border-radius: 4px;
-        }
+    .hero-tag {    
+        display: inline-block;    
+        color: var(--luxury-red);    
+        font-size: 0.7rem;     
+        text-transform: uppercase;    
+        letter-spacing: 1.5px;    
+        font-weight: 600;    
+        margin-bottom: 15px;    
+        padding: 4px 10px;    
+        border: 1px solid rgba(138, 28, 28, 0.3);    
+        border-radius: 4px;    
+    }    
 
-        .hero h1 {
-            font-family: 'Playfair Display', serif;
-            font-size: 3.5rem; 
-            line-height: 1.1;
-            margin-bottom: 20px;
-            background: linear-gradient(to right, #fff, var(--luxury-gold-light));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+    .hero h1 {    
+        font-family: 'Playfair Display', serif;    
+        font-size: 3.5rem;     
+        line-height: 1.1;    
+        margin-bottom: 20px;    
+        background: linear-gradient(to right, #fff, var(--luxury-gold-light));    
+        -webkit-background-clip: text;    
+        -webkit-text-fill-color: transparent;    
+    }    
 
-        .hero p {
-            font-size: 1rem;
-            color: var(--text-gray);
-            margin-bottom: 30px;
-            max-width: 480px;
-            font-weight: 300;
-        }
+    .hero p {    
+        font-size: 1rem;    
+        color: var(--text-gray);    
+        margin-bottom: 30px;    
+        max-width: 480px;    
+        font-weight: 300;    
+    }    
 
-        /* Tombol Action */
-        .hero-buttons {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap; 
-            opacity: 0;
-            transform: translateY(30px);
-            animation: fadeInUp 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s forwards;
-        }
+    /* Tombol Action */    
+    .hero-buttons {    
+        display: flex;    
+        gap: 15px;    
+        flex-wrap: wrap;     
+        opacity: 0;    
+        transform: translateY(30px);    
+        animation: fadeInUp 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s forwards;    
+    }    
 
-        .btn-primary {
-            padding: 14px 30px;
-            background: linear-gradient(135deg, var(--luxury-gold), #b8860b);
-            color: #000;
-            text-decoration: none;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border-radius: 5px;
-            transition: all 0.4s ease;
-            box-shadow: 0 10px 25px rgba(212, 175, 55, 0.2);
-            display: inline-block;
-            text-align: center;
-        }
+    .btn-primary {    
+        padding: 14px 30px;    
+        background: linear-gradient(135deg, var(--luxury-gold), #b8860b);    
+        color: #000;    
+        text-decoration: none;    
+        font-weight: 700;    
+        text-transform: uppercase;    
+        letter-spacing: 1px;    
+        border-radius: 5px;    
+        transition: all 0.4s ease;    
+        box-shadow: 0 10px 25px rgba(212, 175, 55, 0.2);    
+        display: inline-block;    
+        text-align: center;    
+    }    
         
-        .btn-primary:hover {
-            transform: translateY(-5px); 
-            box-shadow: 0 15px 35px rgba(212, 175, 55, 0.4);
-            background: linear-gradient(135deg, var(--luxury-gold-light), var(--luxury-gold));
-        }
+    .btn-primary:hover {    
+        transform: translateY(-5px);     
+        box-shadow: 0 15px 35px rgba(212, 175, 55, 0.4);    
+        background: linear-gradient(135deg, var(--luxury-gold-light), var(--luxury-gold));    
+    }    
 
-        .btn-outline {
-            padding: 14px 30px;
-            border: 1px solid rgba(255,255,255,0.2);
-            color: #fff;
-            text-decoration: none;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border-radius: 5px;
-            transition: all 0.3s ease;
-            display: inline-block;
-            text-align: center;
-        }
+    .btn-outline {    
+        padding: 14px 30px;    
+        border: 1px solid rgba(255,255,255,0.2);    
+        color: #fff;    
+        text-decoration: none;    
+        font-weight: 600;    
+        text-transform: uppercase;    
+        letter-spacing: 1px;    
+        border-radius: 5px;    
+        transition: all 0.3s ease;    
+        display: inline-block;    
+        text-align: center;    
+    }    
         
-        .btn-outline:hover {
-            transform: translateY(-5px); 
-            border-color: var(--luxury-gold);
-            color: var(--luxury-gold);
-            background: rgba(212, 175, 55, 0.05);
-            box-shadow: 0 10px 25px rgba(212, 175, 55, 0.1);
-        }
+    .btn-outline:hover {    
+        transform: translateY(-5px);     
+        border-color: var(--luxury-gold);    
+        color: var(--luxury-gold);    
+        background: rgba(212, 175, 55, 0.05);    
+        box-shadow: 0 10px 25px rgba(212, 175, 55, 0.1);    
+    }    
 
-        /* Visual Hero */
-        .hero-visual {
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            opacity: 0;
-            transform: translateX(30px);
-            animation: fadeInRight 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.5s forwards;
-            grid-column: 2; 
-            grid-row: 1;
-            will-change: transform, opacity;
-        }
+    /* Visual Hero */    
+    .hero-visual {    
+        position: relative;    
+        display: flex;    
+        justify-content: center;    
+        align-items: center;    
+        opacity: 0;    
+        transform: translateX(30px);    
+        animation: fadeInRight 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.5s forwards;    
+        grid-column: 2;     
+        grid-row: 1;    
+        will-change: transform, opacity;    
+    }    
 
-        .hero-img {
-            width: 100%;
-            max-width: 400px;
-            border-radius: 20px;
-            box-shadow: 20px 20px 60px rgba(0,0,0,0.6);
-            transition: 0.5s;
-        }
+    .hero-img {    
+        width: 100%;    
+        max-width: 400px;    
+        border-radius: 20px;    
+        box-shadow: 20px 20px 60px rgba(0,0,0,0.6);    
+        transition: 0.5s;    
+    }    
         
-        .hero-img:hover {
-            transform: scale(1.02) translateY(-5px);
-            box-shadow: 25px 25px 70px rgba(212, 175, 55, 0.15);
-        }
+    .hero-img:hover {    
+        transform: scale(1.02) translateY(-5px);    
+        box-shadow: 25px 25px 70px rgba(212, 175, 55, 0.15);    
+    }    
 
-        /* --- 4. FEATURES SECTION (PERBAIKAN ANIMASI SCROLL) --- */
-        .features {
-            padding: 100px 5%;
-            background: linear-gradient(to bottom, var(--dark-bg), #120e12);
-            position: relative;
-        }
+    /* --- 4. FEATURES SECTION (PERBAIKAN ANIMASI SCROLL) --- */    
+    .features {    
+        padding: 100px 5%;    
+        background: linear-gradient(to bottom, var(--dark-bg), #120e12);    
+        position: relative;    
+    }    
 
-        .section-header {
-            text-align: center;
-            margin-bottom: 80px;
-            /* Initial state: Tersembunyi untuk animasi scroll */
-            opacity: 0; 
-            transform: translateY(30px);
-            transition: all 1s ease; /* Durasi animasi saat scroll */
-        }
+    .section-header {    
+        text-align: center;    
+        margin-bottom: 80px;    
+        /* Initial state: Tersembunyi untuk animasi scroll */    
+        opacity: 0;     
+        transform: translateY(30px);    
+        transition: all 1s ease; /* Durasi animasi saat scroll */    
+    }    
 
-        /* Kelas ini ditambahkan oleh JS saat elemen terlihat */
-        .section-header.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    /* Kelas ini ditambahkan oleh JS saat elemen terlihat */    
+    .section-header.visible {    
+        opacity: 1;    
+        transform: translateY(0);    
+    }    
 
-        .section-header h2 {
-            font-family: 'Playfair Display', serif;
-            font-size: 2.2rem;
-            color: var(--luxury-gold);
-            margin-bottom: 15px;
-        }
+    .section-header h2 {    
+        font-family: 'Playfair Display', serif;    
+        font-size: 2.2rem;    
+        color: var(--luxury-gold);    
+        margin-bottom: 15px;    
+    }    
 
-        .section-header p {
-            color: var(--text-gray);
-            font-style: italic;
-        }
+    .section-header p {    
+        color: var(--text-gray);    
+        font-style: italic;    
+    }    
 
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-        }
+    .features-grid {    
+        display: grid;    
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));    
+        gap: 30px;    
+    }    
 
-        .feature-card {
-            background: var(--dark-card);
-            padding: 35px 25px;
-            border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.05);
-            transition: 0.4s ease;
-            /* Initial state: Tersembunyi */
-            opacity: 0; 
-            transform: translateY(40px);
-            transition: opacity 0.8s ease, transform 0.8s ease;
-            will-change: transform, opacity;
-        }
+    .feature-card {    
+        background: var(--dark-card);    
+        padding: 35px 25px;    
+        border-radius: 12px;    
+        border: 1px solid rgba(255,255,255,0.05);    
+        transition: 0.4s ease;    
+        /* Initial state: Tersembunyi */    
+        opacity: 0;     
+        transform: translateY(40px);    
+        transition: opacity 0.8s ease, transform 0.8s ease;    
+        will-change: transform, opacity;    
+    }    
 
-        /* Kelas visible ditambahkan oleh JS */
-        .feature-card.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    /* Kelas visible ditambahkan oleh JS */    
+    .feature-card.visible {    
+        opacity: 1;    
+        transform: translateY(0);    
+    }    
 
-        /* Stagger delay untuk efek berurutan (menggunakan nth-child) */ 
-        const fadeElements = document.querySelectorAll('.fade-on-scroll');
-fadeElements.forEach((el, idx) => {
-    el.style.transitionDelay = `${idx * 0.15}s`; // otomatis stagger untuk semua card
-    observer.observe(el);
-});
+    /* Stagger delay untuk efek berurutan (menggunakan nth-child) */    
+    .feature-card:nth-child(1).visible { transition-delay: 0.1s; }    
+    .feature-card:nth-child(2).visible { transition-delay: 0.2s; }    
+    .feature-card:nth-child(3).visible { transition-delay: 0.3s; }    
 
-        .feature-card.visible:hover {
-    transform: translateY(-10px); /* Hover aman dengan scroll animasi */
-    border-color: rgba(212, 175, 55, 0.3);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    .feature-card.visible:hover {    
+transform: translateY(-10px); /* Hover aman dengan scroll animasi */    
+border-color: rgba(212, 175, 55, 0.3);    
+box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+
 }
 
-        .feature-icon {
-            font-size: 2rem;
-            margin-bottom: 20px;
-            background: -webkit-linear-gradient(var(--luxury-gold), #fff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+.feature-icon {    
+        font-size: 2rem;    
+        margin-bottom: 20px;    
+        background: -webkit-linear-gradient(var(--luxury-gold), #fff);    
+        -webkit-background-clip: text;    
+        -webkit-text-fill-color: transparent;    
+    }    
 
-        .feature-card h3 {
-            font-family: 'Playfair Display', serif;
-            font-size: 1.2rem;
-            margin-bottom: 15px;
-            color: #fff;
-        }
+    .feature-card h3 {    
+        font-family: 'Playfair Display', serif;    
+        font-size: 1.2rem;    
+        margin-bottom: 15px;    
+        color: #fff;    
+    }    
 
-        .feature-card p {
-            color: var(--text-gray);
-            font-size: 0.9rem;
-            line-height: 1.7;
-        }
+    .feature-card p {    
+        color: var(--text-gray);    
+        font-size: 0.9rem;    
+        line-height: 1.7;    
+    }    
 
-        /* --- 5. ANIMATIONS KEYFRAMES --- */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(40px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+    /* --- 5. ANIMATIONS KEYFRAMES --- */    
+    @keyframes fadeInUp {    
+        from { opacity: 0; transform: translateY(40px); }    
+        to { opacity: 1; transform: translateY(0); }    
+    }    
 
-        @keyframes fadeInRight {
-            from { opacity: 0; transform: translateX(50px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
+    @keyframes fadeInRight {    
+        from { opacity: 0; transform: translateX(50px); }    
+        to { opacity: 1; transform: translateX(0); }    
+    }    
 
-        /* --- FOOTER (DITAMBAHKAN ANIMASI HALUS) --- */
-        footer {
-            background: #0a080c;
-            padding: 50px 5%;
-            border-top: 1px solid rgba(255,255,255,0.05);
-            text-align: center;
-            /* Initial state */
-            opacity: 0;
-            const footer = document.querySelector('footer.fade-on-scroll');
-footer.style.transitionDelay = `${fadeElements.length * 0.15}s`;
-observer.observe(footer);
+    /* --- FOOTER (DITAMBAHKAN ANIMASI HALUS) --- */    
+    footer {    
+        background: #0a080c;    
+        padding: 50px 5%;    
+        border-top: 1px solid rgba(255,255,255,0.05);    
+        text-align: center;    
+        /* Initial state */    
+        opacity: 0;    
+        transform: translateY(20px);    
+        transition: opacity 1s ease, transform 1s ease;    
+    }    
 
-        footer.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    footer.visible {    
+        opacity: 1;    
+        transform: translateY(0);    
+    }    
         
-        footer p { color: #555; font-size: 0.9rem; }
+    footer p { color: #555; font-size: 0.9rem; }    
 
-        .footer-links a {
-            color: #666;
-            text-decoration: none;
-            margin: 0 8px;
-            font-size: 0.8rem;
-            transition: 0.3s;
-            display: inline-block;
-        }
+    .footer-links a {    
+        color: #666;    
+        text-decoration: none;    
+        margin: 0 8px;    
+        font-size: 0.8rem;    
+        transition: 0.3s;    
+        display: inline-block;    
+    }    
         
-        .footer-links a:hover {
-            color: var(--luxury-gold);
-            text-decoration: underline;
-        }
+    .footer-links a:hover {    
+        color: var(--luxury-gold);    
+        text-decoration: underline;    
+    }    
 
-        /* --- 6. RESPONSIVE --- */
-        @media (max-width: 992px) {
-            .hero-container { 
-                grid-template-columns: 1fr; 
-                text-align: center; 
-                gap: 40px;
-            }
-            .hero-text { margin-bottom: 20px; }
-            .hero-buttons { justify-content: center; }
-            .hero h1 { font-size: 2.8rem; }
-            .hero-visual { grid-column: 1; grid-row: 2; animation-delay: 0.2s; }
-            .hero-img { max-width: 300px; margin: 0 auto; }
+    /* --- 6. RESPONSIVE --- */    
+    @media (max-width: 992px) {    
+        .hero-container {     
+            grid-template-columns: 1fr;     
+            text-align: center;     
+            gap: 40px;    
+        }    
+        .hero-text { margin-bottom: 20px; }    
+        .hero-buttons { justify-content: center; }    
+        .hero h1 { font-size: 2.8rem; }    
+        .hero-visual { grid-column: 1; grid-row: 2; animation-delay: 0.2s; }    
+        .hero-img { max-width: 300px; margin: 0 auto; }    
             
-            header { padding: 15px 20px; }
-            .logo { font-size: 1.2rem; }
-            .nav-links a { font-size: 0.8rem; }
-            .btn-header { padding: 6px 16px; font-size: 0.75rem; }
-        }
+        header { padding: 15px 20px; }    
+        .logo { font-size: 1.2rem; }    
+        .nav-links a { font-size: 0.8rem; }    
+        .btn-header { padding: 6px 16px; font-size: 0.75rem; }    
+    }    
 
-        @media (max-width: 600px) {
-            header {
-                padding: 10px 15px;
-                flex-wrap: wrap; 
-                height: auto; 
-            }
+    @media (max-width: 600px) {    
+        header {    
+            padding: 10px 15px;    
+            flex-wrap: wrap;     
+            height: auto;     
+        }    
             
-            .logo { 
-                font-size: 1rem; 
-                flex-shrink: 0;
-            }
+        .logo {     
+            font-size: 1rem;     
+            flex-shrink: 0;    
+        }    
             
-            .nav-links {
-                gap: 10px;
-                flex-wrap: wrap;
-            }
+        .nav-links {    
+            gap: 10px;    
+            flex-wrap: wrap;    
+        }    
 
-            .nav-links a:not(.btn-header) {
-                display: none; 
-            }
+        .nav-links a:not(.btn-header) {    
+            display: none;     
+        }    
 
-            .nav-links .btn-header { 
-                display: inline-flex !important; 
-                align-items: center;
-                justify-content: center;
-                padding: 6px 10px; 
-                font-size: 0.75rem; 
-                height: auto;
-                background: var(--luxury-gold);
-                color: #000;
-                flex: 1 1 auto;
-                max-width: 120px;
-                text-align: center;
-            }
-            /* Tambahkan baris ini di sini */
-    .btn-header {
-        flex-shrink: 1; /* tombol otomatis mengecil jika ruang sempit */
-    }
+        .nav-links .btn-header {     
+            display: inline-flex !important;     
+            align-items: center;    
+            justify-content: center;    
+            padding: 6px 10px;     
+            font-size: 0.75rem;     
+            height: auto;    
+            background: var(--luxury-gold);    
+            color: #000;    
+            flex: 1 1 auto;    
+            max-width: 120px;    
+            text-align: center;    
+        }    
+        /* Tambahkan baris ini di sini */    
+.btn-header {    
+    flex-shrink: 1; /* tombol otomatis mengecil jika ruang sempit */    
+}    
 
-            .hero { padding-top: 80px; padding-left: 5%; padding-right: 5%; }
-            .hero h1 { font-size: 2rem; line-height: 1.2; }
-            .hero p { font-size: 0.9rem; margin-bottom: 20px; }
+        .hero { padding-top: 80px; padding-left: 5%; padding-right: 5%; }    
+        .hero h1 { font-size: 2rem; line-height: 1.2; }    
+        .hero p { font-size: 0.9rem; margin-bottom: 20px; }    
             
-            .btn-primary, .btn-outline { 
-                width: 100%; 
-                padding: 12px 20px; 
-                font-size: 0.8rem; 
-            }
+        .btn-primary, .btn-outline {     
+            width: 100%;     
+            padding: 12px 20px;     
+            font-size: 0.8rem;     
+        }    
             
-            .hero-buttons { flex-direction: column; gap: 10px; width: 100%; }
+        .hero-buttons { flex-direction: column; gap: 10px; width: 100%; }    
             
-            .hero-img { max-width: 250px; }
+        .hero-img { max-width: 250px; }    
 
-            .features-grid { grid-template-columns: 1fr; }
-            .section-header h2 { font-size: 1.8rem; }
-        }
-    </style>
-</head>
-<body>
+        .features-grid { grid-template-columns: 1fr; }    
+        .section-header h2 { font-size: 1.8rem; }    
+    }    
+</style>
 
-    <!-- Header -->
-    <header>
-        <a href="#" class="logo">Aurora ⚡</a>
-        <nav class="nav-links">
-            <a href="store.html">Store</a>
-            <a href="login.html" class="btn-header">Login</a>
-        </nav>
-    </header>
+</head>    
+<body>    <!-- Header -->    
+<header>    
+    <a href="#" class="logo">Aurora ⚡</a>    
+    <nav class="nav-links">    
+        <a href="store.html">Store</a>    
+        <a href="login.html" class="btn-header">Login</a>    
+    </nav>    
+</header>    
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="glow-bg"></div>
-        <div class="hero-container">
-            <!-- Kiri: Teks -->
-            <div class="hero-text">
-                <span class="hero-tag">Koleksi Eksklusif</span>
-                <h1>Esensi Kemewahan<br>Abadi</h1>
-                <p>
-                    Temukan aroma yang mendefinisikan karakter. Dari Baccarat Rouge hingga Black Opium, kami hadirkan kualitas parfum dunia dengan pembayaran modern.
-                </p>
-            </div>
+<!-- Hero Section -->    
+<section class="hero">    
+    <div class="glow-bg"></div>    
+    <div class="hero-container">    
+        <!-- Kiri: Teks -->    
+        <div class="hero-text">    
+            <span class="hero-tag">Koleksi Eksklusif</span>    
+            <h1>Esensi Kemewahan<br>Abadi</h1>    
+            <p>    
+                Temukan aroma yang mendefinisikan karakter. Dari Baccarat Rouge hingga Black Opium, kami hadirkan kualitas parfum dunia dengan pembayaran modern.    
+            </p>    
+        </div>    
             
-            <!-- Tombol (Animasi delay) -->
-            <div class="hero-buttons">
-                <a href="store.html" class="btn-primary">Lihat Koleksi</a>
-                <a href="about.html" class="btn-outline">Tentang Kami</a>
-            </div>
+        <!-- Tombol (Animasi delay) -->    
+        <div class="hero-buttons">    
+            <a href="store.html" class="btn-primary">Lihat Koleksi</a>    
+            <a href="about.html" class="btn-outline">Tentang Kami</a>    
+        </div>    
 
-            <!-- Kanan: Visual -->
-            <div class="hero-visual">
-   <img src="https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Luxury Perfume" class="hero-img" loading="lazy">
-            </div>
-        </div>
-    </section>
+        <!-- Kanan: Visual -->    
+        <div class="hero-visual">
 
-    <!-- Features Section -->
-    <section class="features">
-        <div class="section-header fade-on-scroll">
-            <h2>Standar Aurora</h2>
-            <p>Mengapa kami berbeda dari yang lain.</p>
-        </div>
+   <img src="https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Luxury Perfume" class="hero-img" loading="lazy">    
+            </div>    
+        </div>    
+    </section>    <!-- Features Section -->    
+<section class="features">    
+    <div class="section-header fade-on-scroll">    
+        <h2>Standar Aurora</h2>    
+        <p>Mengapa kami berbeda dari yang lain.</p>    
+    </div>    
 
-        <div class="features-grid">
-            <!-- Card 1 -->
-            <div class="feature-card fade-on-scroll">
-                <div class="feature-icon">💎</div>
-                <h3>Originalitas Terjamin</h3>
-                <p>Setiap botol yang Anda terima adalah produk asli 100%. Kami bekerja sama dengan distributor resmi internasional.</p>
-            </div>
+    <div class="features-grid">    
+        <!-- Card 1 -->    
+        <div class="feature-card fade-on-scroll">    
+            <div class="feature-icon">💎</div>    
+            <h3>Originalitas Terjamin</h3>    
+            <p>Setiap botol yang Anda terima adalah produk asli 100%. Kami bekerja sama dengan distributor resmi internasional.</p>    
+        </div>    
 
-            <!-- Card 2 -->
-            <div class="feature-card fade-on-scroll">
-                <div class="feature-icon">🌙</div>
-                <h3>Aroma Tahan Lama</h3>
-                <p>Konsentrat essence tinggi (Eau De Parfum) yang dirancang untuk bertahan hingga 12 jam pada kulit Anda.</p>
-            </div>
+        <!-- Card 2 -->    
+        <div class="feature-card fade-on-scroll">    
+            <div class="feature-icon">🌙</div>    
+            <h3>Aroma Tahan Lama</h3>    
+            <p>Konsentrat essence tinggi (Eau De Parfum) yang dirancang untuk bertahan hingga 12 jam pada kulit Anda.</p>    
+        </div>    
 
-            <!-- Card 3 -->
-            <div class="feature-card fade-on-scroll">
-                <div class="feature-icon">π</div>
-                <h3>Pembayaran Modern</h3>
-                <p>Transparan, aman, dan mendukung masa depan. Bayar menggunakan Pi Network tanpa biaya tersembunyi.</p>
-            </div>
-        </div>
-    </section>
+        <!-- Card 3 -->    
+        <div class="feature-card fade-on-scroll">    
+            <div class="feature-icon">π</div>    
+            <h3>Pembayaran Modern</h3>    
+            <p>Transparan, aman, dan mendukung masa depan. Bayar menggunakan Pi Network tanpa biaya tersembunyi.</p>    
+        </div>    
+    </div>    
+</section>    
 
-    <!-- Footer -->
-    <footer class="fade-on-scroll">
-        <p style="font-family: 'Playfair Display'; font-size: 1.2rem; color: var(--luxury-gold); margin-bottom: 20px;">Aurora Parfumerie</p>
+<!-- Footer -->    
+<footer class="fade-on-scroll">    
+    <p style="font-family: 'Playfair Display'; font-size: 1.2rem; color: var(--luxury-gold); margin-bottom: 20px;">Aurora Parfumerie</p>    
         
-        <div class="footer-links" style="margin-bottom: 20px;">
-            <a href="privacy.html">Privacy Policy</a> | 
-            <a href="terms.html">Terms & Conditions</a>
-        </div>
+    <div class="footer-links" style="margin-bottom: 20px;">    
+        <a href="privacy.html">Privacy Policy</a> |     
+        <a href="terms.html">Terms & Conditions</a>    
+    </div>    
         
-        <p>&copy; 2026 Aurora Store. All rights reserved.</p>
-    </footer>
+    <p>&copy; 2026 Aurora Store. All rights reserved.</p>    
+</footer>    
 
-    <!-- SCRIPT ANIMASI SCROLL (PERBAIKAN UTAMA) -->
-    <script>
-        // 1. Pastikan scroll reset saat load
-        window.onload = function() {
-            window.scrollTo(0, 0);
-            initScrollAnimations();
-        };
+<!-- SCRIPT ANIMASI SCROLL (PERBAIKAN UTAMA) -->    
+<script>    
+    // 1. Pastikan scroll reset saat load    
+    window.onload = function() {    
+        window.scrollTo(0, 0);    
+        initScrollAnimations();    
+    };    
 
-        // 2. Fungsi Intersection Observer untuk animasi Fade In saat scroll
-        function initScrollAnimations() {
-            // Mengambil semua elemen yang memiliki kelas 'fade-on-scroll'
-            const observerOptions = {
-                root: null, // viewport
-                rootMargin: '0px',
-                threshold: 0.1 // Memicu animasi ketika 10% elemen terlihat
-            };
+    // 2. Fungsi Intersection Observer untuk animasi Fade In saat scroll    
+    function initScrollAnimations() {    
+        // Mengambil semua elemen yang memiliki kelas 'fade-on-scroll'    
+        const observerOptions = {    
+            root: null, // viewport    
+            rootMargin: '0px',    
+            threshold: 0.1 // Memicu animasi ketika 10% elemen terlihat    
+        };    
 
-            const observer = new IntersectionObserver((entries, observer) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        // Menambahkan kelas 'visible' untuk memicu CSS transition
-                        entry.target.classList.add('visible');
-                        // Opsional: Hentikan observasi setelah animasi berjalan sekali
-                        // observer.unobserve(entry.target); 
-                    }
-                });
-            }, observerOptions);
+        const observer = new IntersectionObserver((entries, observer) => {    
+            entries.forEach(entry => {    
+                if (entry.isIntersecting) {    
+                    // Menambahkan kelas 'visible' untuk memicu CSS transition    
+                    entry.target.classList.add('visible');    
+                    // Opsional: Hentikan observasi setelah animasi berjalan sekali    
+                    // observer.unobserve(entry.target);     
+                }    
+            });    
+        }, observerOptions);    
 
-            const fadeElements = document.querySelectorAll('.fade-on-scroll');
-            fadeElements.forEach(el => observer.observe(el));
-        }
-        // 🔹 Tambahan untuk tombol login mobile
-    window.addEventListener('pageshow', function(event) {
-        if (event.persisted) {
-            window.scrollTo(0, 0);
-            initScrollAnimations();
-        }
-    });
-    </script>
+        const fadeElements = document.querySelectorAll('.fade-on-scroll');    
+        fadeElements.forEach(el => observer.observe(el));    
+    }    
+    // 🔹 Tambahan untuk tombol login mobile    
+window.addEventListener('pageshow', function(event) {    
+    if (event.persisted) {    
+        window.scrollTo(0, 0);    
+        initScrollAnimations();    
+    }    
+});    
+</script>
 
-</body>
-</html>
+</body>    
+</html>    
