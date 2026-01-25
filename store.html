@@ -94,6 +94,7 @@
         .profile-detail-row { margin-bottom: 15px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
         .profile-label { color: #888; font-size: 0.9rem; }
         .profile-value { font-weight: 600; color: var(--luxury-gold); }
+        .profile-value.points { color: #4CAF50; font-size: 1.1rem; }
 
         /* Main Layout */
         .main-layout { display: flex; gap: 40px; padding: 40px 8%; max-width: 1600px; margin: 0 auto; width: 100%; box-sizing: border-box; }
@@ -122,8 +123,8 @@
         .product-card:hover .product-img { transform: scale(1.05); }
         
         .product-info { padding: 20px; text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .product-name { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: #fff; margin-bottom: 5px; }
-        .product-desc { font-size: 0.8rem; color: #888; margin-bottom: 5px; height: 35px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .product-name { font-family: 'Playfair Display', serif; font-size:1.1rem; color: #fff; margin-bottom:5px; }
+        .product-desc { font-size: 0.8rem; color: #888; margin-bottom:5px; height: 35px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
         
         .product-stock { font-size: 0.8rem; color: #888; margin-bottom: 10px; }
         .product-stock.out-of-stock { color: #ff6b6b; font-weight: 600; }
@@ -136,7 +137,7 @@
         .btn-buy:disabled { border-color: #444; color: #666; cursor: not-allowed; background: transparent; }
         .category-badge { position: absolute; top: 10px; left: 10px; background: rgba(0, 0, 0, 0.7); color: #fff; padding: 4px 10px; font-size: 0.65rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; z-index: 2; }
 
-        /* Cart Sidebar (TOTAL DIHAPUS, CHECKOUT LANGSUNG) */
+        /* Cart Sidebar */
         .cart-section { flex: 1; min-width: 320px; position: relative; }
         
         .cart-sidebar { 
@@ -162,13 +163,12 @@
             flex-shrink: 0; 
         }
 
-        /* Area daftar barang */
         .cart-items-scroll { 
             overflow-y: auto; 
             margin-bottom: 20px; 
             padding-right: 5px; 
-            flex: 1; /* Mengisi ruang kosong agar tombol tetap di bawah */
-            min-height: 0; /* Penting untuk scroll di flexbox */
+            flex: 1; 
+            min-height: 0; 
         }
         .cart-items-scroll::-webkit-scrollbar { width: 5px; }
         .cart-items-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
@@ -182,18 +182,11 @@
         .sidebar-remove-btn { background: none; border: none; color: #666; font-size: 1.2rem; cursor: pointer; line-height: 1; }
         .sidebar-remove-btn:hover { color: #ff6b6b; }
 
-        /* Footer Keranjang (Checkout Saja) */
-        .cart-footer { 
-            margin-top: auto; 
-            flex-shrink: 0; /* Mencegah penyusutan */
-        }
-
-        /* --- KOLOM TOTAL DIHAPUS --- */
+        .cart-footer { margin-top: auto; flex-shrink: 0; }
         
-        /* Tombol Checkout memenuhi lebar penuh */
         .btn-checkout { 
             width: 100%; 
-            padding: 20px; /* Padding lebih besar agar menonjol */
+            padding: 20px; 
             background: linear-gradient(135deg, var(--luxury-gold), #b8860b); 
             color: #000; 
             border: none; 
@@ -235,7 +228,7 @@
         .empty-msg { text-align: center; color: #666; font-size: 0.9rem; margin-top: 20px; font-style: italic; }
 
         /* Animations */
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity:1; } }
         @keyframes slideUpFade { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Responsive */
@@ -259,8 +252,8 @@
             
             <div class="user-menu-container">
                 <div class="user-btn" onclick="toggleDropdown()">
-                    <div class="user-avatar" id="userAvatar">U</div>
-                    <span id="userName" style="color: #fff; font-size: 0.9rem;">User</span>
+                    <div class="user-avatar" id="userAvatar">?</div>
+                    <span id="userName" style="color: #fff; font-size: 0.9rem;">Loading...</span>
                     <span style="color: #666;">▼</span>
                 </div>
                 <div class="dropdown-menu" id="dropdownMenu">
@@ -303,12 +296,10 @@
                     <p class="empty-msg">Keranjang masih kosong.</p>
                 </div>
 
-                <!-- Footer Keranjang (Hanya Tombol Checkout) -->
+                <!-- Footer Keranjang -->
                 <div class="cart-footer">
-                    <!-- Kolom Total Dihapus. Tombol Checkout memenuhi kotak -->
                     <button class="btn-checkout" id="btnCheckoutSidebar" onclick="validateAndCheckout()" disabled>
                         Checkout
-                        <!-- Total tidak ditampilkan di sini -->
                     </button>
                 </div>
             </div>
@@ -321,7 +312,7 @@
         <div class="modal-content">
             <span class="close-modal" onclick="closeModal('profileModal')">&times;</span>
             <div class="modal-header">Profil Saya</div>
-            <div id="profileContent"></div>
+            <div id="profileContent">Loading data...</div>
         </div>
     </div>
 
@@ -334,40 +325,138 @@
         </div>
     </div>
 
+    <!-- LOAD PI SDK -->
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    
     <script>
         // ==========================================
         // 1. KONFIGURASI SUPABASE
         // ==========================================
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
-        
-        // Inisialisasi Client
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // APP ID
+        const APP_ID = "aurora-4c073a664f9faa3a"; 
 
         // Variabel Global
         let productsData = [];
+        let currentUser = null;
+        let dbUser = null; // Menyimpan data lengkap dari tabel 'users'
 
         const productGrid = document.getElementById('productGrid');
         const dropdownMenu = document.getElementById('dropdownMenu');
         const sidebarCartList = document.getElementById('sidebarCartList');
-        // sidebarTotal dihapus karena tidak ada elemen HTML lagi
         const btnCheckoutSidebar = document.getElementById('btnCheckoutSidebar');
 
         // --- FUNGSI PENGECILAN FORMAT HARGA ---
         function formatPrice(price) {
             let numPrice = parseFloat(price);
             if (isNaN(numPrice)) return "0.00";
-            if (numPrice < 0.01) {
-                return numPrice.toString();
-            } else {
-                return numPrice.toFixed(2);
+            if (numPrice < 0.01) return numPrice.toString();
+            else return numPrice.toFixed(2);
+        }
+
+        // ==========================================
+        // 2. FUNGSI SYNC USER KE SUPABASE (CORE BARU)
+        // ==========================================
+        async function syncUserToSupabase(piUser) {
+            try {
+                // 1. Cek apakah user sudah ada berdasarkan pi_uid
+                const { data: existingUser, error } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .eq('pi_uid', piUser.uid)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') {
+                    console.error("Error cek user:", error);
+                    return null;
+                }
+
+                if (existingUser) {
+                    console.log("User ditemukan:", existingUser);
+                    dbUser = existingUser;
+                    return existingUser;
+                } else {
+                    // 2. Jika belum ada, daftarkan user baru (Upsert)
+                    console.log("User baru, mendaftarkan...");
+                    const { data: newUser, error: insertError } = await supabaseClient
+                        .from('users')
+                        .insert([{
+                            username: piUser.username,
+                            pi_uid: piUser.uid,
+                            total_spent: 0,
+                            total_orders: 0,
+                            points: 0
+                        }])
+                        .select()
+                        .single();
+
+                    if (insertError) {
+                        console.error("Gagal daftar user:", insertError);
+                        return null;
+                    }
+
+                    console.log("User baru terdaftar:", newUser);
+                    dbUser = newUser;
+                    return newUser;
+                }
+            } catch (e) {
+                console.error("Sync user error:", e);
+                return null;
             }
+        }
+
+        // ==========================================
+        // 3. INISIALISASI & AUTO LOGIN PI
+        // ==========================================
+        async function initApp() {
+            // Cek LocalStorage dulu (fallback cepat)
+            const localUserStr = localStorage.getItem('aurora_user');
+            if (localUserStr) {
+                currentUser = JSON.parse(localUserStr);
+                updateUserUI(currentUser);
+            }
+
+            // Cek SDK Pi Browser
+            if (window.Pi) {
+                try {
+                    await Pi.init(APP_ID, { version: "2.0" });
+                    // AUTHENTICATE (Perbaikan: tambah array permission)
+                    const auth = await Pi.authenticate(['username', 'payments']);
+                    
+                    currentUser = auth.user;
+                    localStorage.setItem('aurora_user', JSON.stringify(currentUser));
+                    updateUserUI(currentUser);
+
+                    // SYNC KE DATABASE SUPABASE
+                    await syncUserToSupabase(currentUser);
+
+                } catch (err) {
+                    console.warn("Pi Auth gagal:", err);
+                    if (!currentUser) {
+                        document.getElementById('userName').innerText = "Guest";
+                        document.getElementById('userAvatar').innerText = "?";
+                    }
+                }
+            } else {
+                console.warn("Pi SDK tidak terdeteksi");
+                if (!currentUser) {
+                    document.getElementById('userName').innerText = "Guest";
+                    document.getElementById('userAvatar').innerText = "?";
+                }
+            }
+        }
+
+        function updateUserUI(user) {
+            const username = user.username || "Pioneer";
+            document.getElementById('userName').innerText = username;
+            document.getElementById('userAvatar').innerText = username.charAt(0).toUpperCase();
         }
 
         // --- FUNGSI AMBIL PRODUK DARI SUPABASE ---
         async function fetchProducts() {
-            console.log("DEBUG: Memulai fetch...");
-            
             try {
                 const { data, error } = await supabaseClient
                     .from('products')
@@ -376,35 +465,20 @@
 
                 if (error) {
                     console.error("Supabase Error:", error);
-                    productGrid.innerHTML = `<p style="text-align:center; width:100%; grid-column: 1/-1; color: #ff6b6b; padding: 20px;">
-                        <b>Gagal Memuat Data</b><br>${error.message}<br><small>Cek Console (F12) untuk detail.</small>
-                    </p>`;
+                    productGrid.innerHTML = `<p style="text-align:center; width:100%; grid-column: 1/-1; color: #ff6b6b;">Gagal memuat produk.</p>`;
                     return [];
                 } else {
-                    console.log("Data Berhasil Diambil:", data);
                     productsData = data;
                     return data;
                 }
             } catch (e) {
                 console.error("Script Crash:", e);
-                productGrid.innerHTML = `<p style="text-align:center; width:100%; grid-column: 1/-1; color: #ff6b6b;">Script Error: ${e.message}</p>`;
                 return [];
             }
         }
 
         window.addEventListener('load', async () => {
-            // Setup User
-            const userDataStr = localStorage.getItem('aurora_user');
-            if (userDataStr) {
-                const user = JSON.parse(userDataStr);
-                document.getElementById('userName').innerText = user.username || "Guest";
-                document.getElementById('userAvatar').innerText = user.username ? user.username.charAt(0).toUpperCase() : "?";
-            } else {
-                document.getElementById('userName').innerText = "Guest";
-                document.getElementById('userAvatar').innerText = "?";
-            }
-
-            // Fetch Produk
+            await initApp();
             await fetchProducts();
             renderProducts('all');
             renderSidebarCart();
@@ -418,35 +492,48 @@
         }
 
         function openProfileModal() {
-            const userDataStr = localStorage.getItem('aurora_user');
             const contentDiv = document.getElementById('profileContent');
             const modal = document.getElementById('profileModal');
-            if (!userDataStr) { alert("Anda belum login."); return; }
-            const user = JSON.parse(userDataStr);
+            
+            if (!dbUser && !currentUser) { 
+                alert("Anda belum login atau data belum termuat."); 
+                return; 
+            }
+
+            // Gunakan data dbUser (lengkap) atau currentUser (fallback)
+            const userData = dbUser || currentUser;
+            
+            // Ambil data poin jika ada, jika tidak tampilkan 0
+            const points = userData.points || 0;
+            const totalSpent = formatPrice(userData.total_spent || 0);
+            const totalOrders = userData.total_orders || 0;
+
             contentDiv.innerHTML = `
-                <div class="profile-detail-row"><span class="profile-label">Username</span><span class="profile-value">${user.username || "-"}</span></div>
-                <div class="profile-detail-row"><span class="profile-label">Email / ID</span><span class="profile-value">${user.email || user.pi_id || "-"}</span></div>
+                <div class="profile-detail-row"><span class="profile-label">Username</span><span class="profile-value">${userData.username || "-"}</span></div>
+                <div class="profile-detail-row"><span class="profile-label">UID</span><span class="profile-value">${userData.pi_uid || "-"}</span></div>
                 <div class="profile-detail-row"><span class="profile-label">Status</span><span class="profile-value" style="color: #4CAF50;">Aktif</span></div>
+                <div class="profile-detail-row"><span class="profile-label">Total Belanja</span><span class="profile-value">${totalSpent} π</span></div>
+                <div class="profile-detail-row"><span class="profile-label">Total Order</span><span class="profile-value">${totalOrders}x</span></div>
+                <div class="profile-detail-row"><span class="profile-label">Poin Loyalitas</span><span class="profile-value points">${points} Pts</span></div>
             `;
             modal.classList.add('show');
         }
 
         function openHistoryModal() {
-            const userDataStr = localStorage.getItem('aurora_user');
             const contentDiv = document.getElementById('historyContent');
             const modal = document.getElementById('historyModal');
-            if (!userDataStr) { alert("Anda harus login."); return; }
+            // Catatan: Fitur ini bisa dikembangkan lebih lanjut untuk query tabel 'orders' berdasarkan pi_uid user
             const lastOrderStr = localStorage.getItem('last_order');
             if (!lastOrderStr) {
-                contentDiv.innerHTML = '<p style="text-align:center; color:#888;">Belum ada riwayat pesanan.</p>';
+                contentDiv.innerHTML = '<p style="text-align:center; color:#888;">Belum ada riwayat pesanan lokal.</p>';
             } else {
                 const order = JSON.parse(lastOrderStr);
-                const formattedTotal = formatPrice(parseFloat(order.total));
                 contentDiv.innerHTML = `
-                    <div class="history-item">
-                        <div class="history-header"><span>Order ID: ${order.orderId}</span><span>${order.date}</span></div>
-                        <div style="margin-top:10px; color:#ccc; font-size:0.9rem;">Total: <span class="history-total">${formattedTotal} π</span></div>
-                        <div style="margin-top:5px; font-size:0.8rem;">Status: <span class="history-status">Berhasil</span></div>
+                    <div style="padding:10px; border-bottom:1px solid #333; margin-bottom:10px;">
+                        <div><b>Order ID:</b> ${order.orderId}</div>
+                        <div><b>Tanggal:</b> ${order.date}</div>
+                        <div><b>Total:</b> ${formatPrice(order.total)} π</div>
+                        <div style="margin-top:5px; font-size:0.8rem; color:#aaa;">Status: <span style="color:#4CAF50;">Berhasil</span></div>
                     </div>`;
             }
             modal.classList.add('show');
@@ -454,15 +541,13 @@
 
         function closeModal(modalId) { document.getElementById(modalId).classList.remove('show'); }
 
-        // ==========================================
-        // FUNGSI TAMBAH KE KERANJANG
-        // ==========================================
+        // --- FUNGSI TAMBAH KE KERANJANG ---
         function addToCart(clickedId) {
             const product = productsData.find(p => String(p.id) === String(clickedId));
-            if (!product) { alert("Terjadi kesalahan: Produk tidak ditemukan."); return; }
+            if (!product) { alert("Produk tidak ditemukan."); return; }
             
             const currentStock = parseInt(product.stock) || 0;
-            if (currentStock <= 0) { alert("Maaf, stok produk sedang habis."); return; }
+            if (currentStock <= 0) { alert("Stok habis."); return; }
 
             let cart = JSON.parse(localStorage.getItem('aurora_cart')) || [];
             const existingItem = cart.find(item => String(item.id) === String(clickedId));
@@ -476,11 +561,9 @@
             localStorage.setItem('aurora_cart', JSON.stringify(cart));
             renderSidebarCart();
 
-            // Efek Visual pada Tombol
             const btn = event.target;
             const originalText = btn.innerHTML;
-            const originalBg = btn.style.background;
-            btn.innerHTML = "✓ Masuk Keranjang";
+            btn.innerHTML = "✓ Masuk";
             btn.style.background = "var(--luxury-gold)";
             btn.style.color = "#000";
             setTimeout(() => { 
@@ -500,13 +583,11 @@
             }
         }
 
-        // --- RENDER SIDEBAR (TOTAL DIHAPUS) ---
         function renderSidebarCart() {
             const cart = JSON.parse(localStorage.getItem('aurora_cart')) || [];
 
             if (cart.length === 0) {
                 sidebarCartList.innerHTML = '<p class="empty-msg">Keranjang masih kosong.</p>';
-                // Total tidak diupdate karena elemen sudah dihapus
                 btnCheckoutSidebar.disabled = true;
                 return;
             }
@@ -545,7 +626,6 @@
                 const sample = productsData[0];
                 if (sample.kategori) categoryKey = 'kategori';
                 else if (sample.type) categoryKey = 'type';
-                else if (sample.jenis) categoryKey = 'jenis';
             }
 
             const filteredData = filter === 'all' 
@@ -556,11 +636,7 @@
                 });
 
             if (!filteredData || filteredData.length === 0) {
-                if(productsData.length === 0) {
-                     productGrid.innerHTML = '<p style="text-align:center; width:100%; grid-column: 1/-1; color: #888;">Data produk kosong atau gagal diambil.</p>';
-                } else {
-                     productGrid.innerHTML = '<p style="text-align:center; width:100%; grid-column: 1/-1; color: #888;">Tidak ada produk ditemukan untuk kategori ini.</p>';
-                }
+                productGrid.innerHTML = '<p style="text-align:center; width:100%; grid-column: 1/-1; color: #888;">Produk kosong.</p>';
                 return;
             }
 
@@ -577,14 +653,12 @@
                 if (!displayName) displayName = "Tanpa Nama";
 
                 let displayCategory = product[categoryKey] || "Uncategorized";
-
                 const stockVal = parseInt(product.stock);
                 const isOutOfStock = isNaN(stockVal) || stockVal <= 0;
                 const stockText = isOutOfStock ? "Stok Habis" : `Stok: ${stockVal}`;
                 const stockClass = isOutOfStock ? "product-stock out-of-stock" : "product-stock";
                 const btnDisabled = isOutOfStock ? "disabled" : "";
                 const btnText = isOutOfStock ? "Habis" : "Beli Sekarang";
-
                 const displayPrice = formatPrice(product.price);
                 const imgSrc = getSafeValue(product, 'image_url', 'img', 'https://via.placeholder.com/250?text=No+Image');
                 const descText = getSafeValue(product, 'description', 'desc', 'Tidak ada deskripsi.');
@@ -615,15 +689,13 @@
             renderProducts(category);
         }
 
-        // --- VALIDASI CHECKOUT ---
         function validateAndCheckout() {
             const userData = localStorage.getItem('aurora_user');
             if (!userData) {
-                if (confirm("Anda harus login terlebih dahulu untuk melakukan checkout. Apakah Anda ingin masuk sekarang?")) {
+                if (confirm("Anda harus login terlebih dahulu. Pindah ke halaman login?")) {
                     window.location.href = 'login.html';
                 }
             } else {
-                // Langsung pindah ke payment.html (Total akan muncul di sana)
                 window.location.href = 'payment.html';
             }
         }
@@ -631,7 +703,7 @@
         function toggleDropdown() { dropdownMenu.classList.toggle('show'); }
 
         function handleLogout() {
-            if (confirm("Apakah Anda yakin ingin keluar?")) {
+            if (confirm("Yakin ingin keluar?")) {
                 localStorage.removeItem('aurora_user');
                 localStorage.removeItem('aurora_token');
                 localStorage.removeItem('is_admin');
