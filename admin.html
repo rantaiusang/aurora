@@ -190,10 +190,10 @@
     <nav class="sidebar">
         <div class="brand">Aurora Admin</div>
         
-        <a href="#" class="nav-item active" onclick="switchTab('dashboard')">
+        <a href="#" class="nav-item active" onclick="switchTab('dashboard', this)">
             <i class="fas fa-chart-line"></i> Dashboard
         </a>
-        <a href="#" class="nav-item" onclick="switchTab('orders')">
+        <a href="#" class="nav-item" onclick="switchTab('orders', this)">
             <i class="fas fa-shopping-bag"></i> Semua Pesanan
         </a>
         
@@ -265,11 +265,9 @@
     <!-- Script Logika -->
     <script>
         // --- 1. CONFIG SUPABASE ---
-        const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co'; // Perbaikan: Satu titik dua
-        // GANTI KEY INI DENGAN ANON KEY ANDA
-        const supabaseKey = 'PASTE_ANON_KEY_ANDA_DISINI'; 
+        const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         
-        // Ganti nama variabel agar tidak bentrok
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
         // --- 2. SECURITY CHECK ---
@@ -286,7 +284,6 @@
 
         // --- 3. LOAD DATA ---
         async function loadDashboard() {
-            // Ambil semua data order
             const { data, error } = await supabaseClient
                 .from('orders')
                 .select('*')
@@ -301,21 +298,15 @@
             updateStats(data);
         }
 
-        // Render Data ke Tabel Dashboard (Ringkas)
         function renderOrders(orders) {
             const listEl = document.getElementById('orders-list');
             listEl.innerHTML = '';
 
             orders.forEach(order => {
                 const tr = document.createElement('tr');
-                // Tentukan kelas badge berdasarkan status
                 const statusClass = (order.status === 'pending' || !order.status) ? 'badge-pending' : 'badge-shipped';
                 const statusText = (order.status === 'pending' || !order.status) ? 'Pending' : (order.status || 'Paid');
-
-                // Potong alamat jika terlalu panjang
                 const shortAddress = order.customer_address ? order.customer_address.substring(0, 25) + '...' : '-';
-                
-                // Buat ID unik untuk tombol button
                 const btnId = `btn-resi-${order.id}`;
 
                 tr.innerHTML = `
@@ -334,7 +325,6 @@
             });
         }
 
-        // Render Data ke Tabel Penuh (Semua Pesanan)
         function renderFullOrders(orders) {
             const listEl = document.getElementById('full-orders-list');
             listEl.innerHTML = '';
@@ -357,41 +347,43 @@
             });
         }
 
-        // Update Statistik
         function updateStats(orders) {
             document.getElementById('stat-total-orders').innerText = orders.length;
-            
-            // Hitung total revenue dari kolom total_amount
             const total = orders.reduce((sum, item) => sum + parseFloat(item.total_amount || 0), 0);
             document.getElementById('stat-revenue').innerText = total.toFixed(2) + ' π';
         }
 
         // --- 4. MANAJEMEN TAB ---
-        function switchTab(tabName) {
-            // Hide all tabs
+        function switchTab(tabName, el) {
             document.getElementById('tab-dashboard').style.display = 'none';
             document.getElementById('tab-orders').style.display = 'none';
 
-            // Show selected
             document.getElementById('tab-' + tabName).style.display = 'block';
 
-            // Update sidebar active state
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            // event.currentTarget.classList.add('active'); // Komentari ini jika error referensi
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            if(el) el.classList.add('active');
             
             if(tabName === 'orders') {
                 loadFullOrders();
             } else {
-                loadDashboard(); // Reload data agar fresh
+                loadDashboard();
             }
         }
 
-        // --- 5. FITUR INPUT RESI (MENGGUNAKAN PROMPT) ---
-        function inputResiPrompt(orderId, btnElement) {
-            // Memunculkan popup input sederhana
+        async function loadFullOrders() {
+             const { data, error } = await supabaseClient
+                .from('orders')
+                .select('*')
+                .order('created_at', { ascending: false });
+             if (error) return console.error(error);
+             renderFullOrders(data);
+        }
+
+        // --- 5. FITUR INPUT RESI (PROMPT + AUTO VERIFY) ---
+        async function inputResiPrompt(orderId, btnElement) {
             const resiValue = prompt("Masukkan Nomor Resi untuk Order #" + orderId + ":");
             
-            if (resiValue !== null) { // Jika user tidak menekan Cancel
+            if (resiValue !== null) {
                 if (resiValue.trim() === "") {
                     alert("Resi tidak boleh kosong.");
                     return;
@@ -406,7 +398,6 @@
             btnElement.disabled = true;
 
             try {
-                // Update Resi dan Ubah Status jadi 'shipped'
                 const { error } = await supabaseClient
                     .from('orders')
                     .update({ 
@@ -418,15 +409,7 @@
                 if (error) throw error;
 
                 alert("Nomor Resi berhasil disimpan!");
-                
-                // Refresh tabel agar data terbaru muncul
-                const isDashboardTab = document.getElementById('tab-dashboard').style.display !== 'none';
-                if(isDashboardTab) {
-                    loadDashboard();
-                } else {
-                    loadFullOrders();
-                }
-
+                loadDashboard(); // Refresh tabel
             } catch (err) {
                 console.error(err);
                 alert("Gagal menyimpan: " + err.message);
@@ -435,16 +418,6 @@
             }
         }
 
-        async function loadFullOrders() {
-             const { data, error } = await supabaseClient
-                .from('orders')
-                .select('*')
-                .order('created_at', { ascending: false });
-             if (error) return console.error(error);
-             renderFullOrders(data);
-        }
-
-        // --- 6. LOGOUT ---
         function handleLogout() {
             if(confirm("Yakin ingin keluar?")) {
                 localStorage.clear(); 
