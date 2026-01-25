@@ -3,152 +3,275 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Otentikasi - Aurora Store</title>
+    <title>Masuk - Aurora Store</title>
     
-    <!-- Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Google: Playfair Display & Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-    <!-- Script Supabase Client -->
+    <!-- Script Supabase Client (Opsional jika hanya butuh fetch, tapi saya biarkan untuk konsistensi) -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
     <style>
-        /* Style tetap sama seperti yang Anda buat, sudah bagus */
+        /* --- 1. VARIABLES & RESET --- */
         :root {
-            --primary: #6a2c91;
-            --primary-dark: #4a1b63;
             --luxury-gold: #d4af37;
-            --text-light: #7f8c8d;
+            --luxury-gold-light: #f3e5ab;
+            --dark-bg: #0f0c15;
+            --dark-card: rgba(22, 18, 22, 0.85); 
+            --text-gray: #a0a0a0;
+            --text-white: #ffffff;
+            --luxury-red: #8a1c1c;
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            background: linear-gradient(135deg, #f8f9fa, #eef2f3);
-            min-height: 100vh;
-            margin: 0;
+            background-color: var(--dark-bg);
+            color: var(--text-white);
             font-family: 'Poppins', sans-serif;
             overflow-x: hidden;
+            min-height: 100vh;
+            line-height: 1.6;
         }
+
+        /* --- 2. HEADER --- */
+        header {
+            background: rgba(15, 12, 21, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 15px 5%;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-white);
+            text-decoration: none;
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px 1px var(--luxury-gold-light);
+        }
+
+        /* --- 3. LOGIN CONTAINER --- */
         .login-bg {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: radial-gradient(circle at center, rgba(106, 44, 145, 0.08), transparent 70%);
-            padding-top: 80px;
+            position: relative;
+            padding-top: 80px; 
             padding-bottom: 40px;
+            overflow: hidden;
         }
+
+        .glow-bg {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
         .card-container {
             width: 100%;
             max-width: 420px;
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(15px);
+            background: var(--dark-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             padding: 50px 35px;
             border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(106, 44, 145, 0.12);
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 30px rgba(212, 175, 55, 0.05);
             text-align: center;
-            border: 1px solid rgba(255,255,255,0.5);
+            position: relative;
             opacity: 0;
             transform: translateY(40px) scale(0.95);
-            transition: opacity 0.8s ease-out, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transition: opacity 0.8s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        .card-container.visible { opacity: 1; transform: translateY(0) scale(1); }
+
+        .card-container.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        /* --- 4. PI SPINNER & ICON --- */
         .pi-spinner-wrapper {
             position: relative;
-            width: 90px;
-            height: 90px;
+            width: 100px;
+            height: 100px;
             margin: 0 auto 35px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
+
         .pi-spinner {
             position: absolute;
             width: 100%;
             height: 100%;
-            border: 4px solid rgba(106, 44, 145, 0.1);
-            border-top: 4px solid var(--primary);
+            border: 3px solid rgba(212, 175, 55, 0.1);
+            border-top: 3px solid var(--luxury-gold);
             border-radius: 50%;
-            animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+            animation: spin 1.5s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
         }
+
         .pi-icon {
-            font-size: 2.5rem;
-            color: var(--primary);
+            font-size: 2.8rem;
+            color: var(--text-white);
             font-weight: bold;
-            animation: pulse 2.5s ease-in-out infinite; 
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+            animation: pulse 3s ease-in-out infinite;
+            z-index: 2;
         }
+
+        /* --- 5. TEXT & STATUS --- */
         .status-text-group {
-            min-height: 85px;
+            min-height: 90px;
             transition: opacity 0.4s ease;
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
-        .main-title { font-size: 1.6rem; color: var(--primary-dark); margin-bottom: 10px; font-weight: 700; }
-        .sub-title { color: var(--text-light); font-size: 0.95rem; font-weight: 400; }
+
+        .main-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            color: var(--text-white);
+            margin-bottom: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .sub-title {
+            color: var(--text-gray);
+            font-size: 0.95rem;
+            font-weight: 400;
+        }
+
+        /* --- 6. ERROR & BUTTONS --- */
         .error-box {
-            margin-top: 20px;
+            margin-top: 25px;
             padding: 15px;
-            background: #fff5f5;
-            border: 1px solid #fed7d7;
+            background: rgba(138, 28, 28, 0.15);
+            border: 1px solid rgba(138, 28, 28, 0.4);
             border-radius: 12px;
-            color: #c53030;
+            color: #ff9999;
             font-size: 0.9rem;
             display: none;
+            text-align: left;
+            animation: fadeInUp 0.5s ease forwards;
         }
+        
+        .error-box strong { color: #ffcccc; display: block; margin-bottom: 5px; }
+
         .btn-submit {
-            padding: 8px 20px; font-size: 0.9rem; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s;
+            padding: 10px 24px;
+            font-size: 0.9rem;
+            background: linear-gradient(135deg, var(--luxury-gold), #b8860b);
+            color: #000;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        .btn-submit:hover { background: var(--primary-dark); }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1.1); } }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(212, 175, 55, 0.5);
+            background: linear-gradient(135deg, var(--luxury-gold-light), var(--luxury-gold));
+        }
+
+        /* --- 7. ANIMATIONS --- */
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+
+        @keyframes pulse { 
+            0%, 100% { opacity: 0.8; transform: scale(1); text-shadow: 0 0 15px rgba(255,255,255,0.2); } 
+            50% { opacity: 1; transform: scale(1.1); text-shadow: 0 0 25px rgba(212, 175, 55, 0.6); } 
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- 8. RESPONSIVE --- */
         @media (max-width: 480px) {
-            .login-bg { padding: 15px; }
-            .card-container { padding: 40px 15px; }
-            .pi-spinner-wrapper { width: 70px; height: 70px; }
+            header { padding: 15px 20px; }
+            .logo { font-size: 1.2rem; }
+            .login-bg { padding: 80px 20px 40px; }
+            .card-container { padding: 40px 20px; }
+            .pi-spinner-wrapper { width: 80px; height: 80px; }
+            .pi-icon { font-size: 2.2rem; }
+            .main-title { font-size: 1.5rem; }
         }
     </style>
 </head>
 <body>
-    <header style="position: fixed; top: 0; width: 100%; padding: 20px 8%; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); z-index: 100; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-        <a href="index.html" class="logo" style="font-size: 1.5rem; font-weight: 800; color: var(--primary-dark); text-decoration: none; display: flex; align-items: center; gap: 5px;">Aurora ⚡</a>
+    <!-- Header -->
+    <header>
+        <a href="index.html" class="logo">Aurora ⚡</a>
     </header>
 
     <div class="login-bg">
+        <div class="glow-bg"></div>
+        
         <div class="card-container" id="loginCard">
             <div class="pi-spinner-wrapper">
                 <div class="pi-spinner"></div>
                 <div class="pi-icon">π</div>
             </div>
+
             <div class="status-text-group">
                 <h2 id="main-status" class="main-title">Menghubungkan...</h2>
-                <p id="sub-status" class="sub-title">Mendeteksi Pi Network SDK</p>
+                <p id="sub-status" class="sub-title">Menyiapkan koneksi aman ke Pi Network</p>
             </div>
+
             <div id="error-box" class="error-box">
                 <p><strong>Koneksi Gagal</strong></p>
-                <p id="error-msg">Pastikan Anda membuka halaman ini menggunakan Pi Browser.</p>
-                <br>
-                <button onclick="location.reload()" class="btn-submit">Coba Lagi</button>
+                <p id="error-msg">Terjadi kesalahan saat menghubungi server.</p>
+                <div style="text-align: center;">
+                    <button onclick="location.reload()" class="btn-submit">Coba Lagi</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- SDK URL Stabil (CDN) -->
+    <!-- SDK URL -->
     <script src="https://cdn.minepi.com/sdk/pi-sdk.js"></script>
 
     <script>
-        // --- KONFIGURASI SUPABASE ---
-        // Ganti nama variabel agar tidak bentrok dengan library global
-        const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co'; 
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA'; 
-        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-
-        // --- KONFIGURASI PI SDK ---
+        // --- KONFIGURASI ---
+        const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
+        const functionName = 'verify-pi-login'; // Nama fungsi di Supabase
         
         window.addEventListener('load', () => {
-            console.log("Halaman dimuat. Menyiapkan login...");
+            console.log("Halaman Login Dimuat.");
             
             setTimeout(() => {
                 const card = document.getElementById('loginCard');
                 if(card) card.classList.add('visible');
-            }, 100);
+            }, 200);
 
             setTimeout(autoLoginProcess, 1500);
         });
@@ -174,90 +297,97 @@
 
         async function autoLoginProcess() {
             try {
-                // 1. Cek apakah Pi SDK terdeteksi
+                // 1. Cek Pi SDK
                 if (typeof Pi === 'undefined') {
-                    throw new Error("Pi SDK gagal dimuat. Cek koneksi internet atau gunakan Pi Browser.");
+                    throw new Error("Pi SDK gagal dimuat. Gunakan Pi Browser.");
                 }
                 
-                updateStatus("Mengamankan Koneksi...", "Menghubungi Pi Network");
+                updateStatus("Mengamankan Koneksi...", "Menginisialisasi Pi Network");
                 
-                // 2. Inisialisasi Pi (PERBAIKAN: TANPA AWAIT + SANDBOX TRUE)
-                // ❌ SALAH: await Pi.init({ version: "2.0" });
-                // ✅ BENAR:
-                Pi.init({
-                    version: "2.0",
-                    sandbox: true
-                });
+                // 2. Inisialisasi
+                const isSandbox = location.hostname.includes('sandbox');
+
+                 Pi.init({
+                 version: "2.0",
+                  sandbox: isSandbox
+                    });
+
                 
-                // 3. Cek Network (Opsional)
+                // 3. Cek Network
                 try {
                     const network = await Pi.getNetwork(); 
                     console.log("Terkoneksi ke:", network);
                 } catch (netErr) {
-                    console.warn("Gagal cek network, melanjutkan identifikasi...", netErr);
+                    console.warn("Gagal cek network:", netErr);
                 }
                 
-                updateStatus("Memverifikasi Identitas...", "Harap setujui popup di Pi Browser Anda");
+                updateStatus("Memverifikasi Identitas...", "Silakan setujui permintaan akses");
                 
-                // 4. IDENTIFIKASI USER
+                // 4. IDENTIFIKASI USER (Dapatkan Access Token)
                 const authResult = await Pi.identify(['username'], {
                     onIncompletePaymentFound: (payment) => {
-                        console.log("Pembayaran incomplete ditemukan:", payment);
+                        console.log("Incomplete payment:", payment);
                     }
                 });
 
                 const user = authResult.user;
-                console.log("User Pi Login:", user);
-                
-                // Simpan data sesi
+                const accessToken = authResult.accessToken;
+                console.log("User Pi:", user);
+
+                // Simpan data dasar user (disimpan permanen jika sukses)
                 localStorage.setItem('aurora_user', JSON.stringify(user));
-                localStorage.setItem('aurora_token', authResult.accessToken);
 
-                // 5. CEK ADMIN KE SUPABASE
-                updateStatus("Sinkronisasi Data...", "Mengecek hak akses...");
+                // 5. FETCH POST KE SUPABASE EDGE FUNCTION
+                updateStatus("Sinkronisasi Data...", "Mengecek hak akses pengguna...");
                 
-                const { data: adminData, error: adminError } = await supabaseClient
-                    .from('admins')
-                    .select('*')
-                    .eq('username', user.username)
-                    .eq('pi_uid', user.uid);
+                const response = await fetch(
+                `${supabaseUrl}/functions/v1/${functionName}`, 
+                {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+    },
+    body: JSON.stringify({
+        uid: user.uid,
+        username: user.username
+    })
+});
 
-                if (adminError) {
-                    console.error("Error cek admin:", adminError);
-                    // Jika error database, anggap user biasa agar user tidak terjebak
-                    localStorage.setItem('is_admin', 'false');
-                    redirectToStore();
-                    return;
+
+                const data = await response.json();
+                console.log("Respon dari Edge Function:", data);
+
+                if (!response.ok) {
+                    // Jika error dari server (misal: 500 atau 401)
+                    throw new Error(data.error || "Gagal memverifikasi login di server.");
                 }
 
-                if (adminData && adminData.length > 0) {
-                    const adminRecord = adminData[0];
-                    if (adminRecord.is_active === true) {
-                        localStorage.setItem('is_admin', 'true');
-                        updateStatus("Akses Diterima", "Mengalihkan ke Dashboard Admin...");
-                        setTimeout(() => window.location.href = 'admin.html', 1500);
-                    } else {
-                        updateStatus("Akses Ditolak", "Akun Admin Anda dinonaktifkan.");
-                        alert("Maaf, akun admin Anda sedang dinonaktifkan.");
-                    }
-                } else {
-                    localStorage.setItem('is_admin', 'false');
-                    redirectToStore();
-                }
+                // 6. HANDLING BERHASIL (Sesuai respon dari backend)
+             
+                if (data.role === 'admin') {
+    localStorage.setItem('is_admin', 'true');
+    localStorage.setItem('aurora_token', supabaseAnonKey);
+    updateStatus("Akses Admin Diterima", "Mengalihkan ke Dashboard...");
+    setTimeout(() => window.location.href = 'admin.html', 1500);
+} else {
+    localStorage.setItem('is_admin', 'false');
+    localStorage.setItem('aurora_token', supabaseAnonKey);
+    updateStatus("Login Berhasil", "Selamat datang di Aurora Store...");
+    setTimeout(() => window.location.href = 'store.html', 1500);
+}
+
+
 
             } catch (err) {
-                console.error(err);
-                let msg = err.message || "Terjadi kesalahan tak terduga.";
-                if(msg.includes("User denied") || msg.includes("denied")) msg = "Anda menolak akses login.";
-                showError("Gagal Login", msg);
+                console.error("Login Error:", err);
+                let msg = err.message || "Terjadi kesalahan sistem.";
+                
+                if(msg.includes("User denied") || msg.includes("denied")) {
+                    msg = "Anda membatalkan proses otentikasi.";
+                }
+                showError("Gagal Masuk", msg);
             }
-        }
-
-        function redirectToStore() {
-            updateStatus("Login Berhasil", "Mengalihkan ke Toko...");
-            setTimeout(() => {
-                window.location.href = 'store.html';
-            }, 1500);
         }
     </script>
 </body>
