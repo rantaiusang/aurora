@@ -198,8 +198,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="fullAddress">Alamat Lengkap</label>
-                    <textarea id="fullAddress" class="input-box" rows="3" placeholder="Jalan, No Rumah, Kelurahan, Kota, Kode Pos" required></textarea>
+                    <label for="address">Alamat Lengkap</label>
+                    <textarea id="address" class="input-box" rows="3" placeholder="Jalan, No Rumah, Kelurahan, Kota, Kode Pos" required></textarea>
                 </div>
 
                 <div class="form-section-title">Detail Pembayaran Pi</div>
@@ -240,11 +240,11 @@
     
     <script>
         // --- KONFIGURASI SUPABASE ---
-        const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co'; // Perbaikan: Satu titik dua
+        const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         
-        // URL Edge Function (Menggunakan tanda strip/dash '-' sesuai dashboard)
-        const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/create-order`;
+        // PERBAIKAN: Menggunakan nama function yang sesuai dengan deployment
+        const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
 
         // --- VARIABLES ---
         let total = 0;
@@ -299,7 +299,7 @@
             e.preventDefault();
             const name = document.getElementById('fullName').value;
             const phone = document.getElementById('phoneNumber').value;
-            const address = document.getElementById('fullAddress').value;
+            const address = document.getElementById('address').value;
             const wallet = document.getElementById('walletAddress').value;
             const btn = document.getElementById('payBtn');
             const errorMsg = document.getElementById('error-message');
@@ -328,10 +328,13 @@
                     onReadyForServerApproval: (paymentId) => {
                         currentPaymentId = paymentId;
                         console.log("Payment ID Ready:", paymentId);
+                        // Di flow modern, biasanya approve di backend, tapi Pi SDK v2
+                        // akan otomatis meminta approval user disini jika belum.
                     },
                     // Callback 2: Pembayaran Selesai
                     onPaymentCompleted: async (paymentId, txid) => {
                         console.log("Payment Completed! TXID:", txid);
+                        // Kirim ke Backend untuk Verifikasi Final
                         await finalizePaymentProcess(name, phone, address, wallet, txid);
                     },
                     // Callback 3: Dibatalkan
@@ -357,15 +360,15 @@
         // --- 3. FINALISASI (BACKEND) ---
         async function finalizePaymentProcess(name, phone, address, wallet, txid) {
             try {
+                // Struktur data order harus sesuai dengan backend (verify-pi-payment/index.ts)
                 const orderData = {
                     orderId: currentOrderId,
-                    date: new Date().toLocaleDateString('id-ID'),
-                    name: name,
-                    phone: phone,
-                    address: address,
-                    wallet: wallet,
-                    total: total.toFixed(2),
-                    cart: cartItems
+                    name: name,               // Backend expect 'customer_name'
+                    phone: phone,             // Backend expect 'customer_phone'
+                    address: address,         // Backend expect 'customer_address'
+                    wallet: wallet,           // Backend expect 'customer_wallet'
+                    total: total,             // Backend expect 'total_amount' (number)
+                    cart: cartItems           // Backend expect 'items'
                 };
 
                 console.log("Mengirim data ke Edge Function...");
