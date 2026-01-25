@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Otentikasi - Aurora Store</title>
     
-    <!-- Font (Perbaikan URL) -->
+    <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 
     <!-- Script Supabase Client -->
@@ -87,7 +87,7 @@
             margin-top: 20px;
             padding: 15px;
             background: #fff5f5;
-            border:1px solid #fed7d7;
+            border: 1px solid #fed7d7;
             border-radius: 12px;
             color: #c53030;
             font-size: 0.9rem;
@@ -135,15 +135,14 @@
 
     <script>
         // --- KONFIGURASI SUPABASE ---
-        // PERBAIKAN: Hanya satu titik dua (:)
+        // Ganti nama variabel agar tidak bentrok dengan library global
         const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co'; 
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA'; 
-        
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
         // --- KONFIGURASI PI SDK ---
         
-        window.addEventListener('load', async () => {
+        window.addEventListener('load', () => {
             console.log("Halaman dimuat. Menyiapkan login...");
             
             setTimeout(() => {
@@ -182,8 +181,13 @@
                 
                 updateStatus("Mengamankan Koneksi...", "Menghubungi Pi Network");
                 
-                // 2. Inisialisasi Pi
-                await Pi.init({ version: "2.0" });
+                // 2. Inisialisasi Pi (PERBAIKAN: TANPA AWAIT + SANDBOX TRUE)
+                // ❌ SALAH: await Pi.init({ version: "2.0" });
+                // ✅ BENAR:
+                Pi.init({
+                    version: "2.0",
+                    sandbox: true
+                });
                 
                 // 3. Cek Network (Opsional)
                 try {
@@ -195,8 +199,7 @@
                 
                 updateStatus("Memverifikasi Identitas...", "Harap setujui popup di Pi Browser Anda");
                 
-                // 4. IDENTIFIKASI USER (Pi SDK v2.0)
-                // PERBAIKAN: Ketik 'Pi.identify' dengan benar (ada huruf 't'-nya)
+                // 4. IDENTIFIKASI USER
                 const authResult = await Pi.identify(['username'], {
                     onIncompletePaymentFound: (payment) => {
                         console.log("Pembayaran incomplete ditemukan:", payment);
@@ -221,6 +224,7 @@
 
                 if (adminError) {
                     console.error("Error cek admin:", adminError);
+                    // Jika error database, anggap user biasa agar user tidak terjebak
                     localStorage.setItem('is_admin', 'false');
                     redirectToStore();
                     return;
