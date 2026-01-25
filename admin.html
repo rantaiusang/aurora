@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Admin - Aurora</title>
+    
     <!-- FontAwesome untuk Ikon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
@@ -64,6 +65,7 @@
             border-radius: 8px;
             cursor: pointer;
             font-size: 0.95rem;
+            margin-bottom: 5px;
         }
 
         .nav-item:hover, .nav-item.active {
@@ -162,7 +164,7 @@
             transition: 0.2s;
         }
         .btn-save:hover { background: #ffed4a; }
-        .btn-save:disabled { background: #555; color: #888; cursor: wait; }
+        .btn-save:disabled { background: #555; color: #888; cursor: not-allowed; opacity: 0.7; }
 
         /* Status Badges */
         .badge {
@@ -263,11 +265,12 @@
     <!-- Script Logika -->
     <script>
         // --- 1. CONFIG SUPABASE ---
-        // GANTI DENGAN URL & KEY ANDA YANG ASLI
-        const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co'; 
+        const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co'; // Perbaikan: Satu titik dua
+        // GANTI KEY INI DENGAN ANON KEY ANDA
         const supabaseKey = 'PASTE_ANON_KEY_ANDA_DISINI'; 
         
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        // Ganti nama variabel agar tidak bentrok
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
         // --- 2. SECURITY CHECK ---
         window.addEventListener('load', async () => {
@@ -275,7 +278,7 @@
 
             if (!isAdmin) {
                 alert("Akses Ditolak. Halaman ini khusus Administrator.");
-                window.location.href = 'login.html'; // Pastikan file login.html ada
+                window.location.href = 'login.html';
             } else {
                 loadDashboard();
             }
@@ -284,7 +287,7 @@
         // --- 3. LOAD DATA ---
         async function loadDashboard() {
             // Ambil semua data order
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('orders')
                 .select('*')
                 .order('created_at', { ascending: false });
@@ -306,20 +309,24 @@
             orders.forEach(order => {
                 const tr = document.createElement('tr');
                 // Tentukan kelas badge berdasarkan status
-                const statusClass = order.status === 'pending' ? 'badge-pending' : 'badge-shipped';
-                
+                const statusClass = (order.status === 'pending' || !order.status) ? 'badge-pending' : 'badge-shipped';
+                const statusText = (order.status === 'pending' || !order.status) ? 'Pending' : (order.status || 'Paid');
+
                 // Potong alamat jika terlalu panjang
                 const shortAddress = order.customer_address ? order.customer_address.substring(0, 25) + '...' : '-';
                 
+                // Buat ID unik untuk tombol button
+                const btnId = `btn-resi-${order.id}`;
+
                 tr.innerHTML = `
-                    <td>${order.customer_name}</td>
+                    <td>${order.customer_name || '-'}</td>
                     <td>${shortAddress}</td>
                     <td style="color:var(--luxury-gold); font-weight:bold;">${parseFloat(order.total_amount || 0).toFixed(2)} π</td>
-                    <td style="font-family:monospace; font-size:0.85rem; color:#aaa;">${order.resi || '-'}</td>
-                    <td><span class="badge ${statusClass}">${order.status}</span></td>
+                    <td style="font-family:monospace; font-size:0.85rem; color:#aaa;">${order.tracking_number || '-'}</td>
+                    <td><span class="badge ${statusClass}">${statusText}</span></td>
                     <td>
-                        <button class="btn-save" onclick="inputResiPrompt(${order.id}, this)">
-                            ${order.resi ? 'Edit Resi' : 'Input Resi'}
+                        <button class="btn-save" id="${btnId}" onclick="inputResiPrompt(${order.id}, this)">
+                            ${order.tracking_number ? 'Edit' : 'Input'}
                         </button>
                     </td>
                 `;
@@ -334,16 +341,17 @@
 
             orders.forEach(order => {
                 const tr = document.createElement('tr');
-                const statusClass = order.status === 'pending' ? 'badge-pending' : 'badge-shipped';
+                const statusClass = (order.status === 'pending' || !order.status) ? 'badge-pending' : 'badge-shipped';
+                const statusText = (order.status === 'pending' || !order.status) ? 'Pending' : (order.status || 'Paid');
 
                 tr.innerHTML = `
                     <td>#${order.id.toString().slice(-4)}</td>
-                    <td style="font-size:0.8rem; color:#888;">${new Date(order.created_at).toLocaleString()}</td>
+                    <td style="font-size:0.8rem; color:#888;">${new Date(order.created_at).toLocaleDateString('id-ID')}</td>
                     <td>${order.customer_name}</td>
                     <td>${order.customer_phone}</td>
                     <td>${order.customer_address}</td>
-                    <td style="font-family:monospace;">${order.resi || '-'}</td>
-                    <td><span class="badge ${statusClass}">${order.status}</span></td>
+                    <td style="font-family:monospace;">${order.tracking_number || '-'}</td>
+                    <td><span class="badge ${statusClass}">${statusText}</span></td>
                 `;
                 listEl.appendChild(tr);
             });
@@ -369,9 +377,13 @@
 
             // Update sidebar active state
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            event.currentTarget.classList.add('active');
+            // event.currentTarget.classList.add('active'); // Komentari ini jika error referensi
             
-            if(tabName === 'orders') loadFullOrders();
+            if(tabName === 'orders') {
+                loadFullOrders();
+            } else {
+                loadDashboard(); // Reload data agar fresh
+            }
         }
 
         // --- 5. FITUR INPUT RESI (MENGGUNAKAN PROMPT) ---
@@ -395,10 +407,10 @@
 
             try {
                 // Update Resi dan Ubah Status jadi 'shipped'
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('orders')
                     .update({ 
-                        resi: resiValue,
+                        tracking_number: resiValue,
                         status: 'shipped' 
                     })
                     .eq('id', orderId);
@@ -408,7 +420,6 @@
                 alert("Nomor Resi berhasil disimpan!");
                 
                 // Refresh tabel agar data terbaru muncul
-                // Cek tab mana yang aktif sekarang
                 const isDashboardTab = document.getElementById('tab-dashboard').style.display !== 'none';
                 if(isDashboardTab) {
                     loadDashboard();
@@ -425,7 +436,7 @@
         }
 
         async function loadFullOrders() {
-             const { data, error } = await supabase
+             const { data, error } = await supabaseClient
                 .from('orders')
                 .select('*')
                 .order('created_at', { ascending: false });
