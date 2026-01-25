@@ -401,8 +401,8 @@
         @media (max-width: 600px) {
             header {
                 padding: 10px 15px;
-                flex-wrap: nowrap; 
-                height: 60px; 
+                flex-wrap: wrap; 
+                height: auto; 
             }
             
             .logo { 
@@ -411,7 +411,8 @@
             }
             
             .nav-links {
-                gap: 0; 
+                gap: 10px;
+                flex-wrap: wrap;
             }
 
             .nav-links a:not(.btn-header) {
@@ -422,11 +423,14 @@
                 display: inline-flex !important; 
                 align-items: center;
                 justify-content: center;
-                padding: 5px 12px; 
-                font-size: 0.7rem; 
+                padding: 6px 10px; 
+                font-size: 0.75rem; 
                 height: auto;
                 background: var(--luxury-gold);
                 color: #000;
+                flex: 1 1 auto;
+                max-width: 120px;
+                text-align: center;
             }
             /* Tambahkan baris ini di sini */
     .btn-header {
