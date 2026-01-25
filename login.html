@@ -170,7 +170,10 @@
 
         async function autoLoginProcess() {
             try {
-                if (!window.Pi) throw new Error("Gagal memuat Pi SDK. Pastikan membuka di Pi Browser.");
+                if (!window.Pi) {
+    showError("Browser Tidak Didukung", "Login hanya bisa di Pi Browser. Silakan buka halaman ini dari aplikasi Pi Network.");
+    return;
+}
                 
                 updateStatus("Mengamankan Koneksi...", "Menghubungi Server Sandbox");
                 
