@@ -7,8 +7,6 @@
     
     <!-- Font Google: Playfair Display & Poppins -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-
-    <!-- Script Supabase Client (Opsional jika hanya butuh fetch, tapi saya biarkan untuk konsistensi) -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
     <style>
@@ -263,7 +261,7 @@
         // --- KONFIGURASI ---
         const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
-        const functionName = 'verify-pi-login'; // Nama fungsi di Supabase
+        const functionName = 'verify-pi-login';
         
         window.addEventListener('load', () => {
             console.log("Halaman Login Dimuat.");
@@ -334,7 +332,7 @@
                 const accessToken = authResult.accessToken;
                 console.log("User Pi:", user);
 
-                // Simpan data dasar user (disimpan permanen jika sukses)
+                // Simpan data dasar user
                 localStorage.setItem('aurora_user', JSON.stringify(user));
 
                 // 5. FETCH POST KE SUPABASE EDGE FUNCTION
@@ -343,41 +341,43 @@
                 const response = await fetch(
                 `${supabaseUrl}/functions/v1/${functionName}`, 
                 {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseAnonKey}`
-    },
-    body: JSON.stringify({
-        uid: user.uid,
-        username: user.username
-    })
-});
-
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${supabaseAnonKey}`
+                    },
+                    // KIRIM UID DAN USERNAME YANG SAMA
+                    body: JSON.stringify({
+                        uid: user.uid,
+                        username: user.username
+                    })
+                });
 
                 const data = await response.json();
                 console.log("Respon dari Edge Function:", data);
 
                 if (!response.ok) {
-                    // Jika error dari server (misal: 500 atau 401)
-                    throw new Error(data.error || "Gagal memverifikasi login di server.");
+                    throw new Error(data.message || "Gagal memverifikasi login di server.");
                 }
 
-                // 6. HANDLING BERHASIL (Sesuai respon dari backend)
-             
-                if (data.role === 'admin') {
-    localStorage.setItem('is_admin', 'true');
-    localStorage.setItem('aurora_token', supabaseAnonKey);
-    updateStatus("Akses Admin Diterima", "Mengalihkan ke Dashboard...");
-    setTimeout(() => window.location.href = 'admin.html', 1500);
-} else {
-    localStorage.setItem('is_admin', 'false');
-    localStorage.setItem('aurora_token', supabaseAnonKey);
-    updateStatus("Login Berhasil", "Selamat datang di Aurora Store...");
-    setTimeout(() => window.location.href = 'store.html', 1500);
-}
-
-
+                // 6. LOGIKA REDIRECT BERDASARKAN ROLE
+                if (data.success === true) {
+                    localStorage.setItem('aurora_token', supabaseAnonKey);
+                    
+                    if (data.role === 'admin') {
+                        // Jika ditemukan di tabel 'admin'
+                        localStorage.setItem('is_admin', 'true');
+                        updateStatus("Akses Admin Diterima", "Mengalihkan ke Dashboard...");
+                        setTimeout(() => window.location.href = 'admin.html', 1500);
+                    } else {
+                        // Jika ditemukan di tabel 'pi_devices' atau user biasa
+                        localStorage.setItem('is_admin', 'false');
+                        updateStatus("Login Berhasil", "Selamat datang di Aurora Store...");
+                        setTimeout(() => window.location.href = 'store.html', 1500);
+                    }
+                } else {
+                    throw new Error(data.message || "Akses Ditolak.");
+                }
 
             } catch (err) {
                 console.error("Login Error:", err);
