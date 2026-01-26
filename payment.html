@@ -240,6 +240,9 @@
     <!-- SCRIPT PI SDK ASLI -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
+        <!-- SCRIPT PI SDK ASLI -->
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    
     <script>
         // --- KONFIGURASI SUPABASE ---
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
@@ -255,7 +258,7 @@
         let currentOrderId = null;
         let currentUser = null;
 
-        // --- PERBAIKAN UTAMA: TUNGGU HTML SIAP SEBELUM EKSEKUSI ---
+        // --- INISIALISASI ---
         document.addEventListener('DOMContentLoaded', async () => {
             console.log("DOM Loaded. Memulai inisialisasi...");
             
@@ -265,10 +268,11 @@
                 try {
                     const auth = await Pi.authenticate(['username', 'payments']);
                     currentUser = auth.user;
+                    console.log("User Authenticated:", currentUser);
                 } catch (e) { console.warn("Auth skipped:", e); }
             } catch (e) { console.warn("Pi Init Warning:", e); }
             
-            // 2. Jalankan loadCart (Ini sekarang aman karena elemen HTML sudah ada)
+            // 2. Jalankan loadCart
             loadCartData();
         });
 
@@ -283,14 +287,11 @@
             itemNameStr = "";
             cartItems = [];
             payBtn.disabled = true;
-            summaryContainer.style.display = 'none'; // Hide first
+            summaryContainer.style.display = 'none'; 
 
             // 1. CEK LANGSUNG LOCALSTORAGE
             const rawCart = localStorage.getItem('aurora_cart');
             
-            console.log("=== DEBUGGING CART ===");
-            console.log("Raw Data:", rawCart);
-
             if (!rawCart) {
                 console.error("LOCALSTORAGE KOSONG!");
                 summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Keranjang kosong.</span>';
@@ -300,7 +301,6 @@
 
             try {
                 cartItems = JSON.parse(rawCart);
-                console.log("Parsed Items:", cartItems);
             } catch (e) {
                 console.error("Gagal parse JSON:", e);
                 summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Data keranjang rusak.</span>';
@@ -321,29 +321,22 @@
             cartItems.forEach(item => {
                 const name = item.name || item.product_name || item.title || "Produk";
                 
-                // --- PERBAIKAN LOGIKA HARGA (STRING TO FLOAT) ---
+                // Parsing Harga String ke Float
                 let price = 0;
-
                 if (typeof item.price === 'string') {
-                    // Hapus semua karakter kecuali angka, titik, dan minus
-                    // Contoh: "0.00002916 π" -> "0.00002916"
+                    // Hapus karakter non-angka kecuali titik dan minus
                     let cleanPrice = item.price.replace(/[^\d.-]/g, ''); 
                     price = parseFloat(cleanPrice);
                 } else {
                     price = parseFloat(item.price);
                 }
                 
-                // Jika gagal parsing (NaN), set ke 0
-                if (isNaN(price)) {
-                    console.warn(`Harga tidak valid untuk ${name}:`, item.price);
-                    price = 0;
-                }
+                if (isNaN(price)) price = 0;
 
                 const qty = item.qty || 1;
                 const itemTotal = price * qty;
                 total += itemTotal;
 
-                // Gunakan .toFixed(8) untuk Pi agar desimal tidak hilang
                 html += `
                     <div class="item-row">
                         <span>${name} (x${qty})</span>
@@ -355,38 +348,36 @@
 
             itemNameStr = itemNameStr.slice(0, -2);
             summaryDiv.innerHTML = html;
-            
-            // Update total dengan format presisi tinggi
             totalDisplay.innerText = total.toFixed(8) + " π";
             
-            // Aktifkan tombol jika total > 0
             if (total > 0) {
                 payBtn.disabled = false;
                 payBtn.innerText = "Bayar Sekarang";
             }
-            
-            console.log("Total Calculation Selesai:", total);
         }
 
+        // --- PERBAIKAN HANDLE PAYMENT ---
         async function handlePayment(e) {
             e.preventDefault();
             const name = document.getElementById('fullName').value;
             const phone = document.getElementById('phoneNumber').value;
             const address = document.getElementById('address').value;
-            const wallet = document.getElementById('walletAddress').value;
             const btn = document.getElementById('payBtn');
             const errorMsg = document.getElementById('error-message');
 
+            // Validasi Input
             if (name.length < 3) return showError("Nama terlalu pendek.");
             if (phone.length < 10) return showError("Nomor WhatsApp tidak valid.");
             if (address.length < 10) return showError("Alamat terlalu singkat.");
             
+            // Validasi Auth
             if (!currentUser || !currentUser.uid) {
                 alert("Anda harus login. Mengalihkan...");
                 window.location.href = 'login.html';
                 return;
             }
 
+            // UI Loading
             errorMsg.style.display = "none";
             btn.disabled = true;
             btn.innerHTML = `<span style="display:inline-block; animation: spin 1s linear infinite;">π</span> Memproses...`;
@@ -395,36 +386,49 @@
             try {
                 currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
-                await Pi.createPayment({
-                    amount: total.toFixed(8), // Kirim total dengan presisi penuh ke SDK Pi
+                // MEMANGGIL PI SDK DENGAN STRUKTUR YANG BENAR
+                const paymentResult = await Pi.createPayment({
+                    amount: total.toFixed(8),
                     memo: `Order #${currentOrderId}`,
                     metadata: { orderId: currentOrderId, items: itemNameStr }
                 }, {
+                    // 1. Callback Wajib: Approve
                     onReadyForServerApproval: (paymentId) => {
                         currentPaymentId = paymentId;
                         console.log("Payment ID Ready:", paymentId);
                     },
+                    // 2. Callback Wajib: Completed
                     onPaymentCompleted: async (paymentId, txid) => {
                         console.log("Payment Completed! TXID:", txid);
-                        await finalizePaymentProcess(name, phone, address, wallet, txid);
+                        await finalizePaymentProcess(name, phone, address, txid);
                     },
+                    // 3. Callback Wajib: Cancelled
                     onCancelled: (paymentId) => {
+                        console.log("Payment Cancelled:", paymentId);
                         resetButton();
                         showError("Pembayaran dibatalkan.");
                     },
+                    // 4. Callback Wajib: Error
                     onError: (error, payment) => {
+                        console.error("Payment Error:", error, payment);
                         resetButton();
-                        showError("Error: " + error.message);
+                        // Perbaikan: Cek struktur error object
+                        let msg = "Terjadi kesalahan pembayaran.";
+                        if (error && error.message) msg = error.message;
+                        else if (typeof error === 'string') msg = error;
+                        
+                        showError("Error: " + msg);
                     }
                 });
 
             } catch (err) {
+                console.error("Exception in handlePayment:", err);
                 resetButton();
-                showError("Gagal memulai pembayaran: " + (err.message || "Unknown"));
+                showError("Gagal memulai pembayaran: " + (err.message || "Unknown Exception"));
             }
         }
 
-        async function finalizePaymentProcess(name, phone, address, wallet, txid) {
+        async function finalizePaymentProcess(name, phone, address, txid) {
             try {
                 const orderData = {
                     order_id: currentOrderId,
@@ -433,7 +437,7 @@
                     customer_phone: phone,
                     customer_adres: address,
                     payment_txid: txid,
-                    total_amount: total.toFixed(8), // Simpan di DB dengan presisi penuh
+                    total_amount: total.toFixed(8),
                     item: itemNameStr,
                     status: 'Paid',
                     tracking_number: null,
@@ -475,7 +479,8 @@
                 document.getElementById('successOverlay').classList.add('show');
 
             } catch (err) {
-                alert("Pembayaran Sukses, tapi gagal simpan DB. Screenshot bukti bayar.");
+                console.error("Finalize Error:", err);
+                alert("Pembayaran Sukses, tapi gagal simpan DB. Screenshot bukti bayar.\nError: " + err.message);
                 resetButton();
             }
         }
@@ -491,6 +496,7 @@
             const div = document.getElementById('error-message');
             div.innerText = msg;
             div.style.display = 'block';
+            // Animasi shake sederhana
             div.animate([
                 { transform: 'translateX(-10px)' },
                 { transform: 'translateX(10px)' },
