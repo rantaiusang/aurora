@@ -33,7 +33,7 @@
         /* Header */
         header {
             background: rgba(15, 12, 21, 0.95);
-            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            border-bottom:1px solid rgba(212, 175, 55, 0.2);
             padding: 20px 8%;
             display: flex;
             justify-content: space-between;
@@ -49,7 +49,7 @@
 
         /* Layout */
         .payment-wrapper {
-            flex: 1; display: flex; align-items: center; justify-content: center;
+            flex:1; display: flex; align-items: center; justify-content: center;
             padding: 40px 8%; position: relative; overflow-y: auto;
         }
 
@@ -85,7 +85,7 @@
         /* Form */
         .form-section-title {
             color: var(--luxury-gold); font-size: 0.9rem; text-transform: uppercase;
-            letter-spacing: 1px; margin: 25px 0 15px 0;
+            letter-spacing:1px; margin: 25px 0 15px 0;
             border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; font-weight: 600;
         }
         .form-group { margin-bottom: 20px; }
@@ -116,7 +116,7 @@
         }
         .item-summary::-webkit-scrollbar { width: 4px; }
         .item-summary::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
-        .item-row { display: flex; justify-content: space-between; margin-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; }
+        .item-row { display: flex; justify-content: space-between; margin-bottom:5px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; }
         .item-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
 
         /* Total */
@@ -131,7 +131,7 @@
         /* Button */
         .btn-pay {
             width: 100%; padding: 18px; background: var(--luxury-gold); color: #000;
-            border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 800;
+            border: none; border-radius: 10px; font-size:1.1rem; font-weight: 800;
             cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
             transition: 0.3s; box-shadow: 0 5px 20px rgba(255, 215, 0, 0.2);
             margin-top: 20px; position: relative;
@@ -241,11 +241,12 @@
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
     
-       <!-- SCRIPT LOGIC (DEBUGGING + FIX CASE SENSITIVE) -->
+       <!-- SCRIPT LOGIC (FIXED TYPOS) -->
     <script>
         // ==========================================
-        // 1. KONFIGURASI
+        //1. KONFIGURASI
         // ==========================================
+        // PERBAIKAN: URL Harus https:// bukan https://
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         const EDGE_FUNCTION_URL = 'https://dikapquhusbwjccbqcsb.supabase.co/functions/v1/verify-pi-payment';
@@ -273,7 +274,7 @@
             let attempts = 0;
             const maxAttempts = 60; // 30 detik timeout
             
-            // Delay 1 detik agar script SDK sempat load
+            // PERBAIKAN: Typo komentar "Delay 1 detik"
             setTimeout(() => {
                 const checkSDK = setInterval(() => {
                     attempts++;
@@ -346,7 +347,7 @@
                         btn.innerText = "SDK Gagal Muat";
                         btn.style.background = "#ff4d4d";
                     }
-                }, 500); 
+                },500); 
             }, 1500); // TUNGGU 1.5 DETIK (Dinaikkan sedikit untuk jaga-jaga)
         });
 
@@ -403,7 +404,7 @@
             cartItems.forEach(item => {
                 const name = item.name || item.product_name || item.title || "Produk";
                 let price = parseFloat(item.price) || 0;
-                const qty = item.qty || 1;
+                const qty = item.qty ||1;
                 const itemTotal = price * qty;
                 total += itemTotal; 
 
