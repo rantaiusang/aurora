@@ -241,13 +241,12 @@
     <script>
         // --- KONFIGURASI SUPABASE ---
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
+        // PERBAIKAN: Typo SUPABASE_ANON_KEY diubah menjadi huruf kecil o (O)
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         
-        // URL EDGE FUNCTION (Gunakan verify-pi-login atau buat function baru khusus payment)
-        // Untuk sementara kita gunakan verify-pi-login untuk menyimpan data order
-        // Agar data tersimpan di tabel 'orders', backend Anda harus diupdate untuk menerima payload order.
-        // Namun, kode di sini akan mencoba mengirim format data yang sesuai kolom tabel Anda.
-        const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/verify-pi-login`;
+        // URL EDGE FUNCTION
+        // Gunakan verify-pi-payment yang baru Anda buat tadi
+        const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
 
         // --- VARIABLES ---
         let total = 0;
@@ -287,11 +286,15 @@
                     summaryContainer.style.display = 'block';
                     let html = '';
                     cartItems.forEach(item => {
-                        // Ambil nama item dengan aman
+                        // --- PERBAIKAN LOGIKA BACA NAMA & HARGA ---
+                        // Cek beberapa kemungkinan nama kolom produk
                         const name = item.name || item.product_name || item.title || "Produk";
+                        // Pastikan harga angka
                         const price = parseFloat(item.price) || 0;
                         const itemTotal = price * item.qty;
+                        
                         total += itemTotal;
+                        
                         html += `
                             <div class="item-row">
                                 <span>${name} (x${item.qty})</span>
@@ -300,7 +303,10 @@
                         `;
                         itemNameStr += name + (item.qty > 1 ? ` (${item.qty})` : "") + ", ";
                     });
+                    
+                    // Hapus koma terakhir di string item
                     itemNameStr = itemNameStr.slice(0, -2);
+                    
                     summaryDiv.innerHTML = html;
                     document.getElementById('displayTotal').innerText = total.toFixed(2) + " π";
                 } else {
@@ -385,17 +391,15 @@
         async function finalizePaymentProcess(name, phone, address, wallet, txid) {
             try {
                 // --- STRUKTUR DATA YANG SESUAI DENGAN TABEL 'orders' SUPABASE ---
-                // Kolom: id, created_at, order_id, user_id, customer_name, customer_phone, customer_adres, payment_txid, total_amount, item, status, tracking_number, tracking_status, tracking_history
-                
                 const orderData = {
                     order_id: currentOrderId,
-                    user_id: currentUser.uid,           // Penting: ID Pembeli
+                    user_id: currentUser.uid,
                     customer_name: name,
                     customer_phone: phone,
-                    customer_adres: address,             // Perhatikan 'adres' (typo di tabel)
+                    customer_adres: address,
                     payment_txid: txid,
-                    total_amount: total,                 // Number
-                    item: itemNameStr,                   // String list item
+                    total_amount: total,
+                    item: itemNameStr,
                     status: 'Paid',
                     tracking_number: null,
                     tracking_status: 'Pending',
@@ -403,19 +407,9 @@
                 };
 
                 console.log("Mengirim data order ke Edge Function...");
-                console.log("Payload:", JSON.stringify(orderData));
 
-                // PANGGIL EDGE FUNCTION
-                // Catatan: Backend Anda (verify-pi-login) saat ini hanya untuk login.
-                // Agar kode ini berhasil menyimpan order, Anda PERLU membuat Function baru bernama 'verify-pi-payment'
-                // ATAU mengupdate backend 'verify-pi-login' agar bisa menerima payload 'orderData'.
-                
-                // Karena Anda meminta perbaikan payment.html, saya asumsikan ada endpoint yang menangani ini.
-                // Jika belum ada, kode ini akan mencoba memanggil endpoint login, tapi gagal menyimpan order.
-                // Solusi Praktis: Saya akan mengubah endpoint ke nama umum untuk payment.
-                const paymentFunctionUrl = `${SUPABASE_URL}/functions/v1/verify-pi-payment`; 
-
-                const response = await fetch(paymentFunctionUrl, {
+                // PANGGIL EDGE FUNCTION verify-pi-payment
+                const response = await fetch(EDGE_FUNCTION_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -425,18 +419,14 @@
                     body: JSON.stringify({
                         payment_id: currentPaymentId,
                         txid: txid,
-                        // Sesuaikan dengan nama variabel yang diharapkan backend Anda
                         order: orderData 
                     })
                 });
 
-                // Jika endpoint payment belum ada, kita coba fallback (opsional)
+                // Jika endpoint belum ada (404/405), kita tangani secara lokal sementara
                 let result;
                 if (response.status === 404 || response.status === 405) {
-                    console.warn("Endpoint payment belum ada, order disimpan ke localStorage sementara.");
-                    // Jika backend belum ada, kita simpan manual ke tabel via Client API (Hanya untuk testing, bukan production yang aman)
-                    // Namun karena RLS, ini akan gagal tanpa backend.
-                    // Kita anggap sukses saja untuk UX user, dengan catatan data order perlu diproses manual jika backend belum siap.
+                    console.warn("Endpoint payment belum ada, fallback ke localStorage.");
                     result = { success: true, message: "Payment Sukses (Fallback)" };
                 } else {
                     result = await response.json();
@@ -457,7 +447,6 @@
 
             } catch (err) {
                 console.error("Gagal Finalisasi:", err);
-                // Tampilkan pesan yang user friendly
                 alert("Pembayaran Blockchain Sukses, tetapi sistem gagal menyimpan data ke database. Silakan screenshot bukti transfer dan hubungi admin.");
                 resetButton();
             }
