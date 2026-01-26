@@ -237,20 +237,17 @@
         </div>
     </div>    
 
-    <!-- SCRIPT PI SDK ASLI -->
+        <!-- SCRIPT PI SDK ASLI -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
     
-       <!-- SCRIPT LOGIC (FIXED CALLBACKS & URLS) -->
+       <!-- SCRIPT LOGIC (PERBAIKAN V2.0) -->
     <script>
         // ==========================================
         //1. KONFIGURASI
         // ==========================================
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
-        
-        // URL Endpoint Backend Anda (Supabase Edge Function)
-        // Browser memanggil ini, lalu Edge Function memanggil API Pi Network
         const EDGE_FUNCTION_BASE = 'https://dikapquhusbwjccbqcsb.supabase.co/functions/v1/verify-pi-payment';
 
         // ==========================================
@@ -265,87 +262,88 @@
         let currentOrderId = null;
         let currentUser = null;
         let isSDKReady = false;
-        
-        // Simpan data pengguna sementara untuk dikirim saat completion
         let tempCustomerData = {};
 
         // ==========================================
-        // 3. INISIALISASI
+        // 3. INISIALISASI (PERBAIKAN DI SINI!)
         // ==========================================
         document.addEventListener('DOMContentLoaded', async () => {
             console.log("Payment Page Loaded.");
 
+            // Cek SDK secara berkala (agar tidak error jika script belum termuat sepenuhnya)
             let attempts = 0;
             const maxAttempts = 60; 
             
-            setTimeout(() => {
-                const checkSDK = setInterval(() => {
-                    attempts++;
+            const checkSDK = setInterval(() => {
+                attempts++;
+                
+                if (window.Pi && typeof Pi.init === 'function') {
+                    clearInterval(checkSDK);
+                    initializeApp();
+                } 
+                else if (attempts >= maxAttempts) {
+                    clearInterval(checkSDK);
+                    console.error("TIMEOUT: SDK tidak terdeteksi.");
+                    loadCartData(true);
+                    const btn = document.getElementById('payBtn');
+                    btn.innerText = "SDK Gagal Muat";
+                    btn.style.background = "#ff4d4d";
+                }
+            }, 500);
+
+            // Fungsi Inisialisasi Baru (Async)
+            async function initializeApp() {
+                const btn = document.getElementById('payBtn');
+                
+                try {
+                    // 1. Init SDK
+                    console.log("Menginisialisasi SDK...");
+                    Pi.init({ version: "2.0", appId: PI_APP_ID });
                     
-                    console.log(`Checking SDK attempt ${attempts}: Pi exists?`, !!window.Pi);
+                    // 2. Auth User (INI CARA V2.0)
+                    // Kita gunakan 'await' karena ini adalah Promise
+                    const user = await Pi.authenticate(); 
                     
-                    if (window.Pi && typeof Pi.init === 'function') {
-                        clearInterval(checkSDK);
-                        console.log("SDK Loaded successfully. Attempting Init...");
+                    if (user) {
+                        console.log("User Authenticated:", user);
+                        currentUser = user;
+                        isSDKReady = true;
                         
-                        try {
-                            Pi.init({ version: "2.0", appId: PI_APP_ID });
-                            console.log("Pi.init executed. Checking user...");
-                            
-                            let user = Pi.getUser();
-                            
-                            if (user) {
-                                console.log("SUCCESS: User Ditemukan.", user);
-                                currentUser = user;
-                                isSDKReady = true;
-                                loadCartData();
-                            } else {
-                                console.warn("WARN: User Tidak Ditemukan / Sesi Habis.");
-                                isSDKReady = false;
-                                loadCartData(); 
-                                
-                                const btn = document.getElementById('payBtn');
-                                btn.innerText = "Sesi Habis - Login Ulang";
-                                btn.type = "button"; 
-                                btn.onclick = function() { window.location.href = 'login.html'; };
-                                btn.disabled = false;
-                                btn.style.background = "var(--luxury-gold)";
-                                btn.style.color = "#000";
-                            }
-                            
-                        } catch (initError) {
-                            console.error("CRITICAL ERROR during Pi.init:", initError);
-                            loadCartData(true); 
-                            const btn = document.getElementById('payBtn');
-                            const errorMsg = document.getElementById('error-message');
-                            
-                            btn.innerText = "Gagal Inisialisasi SDK";
-                            btn.disabled = true;
-                            btn.style.background = "#ff4d4d";
-                            
-                            if (initError.message.includes("App") || initError.message.includes("Identifier")) {
-                                errorMsg.innerHTML = "App ID Salah atau Tidak Cocok. Cek Dashboard Pi Developers.";
-                            } else {
-                                errorMsg.innerHTML = "Error SDK: " + initError.message;
-                            }
-                            errorMsg.style.display = 'block';
-                        }
-                    } 
-                    else if (attempts >= maxAttempts) {
-                        clearInterval(checkSDK);
-                        console.error("TIMEOUT: SDK tidak terdeteksi setelah 30 detik.");
-                        loadCartData(true);
-                        
-                        const btn = document.getElementById('payBtn');
-                        btn.innerText = "SDK Gagal Muat";
-                        btn.style.background = "#ff4d4d";
+                        // Load data keranjang jika user berhasil login
+                        loadCartData();
+                    } else {
+                        throw new Error("User data tidak ditemukan setelah auth");
                     }
-                },500); 
-            }, 1500);
+
+                } catch (error) {
+                    console.error("ERROR SDK / AUTH:", error);
+                    
+                    // Tampilkan pesan error di UI
+                    loadCartData(true); 
+                    
+                    // Cek jenis error (Misal: User menutup popup login atau session expired)
+                    const errorMsg = document.getElementById('error-message');
+                    
+                    btn.innerText = "Login Gagal / Sesi Habis";
+                    btn.disabled = false;
+                    btn.type = "button"; // Ubah jadi tombol biasa
+                    btn.onclick = function() { 
+                        // Refresh halaman untuk memicu login ulang
+                        window.location.reload(); 
+                    };
+                    btn.style.background = "#ff4d4d";
+                    btn.style.color = "#fff";
+
+                    if(errorMsg) {
+                        errorMsg.innerText = "Gagal autentikasi. Pastikan Anda membuka halaman ini di aplikasi Pi Browser.";
+                        errorMsg.style.display = 'block';
+                    }
+                }
+            }
         });
 
         // ==========================================
-        // 4. FUNGSI LOAD KERANJANG
+        // 4. FUNGSI LOAD KERANJANG (Tetap Sama)
         // ==========================================
         function loadCartData(forceMode = false) {
             const summaryDiv = document.getElementById('summaryList');
@@ -357,7 +355,8 @@
             cartItems = [];
             itemsJsonString = "[]";
             
-            if(!payBtn.onclick && payBtn.innerText !== "Gagal Inisialisasi SDK") { 
+            // Jangan disable tombol jika sedang dalam mode error (onclick sudah di-set)
+            if(!payBtn.onclick && payBtn.innerText !== "Login Gagal / Sesi Habis") { 
                 payBtn.disabled = true; 
             }
 
@@ -407,7 +406,8 @@
             summaryDiv.innerHTML = html;
             totalDisplay.innerText = total.toFixed(2) + " π";
             
-            if (total > 0 && isSDKReady && !payBtn.onclick && payBtn.innerText !== "Gagal Inisialisasi SDK") {
+            // Update tombol jika sukses
+            if (total > 0 && isSDKReady && !payBtn.onclick) {
                 payBtn.disabled = false;
                 payBtn.innerText = "Bayar Sekarang";
                 payBtn.type = "submit";
@@ -415,14 +415,14 @@
         }
 
         // ==========================================
-        // 5. HANDLE PAYMENT
+        // 5. HANDLE PAYMENT (Tetap Sama)
         // ==========================================
         async function handlePayment(e) {
             e.preventDefault();
 
             if (!isSDKReady || !currentUser) {
                 alert("Sesi tidak valid. Silakan login ulang.");
-                window.location.href = 'login.html';
+                window.location.reload();
                 return;
             }
 
@@ -441,7 +441,6 @@
                 return;
             }
 
-            // Simpan data customer untuk tahap completion nanti
             tempCustomerData = {
                 name: name,
                 phone: phone,
@@ -457,56 +456,40 @@
             try {
                 currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
-                // ==========================================
-                // MEMANGGIL PI SDK
-                // ==========================================
                 await Pi.createPayment({
                     amount: Number(total.toFixed(2)),
                     memo: `Order #${currentOrderId}`,
                     metadata: { orderId: currentOrderId }
                 }, {
                     
-                    // LANGKAH 8b: Persetujuan Sisi Server
-                    // Fungsi ini dipanggil saat Payment ID siap.
-                    // Kita kirim Payment ID ke backend kita (Supabase).
                     onReadyForServerApproval: async (paymentId) => {
                         currentPaymentId = paymentId;
                         console.log("onReadyForServerApproval:", paymentId);
                         
-                        // KIRIM KE BACKEND ANDA (Supabase), BUKAN LANGSUNG KE PI API
                         try {
-                            // Backend Anda harus menangani endpoint '/approve'
                             const res = await fetch(`${EDGE_FUNCTION_BASE}/approve`, {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` }, // Sesuaikan auth jika perlu
+                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
                                 body: JSON.stringify({ 
                                     paymentId: paymentId, 
                                     orderId: currentOrderId,
                                     txid: null 
                                 })
                             });
-                            
-                            if(!res.ok) {
-                                console.error("Gagal approve di server", await res.text());
-                            }
-                        } catch (e) { 
-                            console.error("Error koneksi saat approval:", e); 
-                        }
+                            if(!res.ok) console.error("Gagal approve", await res.text());
+                        } catch (e) { console.error("Error approve:", e); }
                     },
 
-                    // LANGKAH 8d: Penyelesaian di Sisi Server
-                    // Nama fungsi DIPERBAIKI sesuai panduan: onReadyForServerCompletion
                     onReadyForServerCompletion: async (paymentId, txid) => {
                         console.log("onReadyForServerCompletion:", paymentId, txid);
                         btn.innerText = "Mengkonfirmasi...";
 
-                        // KIRIM KE BACKEND ANDA untuk verifikasi final dan simpan pesanan
                         try {
                             const response = await fetch(`${EDGE_FUNCTION_BASE}/complete`, {
                                 method: 'POST',
                                 headers: { 
                                     'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${SUPABASE_KEY}` // Auth Supabase agar bisa akses DB
+                                    'Authorization': `Bearer ${SUPABASE_KEY}`
                                 },
                                 body: JSON.stringify({
                                     paymentId: paymentId,
@@ -514,13 +497,12 @@
                                     orderId: currentOrderId,
                                     amount: total,
                                     items: itemsJsonString,
-                                    customerData: tempCustomerData // Kirim data pelengkap di sini
+                                    customerData: tempCustomerData
                                 })
                             });
 
                             const result = await response.json();
 
-                            // Backend Anda harus melakukan verifikasi tanda tangan Pi disini
                             if (response.ok && (result.status === 'completed' || result.status === 'completed_and_saved')) {
                                 localStorage.removeItem('aurora_cart');
                                 document.getElementById('successName').innerText = name;
