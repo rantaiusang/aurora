@@ -272,12 +272,12 @@
 
             // Cek ketersediaan Pi SDK
             let attempts = 0;
-            const maxAttempts = 15;
+            const maxAttempts = 30; // ✅ FIX: NAIKKAN KE 30 UNTUK STABILITAS
             
             const checkSDK = setInterval(() => {
                 attempts++;
                 
-                if (typeof Pi !== 'undefined') {
+                if (window.Pi && typeof Pi.init === 'function') {
                     clearInterval(checkSDK);
                     initializePiSystem();
                 } 
@@ -292,17 +292,21 @@
         });
 
         // ==========================================
-        // 4. FIX: initializePiSystem() (SESUAI INSTRUKSI)
+        // 4. FIX: initializePiSystem() (FINAL)
         // ==========================================
         async function initializePiSystem() {
+            // ✅ GUARD: CEGAH INISIALISASI GANDA
+            if (isSDKReady) return;
+
             try {
-                // 1️⃣ UBAH FORMAT INIT
+                // ✅ FIX FINAL: TAMBAHKAN SANDBOX: false
                 Pi.init({
                     version: "2.0",
-                    appId: PI_APP_ID
+                    appId: PI_APP_ID,
+                    sandbox: false // <--- WAJIB UNTUK MAINNET. Jika TESTNET ubah jadi true.
                 });
 
-                // 3️⃣ AMBIL USER DARI SESSION PI (BUKAN LOGIN)
+                // AMBIL USER DARI SESSION PI (BUKAN LOGIN)
                 const piUser = Pi.getUser();
                 if (!piUser) {
                     alert("Session Pi tidak ditemukan. Kembali ke Store.");
@@ -431,9 +435,9 @@
             try {
                 currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
-                // 6️⃣ JANGAN UBAH BAGIAN PAYMENT LOGIC
                 await Pi.createPayment({
-                    amount: total.toFixed(2),
+                    // ✅ FIX VALIDASI: CAST KE NUMBER
+                    amount: Number(total.toFixed(2)),
                     memo: `Order #${currentOrderId}`,
                     metadata: { orderId: currentOrderId }
                 }, {
