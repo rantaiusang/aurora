@@ -111,8 +111,8 @@
         .item-summary {
             background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;
             margin-bottom: 25px; font-size: 0.85rem; color: #ccc;
-            max-height: 100px; overflow-y: auto;
-            border: 1px solid rgba(255,255,255,0.05); display: none; /* Hidden by default */
+            max-height: 150px; overflow-y: auto; /* Tinggi diperbesar sedikit */
+            border: 1px solid rgba(255,255,255,0.05); display: none;
         }
         .item-summary::-webkit-scrollbar { width: 4px; }
         .item-summary::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
@@ -160,6 +160,7 @@
         @media (max-width: 600px) {
             .payment-card { padding: 30px 20px; }
             h2 { font-size: 1.5rem; }
+            .total-amount { font-size: 1.2rem; }
         }
     </style>
 </head>
@@ -282,6 +283,7 @@
             itemNameStr = "";
             cartItems = [];
             payBtn.disabled = true;
+            summaryContainer.style.display = 'none'; // Hide first
 
             // 1. CEK LANGSUNG LOCALSTORAGE
             const rawCart = localStorage.getItem('aurora_cart');
@@ -292,9 +294,7 @@
             if (!rawCart) {
                 console.error("LOCALSTORAGE KOSONG!");
                 summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Keranjang kosong.</span>';
-                summaryContainer.style.display = 'block'; // Tampilkan pesan error
-                // Opsional: Redirect otomatis
-                // setTimeout(() => window.location.href = 'store.html', 2000);
+                summaryContainer.style.display = 'block';
                 return;
             }
 
@@ -319,30 +319,35 @@
             let html = '';
             
             cartItems.forEach(item => {
-                // DEBUGGING: Cek properti item
-                console.log("Item Object:", item);
-                
                 const name = item.name || item.product_name || item.title || "Produk";
                 
-                // PERBAIKAN: Parsing harga yang aman
+                // --- PERBAIKAN LOGIKA HARGA (STRING TO FLOAT) ---
                 let price = 0;
+
                 if (typeof item.price === 'string') {
-                    price = parseFloat(item.price.replace(',', '.'));
+                    // Hapus semua karakter kecuali angka, titik, dan minus
+                    // Contoh: "0.00002916 π" -> "0.00002916"
+                    let cleanPrice = item.price.replace(/[^\d.-]/g, ''); 
+                    price = parseFloat(cleanPrice);
                 } else {
                     price = parseFloat(item.price);
                 }
                 
-                if (isNaN(price)) price = 0;
+                // Jika gagal parsing (NaN), set ke 0
+                if (isNaN(price)) {
+                    console.warn(`Harga tidak valid untuk ${name}:`, item.price);
+                    price = 0;
+                }
 
                 const qty = item.qty || 1;
-                
                 const itemTotal = price * qty;
                 total += itemTotal;
 
+                // Gunakan .toFixed(8) untuk Pi agar desimal tidak hilang
                 html += `
                     <div class="item-row">
                         <span>${name} (x${qty})</span>
-                        <span>${itemTotal.toFixed(2)} π</span>
+                        <span>${itemTotal.toFixed(8)} π</span>
                     </div>
                 `;
                 itemNameStr += name + (qty > 1 ? ` (${qty})` : "") + ", ";
@@ -350,7 +355,9 @@
 
             itemNameStr = itemNameStr.slice(0, -2);
             summaryDiv.innerHTML = html;
-            totalDisplay.innerText = total.toFixed(2) + " π";
+            
+            // Update total dengan format presisi tinggi
+            totalDisplay.innerText = total.toFixed(8) + " π";
             
             // Aktifkan tombol jika total > 0
             if (total > 0) {
@@ -389,7 +396,7 @@
                 currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
                 await Pi.createPayment({
-                    amount: total.toFixed(2),
+                    amount: total.toFixed(8), // Kirim total dengan presisi penuh ke SDK Pi
                     memo: `Order #${currentOrderId}`,
                     metadata: { orderId: currentOrderId, items: itemNameStr }
                 }, {
@@ -426,7 +433,7 @@
                     customer_phone: phone,
                     customer_adres: address,
                     payment_txid: txid,
-                    total_amount: total,
+                    total_amount: total.toFixed(8), // Simpan di DB dengan presisi penuh
                     item: itemNameStr,
                     status: 'Paid',
                     tracking_number: null,
