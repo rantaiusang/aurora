@@ -641,10 +641,10 @@
                                 <span>${order.tracking_number}</span>
                             </div>` : ''}
 
-                            ${order.item ? `
+                            ${order.items ? `
                             <div class="order-items-box">
                                 <strong>Item:</strong><br>
-                                ${order.item}
+                                ${typeof order.items === 'object' ? JSON.stringify(order.items) : order.items}
                             </div>` : ''}
                         </div>
                     `;
@@ -818,6 +818,9 @@
         }
 
         function validateAndCheckout() {
+            // PERBAIKAN: Debugging
+            console.log("Checkout clicked. Current Cart:", localStorage.getItem('aurora_cart'));
+
             const userData = localStorage.getItem('aurora_user');
             if (!userData) {
                 if (confirm("Anda harus login terlebih dahulu. Pindah ke halaman login?")) {
