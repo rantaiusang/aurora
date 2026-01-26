@@ -240,7 +240,8 @@
     <!-- SCRIPT PI SDK ASLI -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
-    <!-- SCRIPT LOGIC (FIXED SYNTAX ERROR) -->
+    
+       <!-- SCRIPT LOGIC (DEBUGGING + FIX CASE SENSITIVE) -->
     <script>
         // ==========================================
         // 1. KONFIGURASI
@@ -252,6 +253,7 @@
         // ==========================================
         // 2. VARIABEL GLOBAL
         // ==========================================
+        // PERHATIKAN: Pastikan App ID ini PERSIS sama dengan di Dashboard Pi Developers (Huruf Besar/Kecil berpengaruh!)
         const PI_APP_ID = "aurora-4c073a664f9faa3a"; 
         
         let total = 0;
@@ -263,15 +265,15 @@
         let isSDKReady = false;
 
         // ==========================================
-        // 3. INISIALISASI (FIX STUCK / HANGING)
+        // 3. INISIALISASI (DENGAN DEBUGGING)
         // ==========================================
         document.addEventListener('DOMContentLoaded', async () => {
             console.log("Payment Page Loaded.");
 
             let attempts = 0;
-            const maxAttempts = 50; // 25 detik timeout
+            const maxAttempts = 60; // 30 detik timeout
             
-            // PERBAIKAN: Tambahkan setTimeout 1000ms sebelum mulai cek
+            // Delay 1 detik agar script SDK sempat load
             setTimeout(() => {
                 const checkSDK = setInterval(() => {
                     attempts++;
@@ -280,56 +282,72 @@
                     
                     if (window.Pi && typeof Pi.init === 'function') {
                         clearInterval(checkSDK);
-                        console.log("SDK Loaded successfully. Initializing...");
+                        console.log("SDK Loaded successfully. Attempting Init...");
                         
                         try {
-                            // 1. Init SDK
+                            // Coba Inisialisasi
                             Pi.init({ 
                                 version: "2.0", 
                                 appId: PI_APP_ID 
                             });
                             
-                            // 2. Cek Session (Hanya ambil user, JANGAN authenticate)
+                            console.log("Pi.init executed. Checking user...");
+                            
+                            // Cek Session
                             let user = Pi.getUser();
                             
                             if (user) {
-                                // Sesi Valid -> Lanjut
-                                console.log("User Ditemukan (Session Active):", user);
+                                console.log("SUCCESS: User Ditemukan.", user);
                                 currentUser = user;
                                 isSDKReady = true;
                                 loadCartData();
                             } else {
-                                // Sesi Hilang (Refresh / Browser Clear Cache)
-                                console.warn("Sesi Tidak Ditemukan.");
+                                console.warn("WARN: User Tidak Ditemukan / Sesi Habis.");
                                 isSDKReady = false;
-                                loadCartData(); // Load data keranjang dulu biar user tahu isinya
+                                loadCartData(); // Load keranjang dulu
                                 
                                 const btn = document.getElementById('payBtn');
-                                btn.innerText = "Sesi Habis - Klik untuk Login Ulang";
-                                // Ubah tombol jadi tombol redirect, bukan submit form
+                                btn.innerText = "Sesi Habis - Login Ulang";
                                 btn.type = "button"; 
-                                btn.onclick = function() {
-                                    window.location.href = 'login.html';
-                                };
+                                btn.onclick = function() { window.location.href = 'login.html'; };
                                 btn.disabled = false;
                                 btn.style.background = "var(--luxury-gold)";
                                 btn.style.color = "#000";
                             }
                             
-                        } catch (e) {
-                            console.error("Init Error:", e);
-                            loadCartData(true);
+                        } catch (initError) {
+                            // Jika init error (biasanya App ID salah), tangkap di sini
+                            console.error("CRITICAL ERROR during Pi.init:", initError);
+                            
+                            // TAMBAHAN: Tampilkan error di layar agar user tahu
+                            loadCartData(true); // Load keranjang
+                            const btn = document.getElementById('payBtn');
+                            const errorMsg = document.getElementById('error-message');
+                            
+                            btn.innerText = "Gagal Inisialisasi SDK";
+                            btn.disabled = true;
+                            btn.style.background = "#ff4d4d";
+                            
+                            // Cek jika error karena App ID tidak cocok
+                            if (initError.message.includes("App") || initError.message.includes("Identifier")) {
+                                errorMsg.innerHTML = "App ID Salah atau Tidak Cocok. Cek Dashboard Pi Developers.";
+                            } else {
+                                errorMsg.innerHTML = "Error SDK: " + initError.message;
+                            }
+                            errorMsg.style.display = 'block';
                         }
                     } 
                     else if (attempts >= maxAttempts) {
                         clearInterval(checkSDK);
+                        console.error("TIMEOUT: SDK tidak terdeteksi setelah 30 detik.");
                         loadCartData(true);
+                        
                         const btn = document.getElementById('payBtn');
-                        btn.innerText = "SDK Gagal / Buka di Pi Browser";
+                        btn.innerText = "SDK Gagal Muat";
                         btn.style.background = "#ff4d4d";
                     }
                 }, 500); 
-            }, 1000); // TUNGGU 1 DETIK PERTAMA KALI
+            }, 1500); // TUNGGU 1.5 DETIK (Dinaikkan sedikit untuk jaga-jaga)
         });
 
         function forceLoadCart() {
@@ -349,8 +367,8 @@
             cartItems = [];
             itemsJsonString = "[]";
             
-            // Kita biarkan payBtn disabled sementara kecuali logic khusus sesi habis dijalankan
-            if(!payBtn.onclick) { 
+            // Jangan override tombol jika sedang error
+            if(!payBtn.onclick && payBtn.innerText !== "Gagal Inisialisasi SDK") { 
                 payBtn.disabled = true; 
             }
 
@@ -400,12 +418,11 @@
             summaryDiv.innerHTML = html;
             totalDisplay.innerText = total.toFixed(2) + " π";
             
-            // LOGIKA TOMBOL: Hanya aktif jika SDK Ready dan Total > 0
-            // Jika payBtn sudah punya event onclick (login ulang), jangan override disablednya
-            if (total > 0 && isSDKReady && !payBtn.onclick) {
+            // Update tombol jika sukses
+            if (total > 0 && isSDKReady && !payBtn.onclick && payBtn.innerText !== "Gagal Inisialisasi SDK") {
                 payBtn.disabled = false;
                 payBtn.innerText = "Bayar Sekarang";
-                payBtn.type = "submit"; // Pastikan type submit kembali
+                payBtn.type = "submit";
             }
         }
 
@@ -430,6 +447,12 @@
             if (name.length < 3) return showError("Nama terlalu pendek.");
             if (phone.length < 10) return showError("Nomor WhatsApp tidak valid.");
             if (address.length < 10) return showError("Alamat lengkap diperlukan.");
+            
+            // VALIDASI TOTAL
+            if (total <= 0 || isNaN(total)) {
+                showError("Total pembayaran tidak valid.");
+                return;
+            }
             
             errorMsg.style.display = "none";
             btn.disabled = true;
