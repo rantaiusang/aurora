@@ -10,7 +10,7 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
     <style>
-        /* --- STYLES TETAP SAMA --- */
+        /* --- STYLES SAMA SEPERTI SEBELUMNYA --- */
         :root {
             --luxury-gold: #d4af37;
             --luxury-gold-light: #f3e5ab;
@@ -210,8 +210,8 @@
         </div>
     </div>
 
-    <!-- SDK URL -->
-    <script src="https://cdn.minepi.com/sdk/pi-sdk.js"></script>
+    <!-- PERBAIKAN 1: Menggunakan URL Resmi SDK Pi Network -->
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
 
     <script>
         // --- KONFIGURASI ---
@@ -219,27 +219,23 @@
         const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         const functionName = 'verify-pi-login';
         
-        // --- 1. LOGIKA PENCEGAHAN SDK ERROR ---
-        const isSandbox = window.location.hostname.includes('sandbox') || window.location.hostname.includes('localhost');
+        // Tentukan apakah ini mode Sandbox (Localhost atau URL sandbox)
+        const isSandbox = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1');
         
-        // Fungsi inisialisasi yang lebih tangguh
+        // Fungsi Inisialisasi SDK
         function initPiSDK() {
             if (typeof Pi !== 'undefined') {
                 Pi.init({
                     version: "2.0",
                     sandbox: isSandbox
                 });
-                console.log("Pi SDK Berhasil Di-Initialize.");
+                console.log("Pi SDK Berhasil Di-Initialize. Sandbox:", isSandbox);
                 return true;
             }
             return false;
         }
-
-        // Coba inisialisasi saat script ini terbaca
-        if (!initPiSDK()) {
-            console.warn("Pi SDK belum terbaca saat pertama kali load. Akan dicek ulang...");
-        }
         
+        // --- PERBAIKAN 2: Polling Logic yang Lebih Bersih ---
         window.addEventListener('load', () => {
             console.log("Halaman Login Dimuat.");
             
@@ -249,18 +245,21 @@
                 if(card) card.classList.add('visible');
             }, 200);
 
-            // 2. POLLING: Cek SDK secara berulang setiap 1 detik
-            // Ini akan terus mencoba sampai Pi Browser berhasil memuat SDK-nya
+            // Coba inisialisasi pertama kali (jika script sudah load cepat)
+            if (initPiSDK()) {
+                startLoginProcess();
+                return;
+            }
+
+            // Polling: Cek setiap 500ms jika SDK belum terbaca (umum terjadi di Pi Browser)
             const checkInterval = setInterval(() => {
                 if (typeof Pi !== 'undefined') {
-                    clearInterval(checkInterval); // Berhenti cek jika sudah ketemu
-                    console.log("Pi SDK terdeteksi! Memulai login...");
-                    setTimeout(autoLoginProcess, 1000); // Beri jeda sedikit
-                } else {
-                    console.log("Menunggu Pi Browser memuat SDK...");
-                    document.getElementById('sub-status').innerText = "Memuat SDK Pi Network... (Mohon Tunggu)";
+                    clearInterval(checkInterval);
+                    console.log("Pi SDK terdeteksi!");
+                    // Beri jeda sedikit agar stabil
+                    setTimeout(startLoginProcess, 500);
                 }
-            }, 1000); // Cek setiap 1 detik
+            }, 500);
         });
 
         function updateStatus(title, subtitle) {
@@ -282,37 +281,44 @@
             if(errorMsg) errorMsg.innerText = message;
         }
 
-        async function autoLoginProcess() {
+        // --- PERBAIKAN 3: Menggunakan Pi.authenticate (Standar SDK) ---
+        async function startLoginProcess() {
             try {
-                // Kunci ulang inisialisasi untuk memastikan
+                // Pastikan init dijalankan lagi untuk keamanan
                 initPiSDK();
 
-                updateStatus("Mengamankan Koneksi...", "Menginisialisasi Pi Network");
-                
-                // 3. IDENTIFIKASI USER
-                const authResult = await Pi.identify(['username'], {
-                    onIncompletePaymentFound: (payment) => {
-                        console.log("Incomplete payment ditemukan:", payment);
-                    }
-                });
+                updateStatus("Meminta Izin...", "Mohon konfirmasi di jendela popup Pi");
+
+                // 1. Callback untuk pembayaran incomplete (opsional tapi disarankan)
+                const onIncompletePaymentFound = (payment) => {
+                    console.log("Incomplete payment ditemukan:", payment);
+                    // Logika untuk menangani pembayaran yang tertunda bisa ditambahkan di sini
+                    // Contoh: redirect ke halaman complete payment
+                };
+
+                // 2. Scopes: 'username' untuk nama, 'payments' untuk transaksi masa depan
+                const scopes = ['username', 'payments'];
+
+                // 3. Panggil fungsi AUTHENTICATE (bukan identify)
+                const authResult = await Pi.authenticate(scopes, onIncompletePaymentFound);
 
                 if (!authResult || !authResult.user) {
-                    throw new Error("Gagal mendapatkan data user dari Pi Browser.");
+                    throw new Error("Gagal mendapatkan data user dari Pi Network.");
                 }
 
                 const user = authResult.user;
                 const accessToken = authResult.accessToken;
                 
                 // Gunakan username jika ada, jika tidak gunakan UID
-                const usernameToSend = user.username ? user.username : user.uid;
+                const usernameToSend = user.username || user.uid;
                 
                 console.log("User Pi Teridentifikasi:", user);
-                console.log("Username yang dikirim:", usernameToSend);
+                console.log("Access Token:", accessToken);
                 
-                updateStatus("Sinkronisasi Data...", "Mengecek hak akses pengguna...");
+                updateStatus("Menghubungi Server...", "Memverifikasi data pengguna...");
                 
+                // 4. Kirim ke Backend (Supabase Edge Function)
                 const endpoint = `${supabaseUrl}/functions/v1/${functionName}`;
-                console.log(`Mengirim request ke: ${endpoint}`);
                 
                 const response = await fetch(endpoint, {
                     method: 'POST',
@@ -327,25 +333,20 @@
                         accessToken: accessToken
                     })
                 });
-
-                console.log("Status Response:", response.status);
                 
                 if (!response.ok) {
                     let errText = "Gagal terhubung ke server.";
                     try {
                         const errJson = await response.json();
                         errText = errJson.message || errJson.error || errText;
-                    } catch(e) {
-                        const rawText = await response.text();
-                        if(rawText) errText = rawText;
-                    }
+                    } catch(e) {}
                     throw new Error(`Server Error ${response.status}: ${errText}`);
                 }
 
                 const data = await response.json();
-                console.log("Respon dari Edge Function:", data);
+                console.log("Respon Backend:", data);
 
-                // 4. LOGIKA REDIRECT
+                // 5. Logika Redirect Berhasil
                 if (data.success === true) {
                     localStorage.setItem('aurora_user', JSON.stringify(user));
                     localStorage.setItem('aurora_token', supabaseAnonKey);
@@ -367,12 +368,12 @@
                 console.error("Login Process Error:", err);
                 let msg = err.message || "Terjadi kesalahan sistem.";
                 
-                if(msg.includes("User denied") || msg.includes("cancel")) {
+                if(msg.includes("User cancelled") || msg.includes("User denied")) {
                     msg = "Anda membatalkan proses otentikasi.";
                 } else if(msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
-                    msg = "Gagal menghubungi server (CORS/Network). Periksa koneksi internet Anda.";
+                    msg = "Gagal menghubungi server. Periksa koneksi internet.";
                 } else if(msg.includes("401") || msg.includes("403")) {
-                    msg = "Otorisasi ditolak. Akun Anda mungkin belum terdaftar di database.";
+                    msg = "Otorisasi ditolak. Akun Anda mungkin belum terdaftar.";
                 }
                 
                 showError("Gagal Masuk", msg);
