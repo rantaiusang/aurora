@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pembayaran - Aurora Store</title>
     
     <!-- Font -->
@@ -18,6 +18,7 @@
             --dark-bg: #0f0c15;
             --card-bg: #1a1620;
             --danger-color: #ff4d4d;
+            --success-color: #4CAF50;
         }
 
         body {
@@ -28,6 +29,7 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            -webkit-tap-highlight-color: transparent;
         }
 
         /* Header */
@@ -134,10 +136,24 @@
             border: none; border-radius: 10px; font-size:1.1rem; font-weight: 800;
             cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
             transition: 0.3s; box-shadow: 0 5px 20px rgba(255, 215, 0, 0.2);
-            margin-top: 20px; position: relative;
+            margin-top: 20px; position: relative; display: flex; justify-content: center; align-items: center; gap: 10px;
         }
         .btn-pay:hover:not(:disabled) { background: #ffed4a; transform: translateY(-3px); box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4); }
         .btn-pay:disabled { background: #444; cursor: not-allowed; transform: none; box-shadow: none; color: #888; border: 1px solid #555; }
+
+        .btn-reset {
+            background: var(--danger-color) !important; color: white !important;
+            box-shadow: 0 5px 20px rgba(255, 77, 77, 0.2) !important;
+        }
+        .btn-reset:hover { background: #ff6666 !important; transform: translateY(-3px); }
+
+        /* Error Box */
+        .error-box {
+            display:none; background:rgba(255, 77, 77, 0.1); border:1px solid var(--danger-color); 
+            color:#ffcccc; padding:15px; border-radius:8px; margin-bottom:25px; font-size:0.85rem; 
+            text-align:center; line-height: 1.4;
+        }
+        .error-box strong { display: block; margin-bottom: 5px; color: #ff4d4d; }
 
         /* Success Overlay */
         .success-overlay {
@@ -182,7 +198,7 @@
             <h2>Konfirmasi Pembayaran</h2>
             <p class="sub-text">Lengkapi data pengiriman dan konfirmasi pembayaran.</p>
 
-            <div id="error-message" style="display:none; background:rgba(255, 77, 77, 0.15); border:1px solid var(--danger-color); color:#ffcccc; padding:15px; border-radius:8px; margin-bottom:25px; font-size:0.9rem; text-align:center;"></div>
+            <div id="error-message" class="error-box"></div>
 
             <form id="paymentForm" onsubmit="handlePayment(event)">
                 
@@ -223,6 +239,7 @@
                     <span class="total-amount" id="displayTotal">0.00 π</span>
                 </div>
 
+                <!-- Button akan diubah oleh Javascript -->
                 <button type="submit" class="btn-pay" id="payBtn" disabled>Memuat SDK...</button>
             </form>
 
@@ -237,11 +254,10 @@
         </div>
     </div>    
 
-          <!-- SCRIPT PI SDK ASLI -->
+    <!-- SCRIPT PI SDK ASLI -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
-    
-       <!-- SCRIPT LOGIC (FIX BUG 'every') -->
+    <!-- SCRIPT LOGIC (FIXED & OPTIMIZED) -->
     <script>
         // ==========================================
         //1. KONFIGURASI
@@ -265,7 +281,17 @@
         let tempCustomerData = {};
 
         // ==========================================
-        // 3. INISIALISASI (PERBAIKAN BUG CRASH)
+        // 3. FUNGSI RESET (PERBAIKAN UTAMA)
+        // ==========================================
+        function forceResetApp() {
+            // Hapus seluruh localstorage website untuk membersihkan cache yang rusak
+            localStorage.clear();
+            // Reload halaman untuk memuat ulang SDK
+            window.location.reload();
+        }
+
+        // ==========================================
+        // 4. INISIALISASI (PERBAIKAN BUG CRASH)
         // ==========================================
         document.addEventListener('DOMContentLoaded', async () => {
             console.log("Halaman dimuat. Memulai inisialisasi...");
@@ -286,86 +312,90 @@
                         if (window.Pi) {
                             clearInterval(interval);
                             resolve(window.Pi);
-                        } else if (attempts >= 100) {
+                        } else if (attempts >= 50) { // 25 detik timeout
                             clearInterval(interval);
-                            reject(new Error("SDK Gagal Dimuat"));
+                            reject(new Error("SDK Gagal Dimuat dalam batas waktu."));
                         }
                     }, 500);
                 });
             };
 
             try {
-                // 1. Tunggu SDK
+                // 1. Tunggu SDK terbaca oleh browser
                 const Pi = await waitForPi();
-                console.log("Pi SDK Object:", Pi);
+                console.log("Pi SDK Object terdeteksi:", Pi);
 
-                // 2. PERBAIKAN: Tangkap error 'reading every' di dalam blok Pi.init
-                // Error ini terjadi saat SDK membaca localStorage browser
-                try {
-                    Pi.init({ version: "2.0", appId: PI_APP_ID });
-                    console.log("Pi.init berhasil dijalankan.");
-                } catch (initError) {
-                    // Jika error 'every' muncul di sini, kita abaikan dan lanjutkan.
-                    // Terkadang inisialisasi 'gagal' tapi fungsi authenticate tetap bisa dipanggil.
-                    console.warn("Peringatan Init SDK (Diharapkan 'undefined reading every'):", initError.message);
-                    
-                    // Jika errornya BUKAN 'every', maka kita berhenti.
-                    if (!initError.message.includes('every')) {
-                        throw initError;
-                    }
-                }
+                // 2. Inisialisasi SDK (Langkah wajib sebelum authenticate)
+                // Pi.init v2.0 bersifat synchronous configuration
+                Pi.init({ version: "2.0", appId: PI_APP_ID });
+                console.log("Pi.init berhasil.");
 
-                // 3. Coba Authenticate
-                console.log("Mencoba Autentikasi...");
+                // 3. Autentikasi User
+                // Bagian ini sering menyebabkan error 'every' jika cache browser rusak
+                console.log("Memulai otentikasi...");
                 
-                // Kita buat timeout panjang karena browser mungkin lambat merespon setelah crash tadi
                 const authPromise = Pi.authenticate();
                 const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error("Waktu Habis")), 20000)
+                    setTimeout(() => reject(new Error("Waktu Habis saat login. Coba refresh.")), 25000)
                 );
                 
+                // Race antara promise login dan timeout
                 const user = await Promise.race([authPromise, timeoutPromise]);
 
-                if (user) {
+                if (user && user.uid) {
                     console.log("SUKSES LOGIN:", user);
                     currentUser = user;
                     isSDKReady = true;
-                    loadCartData();
+                    loadCartData(); // Load data setelah user valid
                 } else {
-                    throw new Error("User data kosong.");
+                    throw new Error("Gagal mendapatkan data user dari Pi.");
                 }
 
             } catch (error) {
                 console.error("FATAL ERROR:", error);
-                
-                let displayMsg = error.message;
-                
-                // Pesan spesifik untuk error 'every' jika lolos dari catch init
-                if (error.message.includes('every')) {
-                    displayMsg = "Bug Internal Pi Browser. Coba Refresh Halaman atau Hapus Cache Pi Browser.";
-                } else if (error.message.includes("User rejected")) {
-                    displayMsg = "Anda menolak izin akses.";
+                let displayMsg = error.message || "Terjadi kesalahan tidak dikenal.";
+                let isCriticalBug = false;
+
+                // Deteksi spesifik error "reading 'every'" (Bug Internal Pi Browser)
+                if (error.message && error.message.includes('every')) {
+                    displayMsg = "Bug Internal Pi Browser terdeteksi. Cache session mungkin rusak.";
+                    isCriticalBug = true;
+                } else if (error.message && error.message.includes("User rejected")) {
+                    displayMsg = "Anda menolak akses aplikasi.";
+                } else if (error.message && error.message.includes("SDK Gagal Dimuat")) {
+                    displayMsg = "Jaringan lambat atau SDK terblokir. Coba refresh.";
                 }
 
-                loadCartData(true);
-                if(btn) {
-                    btn.innerText = "Gagal Init";
-                    btn.disabled = false;
-                    btn.type = "button";
-                    btn.onclick = () => window.location.reload();
-                    btn.style.background = "#ff4d4d";
-                }
+                // Tampilkan Error di UI
                 if(errorMsg) {
-                    errorMsg.innerHTML = `<strong>Error:</strong> ${displayMsg}`;
+                    errorMsg.innerHTML = `<strong>${isCriticalBug ? 'KRITIS:' : 'Error:'}</strong> ${displayMsg}`;
                     errorMsg.style.display = 'block';
                 }
+
+                // Setup tombol reset jika error kritis
+                if(btn) {
+                    btn.disabled = false;
+                    btn.type = "button"; // Ubah jadi tombol biasa agar tidak submit form
+                    
+                    if (isCriticalBug) {
+                        btn.innerText = "Hapus Cache & Reset Aplikasi";
+                        btn.classList.add('btn-reset'); // Ganti warna jadi merah
+                        btn.onclick = forceResetApp; // Panggil fungsi reset
+                    } else {
+                        btn.innerText = "Coba Lagi";
+                        btn.onclick = () => window.location.reload();
+                    }
+                }
+                
+                // Tetap coba load cart (meski error) agar user melihat item, tapi disable tombol bayar
+                loadCartData(true); 
             }
         });
 
         // ==========================================
-        // 4. FUNGSI LOAD KERANJANG
+        // 5. FUNGSI LOAD KERANJANG
         // ==========================================
-        function loadCartData(forceMode = false) {
+        function loadCartData(errorMode = false) {
             const summaryDiv = document.getElementById('summaryList');
             const summaryContainer = document.getElementById('itemSummaryContainer');
             const totalDisplay = document.getElementById('displayTotal');
@@ -375,7 +405,8 @@
             cartItems = [];
             itemsJsonString = "[]";
             
-            if(!payBtn.onclick && payBtn.innerText !== "Gagal Init") { 
+            // Jika tidak sedang error mode dan tombol belum diubah jadi reset, disable tombol bayar sebentar
+            if(!errorMode && !payBtn.classList.contains('btn-reset')) { 
                 payBtn.disabled = true; 
             }
 
@@ -393,7 +424,7 @@
                 itemsJsonString = JSON.stringify(cartItems);
             } catch (e) {
                 console.error("JSON Parse Error:", e);
-                summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Data rusak.</span>';
+                summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Data keranjang rusak.</span>';
                 summaryContainer.style.display = 'block';
                 return;
             }
@@ -410,7 +441,7 @@
             cartItems.forEach(item => {
                 const name = item.name || item.product_name || item.title || "Produk";
                 let price = parseFloat(item.price) || 0;
-                const qty = item.qty ||1;
+                const qty = item.qty || 1;
                 const itemTotal = price * qty;
                 total += itemTotal; 
 
@@ -425,15 +456,17 @@
             summaryDiv.innerHTML = html;
             totalDisplay.innerText = total.toFixed(2) + " π";
             
-            if (total > 0 && isSDKReady && !payBtn.onclick) {
+            // Aktifkan tombol bayar hanya jika SDK siap, total > 0, dan tidak sedang dalam mode error
+            if (total > 0 && isSDKReady && !errorMode && !payBtn.onclick) {
                 payBtn.disabled = false;
                 payBtn.innerText = "Bayar Sekarang";
                 payBtn.type = "submit";
+                payBtn.classList.remove('btn-reset');
             }
         }
 
         // ==========================================
-        // 5. HANDLE PAYMENT
+        // 6. HANDLE PAYMENT
         // ==========================================
         async function handlePayment(e) {
             e.preventDefault();
@@ -450,6 +483,7 @@
             const btn = document.getElementById('payBtn');
             const errorMsg = document.getElementById('error-message');
 
+            // Validasi Input Sederhana
             if (name.length < 3) return showError("Nama terlalu pendek.");
             if (phone.length < 10) return showError("Nomor WhatsApp tidak valid.");
             if (address.length < 10) return showError("Alamat lengkap diperlukan.");
@@ -474,6 +508,7 @@
             try {
                 currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
+                // Panggil Pi.createPayment
                 await Pi.createPayment({
                     amount: Number(total.toFixed(2)),
                     memo: `Order #${currentOrderId}`,
@@ -485,6 +520,7 @@
                         console.log("onReadyForServerApproval:", paymentId);
                         
                         try {
+                            // Panggil backend Supabase untuk Approve
                             const res = await fetch(`${EDGE_FUNCTION_BASE}/approve`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
@@ -494,15 +530,25 @@
                                     txid: null 
                                 })
                             });
-                            if(!res.ok) console.error("Gagal approve", await res.text());
-                        } catch (e) { console.error("Error approve:", e); }
+                            
+                            if(!res.ok) {
+                                const errText = await res.text();
+                                console.error("Gagal approve backend:", errText);
+                                throw new Error("Gagal konfirmasi ke server (Approve).");
+                            }
+                        } catch (e) { 
+                            console.error("Error approve:", e); 
+                            // Jangan throw di sini agar tidak membatalkan payment flow Pi UI,
+                            // tapi log saja. Jika backend gagal, kita tangani di complete.
+                        }
                     },
 
                     onReadyForServerCompletion: async (paymentId, txid) => {
                         console.log("onReadyForServerCompletion:", paymentId, txid);
-                        btn.innerText = "Mengkonfirmasi...";
+                        btn.innerText = "Mengkonfirmasi Transaksi...";
 
                         try {
+                            // Panggil backend Supabase untuk Complete
                             const response = await fetch(`${EDGE_FUNCTION_BASE}/complete`, {
                                 method: 'POST',
                                 headers: { 
@@ -522,24 +568,25 @@
                             const result = await response.json();
 
                             if (response.ok && (result.status === 'completed' || result.status === 'completed_and_saved')) {
+                                // SUKSES
                                 localStorage.removeItem('aurora_cart');
                                 document.getElementById('successName').innerText = name;
                                 document.getElementById('successOverlay').classList.add('show');
                             } else {
-                                showError("Verifikasi Gagal: " + (result.message || "Error Server"));
-                                resetButton();
+                                // Backend gagal memverifikasi
+                                throw new Error(result.message || "Server menolak transaksi.");
                             }
 
                         } catch (err) {
                             console.error(err);
-                            showError("Gagal koneksi server saat penyelesaian.");
+                            showError("Verifikasi Gagal: " + (err.message || "Error Server"));
                             resetButton();
                         }
                     },
                     
                     onCancelled: (paymentId) => {
                         resetButton();
-                        showError("Pembayaran dibatalkan oleh pengguna.");
+                        showError("Pembayaran dibatalkan.");
                     },
                     
                     onError: (error, payment) => {
@@ -565,7 +612,7 @@
 
         function showError(msg) {
             const div = document.getElementById('error-message');
-            div.innerText = msg;
+            div.innerHTML = `<strong>Error:</strong> ${msg}`;
             div.style.display = 'block';
             div.animate([
                 { transform: 'translateX(-10px)' },
