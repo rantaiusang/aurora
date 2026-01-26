@@ -237,11 +237,11 @@
         </div>
     </div>    
 
-        <!-- SCRIPT PI SDK ASLI -->
+            <!-- SCRIPT PI SDK ASLI -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
     
-       <!-- SCRIPT LOGIC (PERBAIKAN V2.0) -->
+       <!-- SCRIPT LOGIC (DEBUGGING VERSION) -->
     <script>
         // ==========================================
         //1. KONFIGURASI
@@ -265,85 +265,106 @@
         let tempCustomerData = {};
 
         // ==========================================
-        // 3. INISIALISASI (PERBAIKAN DI SINI!)
+        // 3. INISIALISASI (PERBAIKAN LOGIKA & DEBUG)
         // ==========================================
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log("Payment Page Loaded.");
-
-            // Cek SDK secara berkala (agar tidak error jika script belum termuat sepenuhnya)
-            let attempts = 0;
-            const maxAttempts = 60; 
+            console.log("Halaman dimuat. Memulai pengecekan SDK...");
             
-            const checkSDK = setInterval(() => {
-                attempts++;
-                
-                if (window.Pi && typeof Pi.init === 'function') {
-                    clearInterval(checkSDK);
-                    initializeApp();
-                } 
-                else if (attempts >= maxAttempts) {
-                    clearInterval(checkSDK);
-                    console.error("TIMEOUT: SDK tidak terdeteksi.");
-                    loadCartData(true);
-                    const btn = document.getElementById('payBtn');
-                    btn.innerText = "SDK Gagal Muat";
-                    btn.style.background = "#ff4d4d";
-                }
-            }, 500);
-
-            // Fungsi Inisialisasi Baru (Async)
-            async function initializeApp() {
-                const btn = document.getElementById('payBtn');
-                
-                try {
-                    // 1. Init SDK
-                    console.log("Menginisialisasi SDK...");
-                    Pi.init({ version: "2.0", appId: PI_APP_ID });
-                    
-                    // 2. Auth User (INI CARA V2.0)
-                    // Kita gunakan 'await' karena ini adalah Promise
-                    const user = await Pi.authenticate(); 
-                    
-                    if (user) {
-                        console.log("User Authenticated:", user);
-                        currentUser = user;
-                        isSDKReady = true;
-                        
-                        // Load data keranjang jika user berhasil login
-                        loadCartData();
-                    } else {
-                        throw new Error("User data tidak ditemukan setelah auth");
+            const btn = document.getElementById('payBtn');
+            const errorMsg = document.getElementById('error-message');
+            
+            // Fungsi Helper untuk menunggu objek Pi siap
+            const waitForPi = () => {
+                return new Promise((resolve, reject) => {
+                    if (window.Pi) {
+                        resolve(window.Pi);
+                        return;
                     }
+                    
+                    let attempts = 0;
+                    const maxAttempts = 100; // Tunggu sampai 50 detik
+                    
+                    const interval = setInterval(() => {
+                        attempts++;
+                        if (window.Pi) {
+                            clearInterval(interval);
+                            resolve(window.Pi);
+                        } else if (attempts >= maxAttempts) {
+                            clearInterval(interval);
+                            reject(new Error("Waktu habis menunggu Pi SDK. Pastikan internet stabil."));
+                        }
+                    }, 500);
+                });
+            };
 
-                } catch (error) {
-                    console.error("ERROR SDK / AUTH:", error);
-                    
-                    // Tampilkan pesan error di UI
-                    loadCartData(true); 
-                    
-                    // Cek jenis error (Misal: User menutup popup login atau session expired)
-                    const errorMsg = document.getElementById('error-message');
-                    
-                    btn.innerText = "Login Gagal / Sesi Habis";
+            try {
+                // 1. Tunggu SDK termuat di window
+                console.log("1. Menunggu Pi SDK...");
+                const Pi = await waitForPi();
+                console.log("   -> SDK Ditemukan:", Pi);
+
+                // 2. Inisialisasi SDK
+                console.log("2. Menjalankan Pi.init...");
+                Pi.init({ version: "2.0", appId: PI_APP_ID });
+                console.log("   -> Init Selesai.");
+
+                // 3. Otentikasi User (Ini bagian yang biasanya error)
+                console.log("3. Memulai Pi.authenticate...");
+                
+                // Tambahkan timeout manual jika authenticate macet
+                const authPromise = Pi.authenticate();
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error("Login Timeout (Popup tidak muncul/terlalu lama)")), 15000)
+                );
+                
+                // Gunakan Promise.race untuk membatasi waktu tunggu
+                const user = await Promise.race([authPromise, timeoutPromise]);
+
+                if (user) {
+                    console.log("   -> AUTH SUKSES! User:", user);
+                    currentUser = user;
+                    isSDKReady = true;
+                    loadCartData();
+                } else {
+                    throw new Error("User kosong setelah authenticate.");
+                }
+
+            } catch (error) {
+                console.error("=== TERJADI ERROR ===");
+                console.error("Nama Error:", error.name);
+                console.error("Pesan Error:", error.message);
+                console.error("Detail Error:", error);
+
+                // Tampilkan pesan error spesifik di layar
+                let displayMsg = error.message;
+
+                if (error.message.includes("Timeout")) {
+                    displayMsg = "Waktu habis. Pastikan Popup Login muncul. Jika tidak, cek Izin Aplikasi di Dashboard.";
+                } else if (error.message.includes("not a function")) {
+                    displayMsg = "Versi SDK tidak cocok. Coba bersihkan cache browser.";
+                }
+
+                // Tampilkan di UI
+                loadCartData(true);
+                
+                if(btn) {
+                    btn.innerText = "Gagal Login";
                     btn.disabled = false;
-                    btn.type = "button"; // Ubah jadi tombol biasa
-                    btn.onclick = function() { 
-                        // Refresh halaman untuk memicu login ulang
-                        window.location.reload(); 
-                    };
+                    btn.type = "button";
+                    btn.onclick = () => window.location.reload();
                     btn.style.background = "#ff4d4d";
                     btn.style.color = "#fff";
+                }
 
-                    if(errorMsg) {
-                        errorMsg.innerText = "Gagal autentikasi. Pastikan Anda membuka halaman ini di aplikasi Pi Browser.";
-                        errorMsg.style.display = 'block';
-                    }
+                if(errorMsg) {
+                    errorMsg.innerHTML = `<strong>Detail Error:</strong><br>${displayMsg}<br><br><small>CEK CONSOLE (F12) untuk info lebih lanjut.</small>`;
+                    errorMsg.style.display = 'block';
                 }
             }
         });
 
         // ==========================================
-        // 4. FUNGSI LOAD KERANJANG (Tetap Sama)
+        // 4. FUNGSI LOAD KERANJANG
         // ==========================================
         function loadCartData(forceMode = false) {
             const summaryDiv = document.getElementById('summaryList');
@@ -355,8 +376,7 @@
             cartItems = [];
             itemsJsonString = "[]";
             
-            // Jangan disable tombol jika sedang dalam mode error (onclick sudah di-set)
-            if(!payBtn.onclick && payBtn.innerText !== "Login Gagal / Sesi Habis") { 
+            if(!payBtn.onclick && payBtn.innerText !== "Gagal Login") { 
                 payBtn.disabled = true; 
             }
 
@@ -406,7 +426,6 @@
             summaryDiv.innerHTML = html;
             totalDisplay.innerText = total.toFixed(2) + " π";
             
-            // Update tombol jika sukses
             if (total > 0 && isSDKReady && !payBtn.onclick) {
                 payBtn.disabled = false;
                 payBtn.innerText = "Bayar Sekarang";
@@ -415,7 +434,7 @@
         }
 
         // ==========================================
-        // 5. HANDLE PAYMENT (Tetap Sama)
+        // 5. HANDLE PAYMENT
         // ==========================================
         async function handlePayment(e) {
             e.preventDefault();
@@ -560,6 +579,5 @@
             window.location.href = 'thankyou.html';
         }
     </script>
-    
 </body>
 </html>
