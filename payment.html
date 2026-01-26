@@ -112,7 +112,7 @@
             background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;
             margin-bottom: 25px; font-size: 0.85rem; color: #ccc;
             max-height: 100px; overflow-y: auto;
-            border: 1px solid rgba(255,255,255,0.05); display: none;
+            border: 1px solid rgba(255,255,255,0.05); display: none; /* Hidden by default */
         }
         .item-summary::-webkit-scrollbar { width: 4px; }
         .item-summary::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
@@ -211,9 +211,10 @@
                            readonly required>
                 </div>
 
+                <!-- CONTAINER RINGKASAN -->
                 <div class="item-summary" id="itemSummaryContainer">
                     <strong style="color:var(--luxury-gold); display:block; margin-bottom:10px;">Ringkasan Pesanan:</strong>
-                    <div id="summaryList">Memuat...</div>
+                    <div id="summaryList">Memuat data...</div>
                 </div>
 
                 <div class="total-display">
@@ -221,7 +222,7 @@
                     <span class="total-amount" id="displayTotal">0.00 π</span>
                 </div>
 
-                <button type="submit" class="btn-pay" id="payBtn">Bayar Sekarang</button>
+                <button type="submit" class="btn-pay" id="payBtn" disabled>Bayar Sekarang</button>
             </form>
 
             <div class="success-overlay" id="successOverlay">
@@ -245,6 +246,7 @@
         
         const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
 
+        // Variabel Global
         let total = 0;
         let cartItems = [];
         let itemNameStr = ""; 
@@ -252,7 +254,11 @@
         let currentOrderId = null;
         let currentUser = null;
 
-        window.addEventListener('load', async () => {
+        // --- PERBAIKAN UTAMA: TUNGGU HTML SIAP SEBELUM EKSEKUSI ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log("DOM Loaded. Memulai inisialisasi...");
+            
+            // 1. Inisialisasi Pi SDK
             try {
                 await Pi.init({ version: "2.0" });
                 try {
@@ -261,13 +267,21 @@
                 } catch (e) { console.warn("Auth skipped:", e); }
             } catch (e) { console.warn("Pi Init Warning:", e); }
             
-            // Jalankan loadCart
+            // 2. Jalankan loadCart (Ini sekarang aman karena elemen HTML sudah ada)
             loadCartData();
         });
 
         function loadCartData() {
             const summaryDiv = document.getElementById('summaryList');
             const summaryContainer = document.getElementById('itemSummaryContainer');
+            const totalDisplay = document.getElementById('displayTotal');
+            const payBtn = document.getElementById('payBtn');
+
+            // Reset state
+            total = 0;
+            itemNameStr = "";
+            cartItems = [];
+            payBtn.disabled = true;
 
             // 1. CEK LANGSUNG LOCALSTORAGE
             const rawCart = localStorage.getItem('aurora_cart');
@@ -277,8 +291,10 @@
 
             if (!rawCart) {
                 console.error("LOCALSTORAGE KOSONG!");
-                alert("Keranjang kosong. Mengalihkan ke toko...");
-                window.location.href = 'store.html';
+                summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Keranjang kosong.</span>';
+                summaryContainer.style.display = 'block'; // Tampilkan pesan error
+                // Opsional: Redirect otomatis
+                // setTimeout(() => window.location.href = 'store.html', 2000);
                 return;
             }
 
@@ -287,14 +303,14 @@
                 console.log("Parsed Items:", cartItems);
             } catch (e) {
                 console.error("Gagal parse JSON:", e);
-                alert("Data keranjang rusak. Mengalihkan...");
-                window.location.href = 'store.html';
+                summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Data keranjang rusak.</span>';
+                summaryContainer.style.display = 'block';
                 return;
             }
 
-            if (cartItems.length === 0) {
-                alert("Keranjang kosong.");
-                window.location.href = 'store.html';
+            if (!cartItems || cartItems.length === 0) {
+                summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Keranjang kosong.</span>';
+                summaryContainer.style.display = 'block';
                 return;
             }
 
@@ -307,7 +323,17 @@
                 console.log("Item Object:", item);
                 
                 const name = item.name || item.product_name || item.title || "Produk";
-                const price = parseFloat(item.price) || 0;
+                
+                // PERBAIKAN: Parsing harga yang aman
+                let price = 0;
+                if (typeof item.price === 'string') {
+                    price = parseFloat(item.price.replace(',', '.'));
+                } else {
+                    price = parseFloat(item.price);
+                }
+                
+                if (isNaN(price)) price = 0;
+
                 const qty = item.qty || 1;
                 
                 const itemTotal = price * qty;
@@ -324,7 +350,13 @@
 
             itemNameStr = itemNameStr.slice(0, -2);
             summaryDiv.innerHTML = html;
-            document.getElementById('displayTotal').innerText = total.toFixed(2) + " π";
+            totalDisplay.innerText = total.toFixed(2) + " π";
+            
+            // Aktifkan tombol jika total > 0
+            if (total > 0) {
+                payBtn.disabled = false;
+                payBtn.innerText = "Bayar Sekarang";
+            }
             
             console.log("Total Calculation Selesai:", total);
         }
