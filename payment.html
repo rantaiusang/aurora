@@ -144,14 +144,15 @@
         .btn-reset {
             background: var(--danger-color) !important; color: white !important;
             box-shadow: 0 5px 20px rgba(255, 77, 77, 0.2) !important;
+            font-size: 0.9rem !important; padding: 15px !important;
         }
         .btn-reset:hover { background: #ff6666 !important; transform: translateY(-3px); }
 
         /* Error Box */
         .error-box {
             display:none; background:rgba(255, 77, 77, 0.1); border:1px solid var(--danger-color); 
-            color:#ffcccc; padding:15px; border-radius:8px; margin-bottom:25px; font-size:0.85rem; 
-            text-align:center; line-height: 1.4;
+            color:#ffcccc; padding:15px; border-radius:8px; margin-bottom:25px; font-size:0.8rem; 
+            text-align:center; line-height: 1.5;
         }
         .error-box strong { display: block; margin-bottom: 5px; color: #ff4d4d; }
 
@@ -239,7 +240,6 @@
                     <span class="total-amount" id="displayTotal">0.00 π</span>
                 </div>
 
-                <!-- Button akan diubah oleh Javascript -->
                 <button type="submit" class="btn-pay" id="payBtn" disabled>Memuat SDK...</button>
             </form>
 
@@ -254,10 +254,10 @@
         </div>
     </div>    
 
-    <!-- SCRIPT PI SDK ASLI -->
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <!-- SCRIPT PI SDK ASLI (DITAMBAH ?v=2.0 AGAR TIDAK CACHE) -->
+    <script src="https://sdk.minepi.com/pi-sdk.js?v=2.0"></script>
     
-    <!-- SCRIPT LOGIC (FIXED & OPTIMIZED) -->
+    <!-- SCRIPT LOGIC (FIXED PRICE DISPLAY) -->
     <script>
         // ==========================================
         //1. KONFIGURASI
@@ -281,25 +281,15 @@
         let tempCustomerData = {};
 
         // ==========================================
-        // 3. FUNGSI RESET (PERBAIKAN UTAMA)
-        // ==========================================
-        function forceResetApp() {
-            // Hapus seluruh localstorage website untuk membersihkan cache yang rusak
-            localStorage.clear();
-            // Reload halaman untuk memuat ulang SDK
-            window.location.reload();
-        }
-
-        // ==========================================
-        // 4. INISIALISASI (PERBAIKAN BUG CRASH)
+        // 3. INISIALISASI (DEEP FIX: TUNGGU PI BROWSER BANGUN)
         // ==========================================
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log("Halaman dimuat. Memulai inisialisasi...");
-            
             const btn = document.getElementById('payBtn');
             const errorMsg = document.getElementById('error-message');
             
-            // Fungsi Helper untuk menunggu Pi
+            // TUNGGU 1 DETIK PERTAMA KALI
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
             const waitForPi = () => {
                 return new Promise((resolve, reject) => {
                     if (window.Pi) {
@@ -312,88 +302,82 @@
                         if (window.Pi) {
                             clearInterval(interval);
                             resolve(window.Pi);
-                        } else if (attempts >= 50) { // 25 detik timeout
+                        } else if (attempts >= 40) { 
                             clearInterval(interval);
-                            reject(new Error("SDK Gagal Dimuat dalam batas waktu."));
+                            reject(new Error("SDK Pi Browser tidak merespon."));
                         }
                     }, 500);
                 });
             };
 
             try {
-                // 1. Tunggu SDK terbaca oleh browser
+                // 1. Tunggu Object Pi
                 const Pi = await waitForPi();
-                console.log("Pi SDK Object terdeteksi:", Pi);
+                console.log("SDK Ready");
 
-                // 2. Inisialisasi SDK (Langkah wajib sebelum authenticate)
-                // Pi.init v2.0 bersifat synchronous configuration
-                Pi.init({ version: "2.0", appId: PI_APP_ID });
-                console.log("Pi.init berhasil.");
+                // 2. Coba Init (Langkah Kritis)
+                try {
+                    Pi.init({ version: "2.0", appId: PI_APP_ID });
+                } catch (initErr) {
+                    console.warn("Init warning:", initErr);
+                }
 
-                // 3. Autentikasi User
-                // Bagian ini sering menyebabkan error 'every' jika cache browser rusak
-                console.log("Memulai otentikasi...");
-                
+                // 3. Authenticate
                 const authPromise = Pi.authenticate();
                 const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error("Waktu Habis saat login. Coba refresh.")), 25000)
+                    setTimeout(() => reject(new Error("Timeout")), 25000)
                 );
                 
-                // Race antara promise login dan timeout
                 const user = await Promise.race([authPromise, timeoutPromise]);
 
                 if (user && user.uid) {
-                    console.log("SUKSES LOGIN:", user);
                     currentUser = user;
                     isSDKReady = true;
-                    loadCartData(); // Load data setelah user valid
+                    loadCartData();
                 } else {
-                    throw new Error("Gagal mendapatkan data user dari Pi.");
+                    throw new Error("Gagal login: User tidak ditemukan.");
                 }
 
             } catch (error) {
-                console.error("FATAL ERROR:", error);
-                let displayMsg = error.message || "Terjadi kesalahan tidak dikenal.";
+                console.error("ERROR FATAL:", error);
+                let displayMsg = error.message || "Error tidak dikenal.";
                 let isCriticalBug = false;
 
-                // Deteksi spesifik error "reading 'every'" (Bug Internal Pi Browser)
-                if (error.message && error.message.includes('every')) {
-                    displayMsg = "Bug Internal Pi Browser terdeteksi. Cache session mungkin rusak.";
+                if (error.message.includes('every')) {
+                    displayMsg = "BUG DEEP APP.<br>Error 'reading every' berarti Aplikasi Pi Browser di HP Anda korup.<br><br><strong>Langkah Manual:</strong><br>1. Tutup aplikasi Pi Browser.<br>2. Buka Settings HP > Aplikasi > Pi Browser > Clear Data/Cache.<br>3. Buka kembali.";
                     isCriticalBug = true;
-                } else if (error.message && error.message.includes("User rejected")) {
-                    displayMsg = "Anda menolak akses aplikasi.";
-                } else if (error.message && error.message.includes("SDK Gagal Dimuat")) {
-                    displayMsg = "Jaringan lambat atau SDK terblokir. Coba refresh.";
+                } else if (error.message.includes("Timeout")) {
+                    displayMsg = "Koneksi ke Pi Browser terputus. Coba refresh.";
                 }
 
-                // Tampilkan Error di UI
                 if(errorMsg) {
-                    errorMsg.innerHTML = `<strong>${isCriticalBug ? 'KRITIS:' : 'Error:'}</strong> ${displayMsg}`;
+                    errorMsg.innerHTML = `<strong style="color:var(--danger-color)">GAGAL:</strong> ${displayMsg}`;
                     errorMsg.style.display = 'block';
                 }
 
-                // Setup tombol reset jika error kritis
                 if(btn) {
                     btn.disabled = false;
-                    btn.type = "button"; // Ubah jadi tombol biasa agar tidak submit form
+                    btn.type = "button";
+                    btn.classList.add('btn-reset');
                     
                     if (isCriticalBug) {
-                        btn.innerText = "Hapus Cache & Reset Aplikasi";
-                        btn.classList.add('btn-reset'); // Ganti warna jadi merah
-                        btn.onclick = forceResetApp; // Panggil fungsi reset
+                        btn.innerText = "Klik Disini untuk Panduan Reset";
+                        btn.onclick = () => {
+                            alert("Silakan lakukan langkah manual:\n\n1. Tutup Aplikasi Pi Browser.\n2. Masuk ke Setting HP > Apps > Pi Browser.\n3. Pilih 'Clear Data' atau 'Clear Cache'.\n4. Buka aplikasi Pi Browser lagi dan coba checkout.");
+                            window.location.href = "https://minepi.com/pi-browser";
+                        };
                     } else {
-                        btn.innerText = "Coba Lagi";
+                        btn.innerText = "Coba Lagi (Reload)";
                         btn.onclick = () => window.location.reload();
                     }
                 }
                 
-                // Tetap coba load cart (meski error) agar user melihat item, tapi disable tombol bayar
                 loadCartData(true); 
             }
         });
 
         // ==========================================
-        // 5. FUNGSI LOAD KERANJANG
+        // 4. FUNGSI LOAD KERANJANG (FIX DISPLAY PRICE)
         // ==========================================
         function loadCartData(errorMode = false) {
             const summaryDiv = document.getElementById('summaryList');
@@ -405,7 +389,6 @@
             cartItems = [];
             itemsJsonString = "[]";
             
-            // Jika tidak sedang error mode dan tombol belum diubah jadi reset, disable tombol bayar sebentar
             if(!errorMode && !payBtn.classList.contains('btn-reset')) { 
                 payBtn.disabled = true; 
             }
@@ -423,7 +406,6 @@
                 cartItems = JSON.parse(rawCart);
                 itemsJsonString = JSON.stringify(cartItems);
             } catch (e) {
-                console.error("JSON Parse Error:", e);
                 summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Data keranjang rusak.</span>';
                 summaryContainer.style.display = 'block';
                 return;
@@ -445,18 +427,24 @@
                 const itemTotal = price * qty;
                 total += itemTotal; 
 
+                // --- FIX DISPLAY HARGA ---
+                // Kita gunakan helper function untuk format harga agar tidak jadi 0.00
+                const formattedPrice = formatPrice(itemTotal);
+
                 html += `
                     <div class="item-row">
                         <span>${name} (x${qty})</span>
-                        <span>${itemTotal.toFixed(2)} π</span>
+                        <span>${formattedPrice} π</span>
                     </div>
                 `;
             });
 
             summaryDiv.innerHTML = html;
-            totalDisplay.innerText = total.toFixed(2) + " π";
             
-            // Aktifkan tombol bayar hanya jika SDK siap, total > 0, dan tidak sedang dalam mode error
+            // Format Total juga
+            const formattedTotal = formatPrice(total);
+            totalDisplay.innerText = formattedTotal + " π";
+            
             if (total > 0 && isSDKReady && !errorMode && !payBtn.onclick) {
                 payBtn.disabled = false;
                 payBtn.innerText = "Bayar Sekarang";
@@ -465,8 +453,19 @@
             }
         }
 
+        // Helper Function untuk Format Harga (Solusi Masalah Anda)
+        function formatPrice(num) {
+            // Jika angkanya sangat kecil (mirip harga Pi), gunakan toPrecision(4) agar terbaca jelas
+            // Contoh: 0.00005678 -> tetap 0.00005678
+            if (num > 0 && num < 0.01) {
+                return num.toPrecision(4);
+            }
+            // Jika angka bulat/normal, gunakan 2 desimal
+            return num.toFixed(2);
+        }
+
         // ==========================================
-        // 6. HANDLE PAYMENT
+        // 5. HANDLE PAYMENT
         // ==========================================
         async function handlePayment(e) {
             e.preventDefault();
@@ -483,7 +482,6 @@
             const btn = document.getElementById('payBtn');
             const errorMsg = document.getElementById('error-message');
 
-            // Validasi Input Sederhana
             if (name.length < 3) return showError("Nama terlalu pendek.");
             if (phone.length < 10) return showError("Nomor WhatsApp tidak valid.");
             if (address.length < 10) return showError("Alamat lengkap diperlukan.");
@@ -508,9 +506,13 @@
             try {
                 currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
-                // Panggil Pi.createPayment
+                // --- FIX AMOUNT SENDING ---
+                // Kita bulatkan ke 8 desimal saat mengirim ke supabase/pi
+                // agar tidak error "too many decimal places"
+                const paymentAmount = Number(total.toFixed(8));
+
                 await Pi.createPayment({
-                    amount: Number(total.toFixed(2)),
+                    amount: paymentAmount,
                     memo: `Order #${currentOrderId}`,
                     metadata: { orderId: currentOrderId }
                 }, {
@@ -520,7 +522,6 @@
                         console.log("onReadyForServerApproval:", paymentId);
                         
                         try {
-                            // Panggil backend Supabase untuk Approve
                             const res = await fetch(`${EDGE_FUNCTION_BASE}/approve`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
@@ -531,16 +532,8 @@
                                 })
                             });
                             
-                            if(!res.ok) {
-                                const errText = await res.text();
-                                console.error("Gagal approve backend:", errText);
-                                throw new Error("Gagal konfirmasi ke server (Approve).");
-                            }
-                        } catch (e) { 
-                            console.error("Error approve:", e); 
-                            // Jangan throw di sini agar tidak membatalkan payment flow Pi UI,
-                            // tapi log saja. Jika backend gagal, kita tangani di complete.
-                        }
+                            if(!res.ok) console.error("Gagal approve", await res.text());
+                        } catch (e) { console.error("Error approve:", e); }
                     },
 
                     onReadyForServerCompletion: async (paymentId, txid) => {
@@ -548,7 +541,6 @@
                         btn.innerText = "Mengkonfirmasi Transaksi...";
 
                         try {
-                            // Panggil backend Supabase untuk Complete
                             const response = await fetch(`${EDGE_FUNCTION_BASE}/complete`, {
                                 method: 'POST',
                                 headers: { 
@@ -559,7 +551,7 @@
                                     paymentId: paymentId,
                                     txid: txid,
                                     orderId: currentOrderId,
-                                    amount: total,
+                                    amount: paymentAmount,
                                     items: itemsJsonString,
                                     customerData: tempCustomerData
                                 })
@@ -568,12 +560,10 @@
                             const result = await response.json();
 
                             if (response.ok && (result.status === 'completed' || result.status === 'completed_and_saved')) {
-                                // SUKSES
                                 localStorage.removeItem('aurora_cart');
                                 document.getElementById('successName').innerText = name;
                                 document.getElementById('successOverlay').classList.add('show');
                             } else {
-                                // Backend gagal memverifikasi
                                 throw new Error(result.message || "Server menolak transaksi.");
                             }
 
@@ -614,11 +604,6 @@
             const div = document.getElementById('error-message');
             div.innerHTML = `<strong>Error:</strong> ${msg}`;
             div.style.display = 'block';
-            div.animate([
-                { transform: 'translateX(-10px)' },
-                { transform: 'translateX(10px)' },
-                { transform: 'translateX(0)' }
-            ], { duration: 300 });
         }
 
         function redirectToThankYou() {
