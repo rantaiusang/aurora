@@ -391,6 +391,8 @@
         // ==========================================
         async function syncUserToSupabase(piUser) {
             try {
+                console.log("Sinkronisasi user ke database dimulai...");
+                
                 // 1. Cek apakah user sudah ada berdasarkan pi_uid
                 const { data: existingUser, error } = await supabaseClient
                     .from('users')
@@ -404,7 +406,7 @@
                 }
 
                 if (existingUser) {
-                    console.log("User ditemukan:", existingUser);
+                    console.log("User ditemukan di DB:", existingUser);
                     dbUser = existingUser;
                     return existingUser;
                 } else {
@@ -452,7 +454,7 @@
             if (window.Pi) {
                 try {
                     await Pi.init(APP_ID, { version: "2.0" });
-                    // AUTHENTICATE (Perbaikan: tambah array permission)
+                    // AUTHENTICATE
                     const auth = await Pi.authenticate(['username', 'payments']);
                     
                     currentUser = auth.user;
@@ -520,32 +522,57 @@
             return fallback || '';
         }
 
+        // ==========================================
+        // PERBAIKAN: FUNGSI BUKA PROFIL
+        // ==========================================
         function openProfileModal() {
             const contentDiv = document.getElementById('profileContent');
             const modal = document.getElementById('profileModal');
             
-            if (!dbUser && !currentUser) { 
-                alert("Anda belum login atau data belum termuat."); 
+            if (!currentUser) { 
+                alert("Anda belum login."); 
                 return; 
             }
 
-            // Gunakan data dbUser (lengkap) atau currentUser (fallback)
-            const userData = dbUser || currentUser;
-            
-            // Ambil data poin jika ada, jika tidak tampilkan 0
-            const points = userData.points || 0;
-            const totalSpent = formatPrice(userData.total_spent || 0);
-            const totalOrders = userData.total_orders || 0;
-
-            contentDiv.innerHTML = `
-                <div class="profile-detail-row"><span class="profile-label">Username</span><span class="profile-value">${userData.username || "-"}</span></div>
-                <div class="profile-detail-row"><span class="profile-label">UID</span><span class="profile-value">${userData.pi_uid || "-"}</span></div>
-                <div class="profile-detail-row"><span class="profile-label">Status</span><span class="profile-value" style="color: #4CAF50;">Aktif</span></div>
-                <div class="profile-detail-row"><span class="profile-label">Total Belanja</span><span class="profile-value">${totalSpent} π</span></div>
-                <div class="profile-detail-row"><span class="profile-label">Total Order</span><span class="profile-value">${totalOrders}x</span></div>
-                <div class="profile-detail-row"><span class="profile-label">Poin Loyalitas</span><span class="profile-value points">${points} Pts</span></div>
-            `;
             modal.classList.add('show');
+
+            // Cek apakah data database sudah siap
+            if (dbUser) {
+                // Tampilkan data lengkap dari database
+                const points = dbUser.points || 0;
+                const totalSpent = formatPrice(dbUser.total_spent || 0);
+                const totalOrders = dbUser.total_orders || 0;
+
+                contentDiv.innerHTML = `
+                    <div class="profile-detail-row"><span class="profile-label">Username</span><span class="profile-value">${dbUser.username || "-"}</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">UID</span><span class="profile-value">${dbUser.pi_uid || "-"}</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">Status</span><span class="profile-value" style="color: #4CAF50;">Aktif</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">Total Belanja</span><span class="profile-value">${totalSpent} π</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">Total Order</span><span class="profile-value">${totalOrders}x</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">Poin Loyalitas</span><span class="profile-value points">${points} Pts</span></div>
+                `;
+            } else {
+                // Fallback: Gunakan currentUser (dari Pi Browser) jika DB belum siap
+                // PERBAIKAN: Ambil UID dari currentUser.uid
+                const username = currentUser.username || "Pioneer";
+                const piUid = currentUser.uid || "-"; // Ini yang tadi tidak muncul
+                
+                contentDiv.innerHTML = `
+                    <div class="profile-detail-row"><span class="profile-label">Username</span><span class="profile-value">${username}</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">UID</span><span class="profile-value">${piUid}</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">Status</span><span class="profile-value" style="color: #4CAF50;">Aktif</span></div>
+                    <div class="profile-detail-row" style="justify-content:center; color:#888; font-style:italic;">Memuat statistik belanja...</div>
+                `;
+
+                // Coba sync lagi setelah modal terbuka jika masih belum ada dbUser
+                if(!dbUser) {
+                    setTimeout(async () => {
+                        await syncUserToSupabase(currentUser);
+                        // Refresh modal jika dbUser sudah ada
+                        if(dbUser) openProfileModal(); 
+                    }, 500);
+                }
+            }
         }
 
         // ==========================================
@@ -572,7 +599,7 @@
                 const { data: orders, error } = await supabaseClient
                     .from('orders')
                     .select('*')
-                    .eq('user_id', userUid) // Sesuaikan dengan nama kolom: user_id
+                    .eq('user_id', userUid) 
                     .order('created_at', { ascending: false });
 
                 if (error) {
