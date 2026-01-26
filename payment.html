@@ -244,13 +244,18 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // ==========================================
-        // 1. KONFIGURASI SUPABASE
+        // 1. KONFIGURASI SUPABASE & EDGE FUNCTION
         // ==========================================
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         
-        // Inisialisasi Client Supabase
+        // Inisialisasi Client Supabase (Hanya diperlukan jika ingin query lain diluar payment, 
+        // tapi di sini kita lebih banyak pakai Edge Function untuk keamanan)
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // URL EDGE FUNCTION YANG SUDAH DI-DEPLOY
+        // GANTI dengan URL function Anda jika berbeda
+        const EDGE_FUNCTION_URL = 'https://dikapquhusbwjccbqcsb.supabase.co/functions/v1/verify-pi-payment';
 
         // ==========================================
         // 2. VARIABEL GLOBAL
@@ -259,7 +264,7 @@
         
         let total = 0;
         let cartItems = [];
-        let itemsJsonString = "[]"; // Akan diisi JSON array: [{"name":"A", "qty":1}, ...]
+        let itemsJsonString = "[]";
         let currentPaymentId = null; 
         let currentOrderId = null;
         let currentUser = null;
@@ -282,7 +287,7 @@
 
             // Cek ketersediaan Pi SDK
             let attempts = 0;
-            const maxAttempts = 15; // Tunggu sampai 7.5 detik
+            const maxAttempts = 15;
             
             const checkSDK = setInterval(() => {
                 attempts++;
@@ -345,17 +350,15 @@
 
             const rawCart = localStorage.getItem('aurora_cart');
             
-            // Validasi Kosong
             if (!rawCart) {
                 summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Keranjang kosong. Kembali ke Store.</span>';
                 summaryContainer.style.display = 'block';
                 return;
             }
 
-            // Parsing JSON
             try {
                 cartItems = JSON.parse(rawCart);
-                itemsJsonString = JSON.stringify(cartItems); // Siapkan string untuk DB
+                itemsJsonString = JSON.stringify(cartItems);
             } catch (e) {
                 summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Data keranjang rusak.</span>';
                 summaryContainer.style.display = 'block';
@@ -368,7 +371,6 @@
                 return;
             }
 
-            // Render HTML Tampilan
             summaryContainer.style.display = 'block';
             let html = '';
             
@@ -382,7 +384,7 @@
                 html += `
                     <div class="item-row">
                         <span>${name} (x${qty})</span>
-                        <span>${itemTotal.toFixed(2)} π</span> <!-- Pakai 2 desimal agar rapi -->
+                        <span>${itemTotal.toFixed(2)} π</span>
                     </div>
                 `;
             });
@@ -397,7 +399,7 @@
         }
 
         // ==========================================
-        // 5. HANDLE PAYMENT UTAMA
+        // 5. HANDLE PAYMENT UTAMA (DENGAN EDGE FUNCTION)
         // ==========================================
         async function handlePayment(e) {
             e.preventDefault();
@@ -407,7 +409,6 @@
                 return;
             }
 
-            // Ambil Value Form
             const name = document.getElementById('fullName').value;
             const phone = document.getElementById('phoneNumber').value;
             const address = document.getElementById('address').value;
@@ -433,36 +434,97 @@
                 }
             }
 
-            // UI Loading State
             errorMsg.style.display = "none";
             btn.disabled = true;
             btn.innerHTML = `<span style="display:inline-block; animation: spin 1s linear infinite;">π</span> Memproses Pembayaran...`;
             btn.style.cursor = "wait";
 
             try {
-                // Generate Order ID Unik
                 currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
-                // Panggil Pi Payment
+                // MEMANGGIL PI SDK
                 await Pi.createPayment({
                     amount: total.toFixed(2),
                     memo: `Order #${currentOrderId}`,
                     metadata: { orderId: currentOrderId }
                 }, {
-                    onReadyForServerApproval: (paymentId) => {
+                    
+                    // --- FASE I: APPROVAL SERVER ---
+                    onReadyForServerApproval: async (paymentId) => {
                         currentPaymentId = paymentId;
-                        console.log("Payment ID diterima:", paymentId);
+                        console.log("Payment ID diterima, meminta approval ke server...");
+                        
+                        // Panggil Edge Function /approve
+                        try {
+                            await fetch(`${EDGE_FUNCTION_URL}/approve`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                    paymentId: paymentId, 
+                                    orderId: currentOrderId 
+                                })
+                            });
+                            console.log("✅ Server Approval Sukses");
+                        } catch (e) {
+                            console.error("Gagal approval:", e);
+                            // Jika approval gagal, pembayaran tidak bisa dilanjutkan user
+                        }
                     },
+
+                    // --- FASE II: BLOCKCHAIN (User Action) ---
+                    // Kosongkan, ditangani otomatis oleh Pi Wallet
+
+                    // --- FASE III: COMPLETION & VERIFIKASI ---
                     onPaymentCompleted: async (paymentId, txid) => {
-                        console.log("Pembayaran Sukses! TXID:", txid);
-                        // SIMPAN KE DATABASE
-                        await saveOrderToSupabase(name, phone, address, txid);
+                        console.log("Blockchain selesai. Memverifikasi di server...");
+                        btn.innerText = "Mengkonfirmasi Pesanan...";
+
+                        // KIRIM KE EDGE FUNCTION UNTUK VERIFIKASI & SIMPAN DB
+                        try {
+                            const response = await fetch(`${EDGE_FUNCTION_URL}/complete`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    paymentId: paymentId,
+                                    txid: txid,
+                                    orderId: currentOrderId,
+                                    amount: total,
+                                    items: itemsJsonString,
+                                    customerData: {
+                                        name: name,
+                                        phone: phone,
+                                        address: address,
+                                        uid: currentUser.uid
+                                    }
+                                })
+                            });
+
+                            const result = await response.json();
+
+                            if (response.ok && result.status === 'completed_and_saved') {
+                                // SUKSES TOTAL
+                                localStorage.removeItem('aurora_cart');
+                                document.getElementById('successName').innerText = name;
+                                document.getElementById('successOverlay').classList.add('show');
+                            } else {
+                                // GAGAL VERIFIKASI
+                                showError("Verifikasi Pembayaran Gagal: " + (result.error || "Kesalahan tidak dikenal"));
+                                resetButton();
+                            }
+
+                        } catch (err) {
+                            console.error("Gagal koneksi ke server:", err);
+                            showError("Gagal menghubungi server verifikasi.");
+                            resetButton();
+                        }
                     },
+                    
                     onCancelled: (paymentId) => {
                         console.log("Pembayaran dibatalkan user.");
                         resetButton();
                         showError("Pembayaran dibatalkan.");
                     },
+                    
                     onError: (error, payment) => {
                         console.error("Payment Error:", error);
                         resetButton();
@@ -474,57 +536,6 @@
                 console.error("Exception:", err);
                 resetButton();
                 showError("Gagal memulai pembayaran. Pastikan koneksi internet stabil.");
-            }
-        }
-
-        // ==========================================
-        // 6. FUNGSI SIMPAN KE SUPABASE (SESUAIKAN DENGAN TABEL)
-        // ==========================================
-        async function saveOrderToSupabase(name, phone, address, txid) {
-            try {
-                // Mapping data sesuai Kolom Tabel Supabase Anda
-                const orderData = {
-                    order_id: currentOrderId,
-                    user_id: currentUser.uid,
-                    customer_name: name,
-                    customer_phone: phone,
-                    // PERHATIKAN: Kolom DB Anda 'cutomer_address' (kurang 's'), kita samakan di sini
-                    cutomer_address: address, 
-                    payment_txid: txid,
-                    total_amount: parseFloat(total),
-                    items: itemsJsonString, // JSONB String
-                    status: 'paid', // Default status
-                    
-                    // Opsional: Tracking awal
-                    tracking_number: null,
-                    tracking_status: 'Pending',
-                    tracking_history: JSON.stringify([{ status: 'Order Created', date: new Date() }])
-                };
-
-                console.log("Mengirim data ke Supabase:", orderData);
-
-                // Execute Insert
-                const { data, error } = await supabase
-                    .from('orders')
-                    .insert([orderData])
-                    .select();
-
-                if (error) {
-                    console.error("Supabase Insert Error:", error);
-                    throw error;
-                }
-
-                console.log("✅ Data berhasil disimpan:", data);
-
-                // Jika Sukses:
-                localStorage.removeItem('aurora_cart'); // Kosongkan keranjang
-                document.getElementById('successName').innerText = name;
-                document.getElementById('successOverlay').classList.add('show'); // Tampilkan overlay sukses
-
-            } catch (err) {
-                console.error("Gagal Finalisasi:", err);
-                alert("Pembayaran Berhasil di Pi, TAPI GAGAL menyimpan ke Database.\n\nMohon screenshot layar ini dan hubungi admin.\nError: " + err.message);
-                resetButton();
             }
         }
 
