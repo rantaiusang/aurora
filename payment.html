@@ -240,7 +240,7 @@
     <!-- SCRIPT PI SDK ASLI -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
-           <!-- SCRIPT LOGIC (FIX STUCK AUTH) -->
+    <!-- SCRIPT LOGIC (FIXED SYNTAX ERROR) -->
     <script>
         // ==========================================
         // 1. KONFIGURASI
@@ -269,63 +269,67 @@
             console.log("Payment Page Loaded.");
 
             let attempts = 0;
-            const maxAttempts = 30; 
+            const maxAttempts = 50; // 25 detik timeout
             
-            const checkSDK = setInterval(() => {
-                attempts++;
-                
-                if (window.Pi && typeof Pi.init === 'function') {
-                    clearInterval(checkSDK);
+            // PERBAIKAN: Tambahkan setTimeout 1000ms sebelum mulai cek
+            setTimeout(() => {
+                const checkSDK = setInterval(() => {
+                    attempts++;
                     
-                    try {
-                        // 1. Init SDK
-                        Pi.init({ 
-                            version: "2.0", 
-                            appId: PI_APP_ID 
-                        });
+                    console.log(`Checking SDK attempt ${attempts}: Pi exists?`, !!window.Pi);
+                    
+                    if (window.Pi && typeof Pi.init === 'function') {
+                        clearInterval(checkSDK);
+                        console.log("SDK Loaded successfully. Initializing...");
                         
-                        // 2. Cek Session (Hanya ambil user, JANGAN authenticate)
-                        let user = Pi.getUser();
-                        
-                        if (user) {
-                            // Sesi Valid -> Lanjut
-                            console.log("User Ditemukan (Session Active):", user);
-                            currentUser = user;
-                            isSDKReady = true;
-                            loadCartData();
-                        } else {
-                            // Sesi Hilang (Refresh / Browser Clear Cache)
-                            // PERBAIKAN: JANGAN authenticate di sini. 
-                            // Biarkan user melihat keranjang, tapi tombol minta login ulang.
-                            console.warn("Sesi Tidak Ditemukan.");
-                            isSDKReady = false;
-                            loadCartData(); // Load data keranjang dulu biar user tahu isinya
+                        try {
+                            // 1. Init SDK
+                            Pi.init({ 
+                                version: "2.0", 
+                                appId: PI_APP_ID 
+                            });
                             
-                            const btn = document.getElementById('payBtn');
-                            btn.innerText = "Sesi Habis - Klik untuk Login Ulang";
-                            // Ubah tombol jadi tombol redirect, bukan submit form
-                            btn.type = "button"; 
-                            btn.onclick = function() {
-                                window.location.href = 'login.html';
-                            };
-                            btn.disabled = false;
-                            btn.style.background = "var(--luxury-gold)";
-                            btn.style.color = "#000";
+                            // 2. Cek Session (Hanya ambil user, JANGAN authenticate)
+                            let user = Pi.getUser();
+                            
+                            if (user) {
+                                // Sesi Valid -> Lanjut
+                                console.log("User Ditemukan (Session Active):", user);
+                                currentUser = user;
+                                isSDKReady = true;
+                                loadCartData();
+                            } else {
+                                // Sesi Hilang (Refresh / Browser Clear Cache)
+                                console.warn("Sesi Tidak Ditemukan.");
+                                isSDKReady = false;
+                                loadCartData(); // Load data keranjang dulu biar user tahu isinya
+                                
+                                const btn = document.getElementById('payBtn');
+                                btn.innerText = "Sesi Habis - Klik untuk Login Ulang";
+                                // Ubah tombol jadi tombol redirect, bukan submit form
+                                btn.type = "button"; 
+                                btn.onclick = function() {
+                                    window.location.href = 'login.html';
+                                };
+                                btn.disabled = false;
+                                btn.style.background = "var(--luxury-gold)";
+                                btn.style.color = "#000";
+                            }
+                            
+                        } catch (e) {
+                            console.error("Init Error:", e);
+                            loadCartData(true);
                         }
-                        
-                    } catch (e) {
-                        console.error("Init Error:", e);
+                    } 
+                    else if (attempts >= maxAttempts) {
+                        clearInterval(checkSDK);
                         loadCartData(true);
+                        const btn = document.getElementById('payBtn');
+                        btn.innerText = "SDK Gagal / Buka di Pi Browser";
+                        btn.style.background = "#ff4d4d";
                     }
-                } 
-                else if (attempts >= maxAttempts) {
-                    clearInterval(checkSDK);
-                    loadCartData(true);
-                    const btn = document.getElementById('payBtn');
-                    btn.innerText = "SDK Error / Buka di Pi Browser";
-                    btn.style.background = "#ff4d4d";
-                }
-            }, 500);
+                }, 500); 
+            }, 1000); // TUNGGU 1 DETIK PERTAMA KALI
         });
 
         function forceLoadCart() {
@@ -540,7 +544,7 @@
         function redirectToThankYou() {
             window.location.href = 'thankyou.html';
         }
-    </script> 
+    </script>
     
 </body>
 </html>
