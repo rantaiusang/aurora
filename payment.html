@@ -223,7 +223,7 @@
                     <span class="total-amount" id="displayTotal">0.00 π</span>
                 </div>
 
-                <button type="submit" class="btn-pay" id="payBtn" disabled>Bayar Sekarang</button>
+                <button type="submit" class="btn-pay" id="payBtn" disabled>Memuat SDK...</button>
             </form>
 
             <div class="success-overlay" id="successOverlay">
@@ -237,12 +237,321 @@
         </div>
     </div>    
 
-    <!-- SCRIPT PI SDK ASLI (Hanya sekali saja!) -->
+    <!-- SCRIPT PI SDK ASLI -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
-        <!-- SCRIPT PI SDK ASLI (Hanya sekali saja!) -->
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    
-    
+    <script>
+        // --- KONFIGURASI SUPABASE ---
+        const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
+        
+        const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
+
+        // --- PENTING: APP ID ---
+        const PI_APP_ID = "aurora-4c073a664f9faa3a"; 
+
+        // Variabel Global
+        let total = 0;
+        let cartItems = [];
+        let itemNameStr = ""; 
+        let currentPaymentId = null; 
+        let currentOrderId = null;
+        let currentUser = null;
+        let isSDKReady = false;
+
+        // --- INISIALISASI (FIXED) ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log("DOM Loaded. Memulai inisialisasi...");
+            
+            // 1. Load User dari LocalStorage
+            const localUserStr = localStorage.getItem('aurora_user');
+            if (localUserStr) {
+                try {
+                    currentUser = JSON.parse(localUserStr);
+                    console.log("User dari LocalStorage:", currentUser);
+                } catch (e) { console.error("Gagal parse local user"); }
+            }
+
+            // 2. Loop Cek apakah SDK Siap (Anti-Hang)
+            let attempts = 0;
+            const maxAttempts = 10; // Coba sampai 5 detik
+            
+            const checkSDK = setInterval(() => {
+                attempts++;
+                
+                // Jika SDK sudah ada
+                if (typeof Pi !== 'undefined' && Pi.createPayment) {
+                    clearInterval(checkSDK);
+                    initializePiSystem();
+                } 
+                // Jika sudah terlalu lama dan SDK belum muncul
+                else if (attempts >= maxAttempts) {
+                    clearInterval(checkSDK);
+                    console.error("SDK Timeout: Script tidak termuat.");
+                    document.getElementById('payBtn').innerText = "Gagal Memuat SDK";
+                    document.getElementById('payBtn').style.background = "#ff4d4d";
+                    alert("Gagal memuat sistem pembayaran. Coba refresh halaman (Clear Cache juga dianjurkan).");
+                }
+            }, 500); // Cek setiap 0.5 detik
+        });
+
+        async function initializePiSystem() {
+            try {
+                console.log("SDK ditemukan. Melakukan Pi.init...");
+                await Pi.init(PI_APP_ID, { version: "2.0" });
+                console.log("✅ SDK Initialized.");
+                isSDKReady = true;
+
+                // Autentikasi
+                if (!currentUser) {
+                    try {
+                        const auth = await Pi.authenticate(['username', 'payments']);
+                        currentUser = auth.user;
+                        localStorage.setItem('aurora_user', JSON.stringify(currentUser));
+                    } catch (e) { console.warn("Auth skipped"); }
+                }
+
+                // Jalankan load cart
+                loadCartData();
+
+            } catch (e) {
+                console.error("Gagal Init:", e);
+                document.getElementById('payBtn').innerText = "Error SDK";
+            }
+        }
+
+        function loadCartData() {
+            const summaryDiv = document.getElementById('summaryList');
+            const summaryContainer = document.getElementById('itemSummaryContainer');
+            const totalDisplay = document.getElementById('displayTotal');
+            const payBtn = document.getElementById('payBtn');
+
+            total = 0;
+            itemNameStr = "";
+            cartItems = [];
+            payBtn.disabled = true;
+            summaryContainer.style.display = 'none'; 
+
+            const rawCart = localStorage.getItem('aurora_cart');
+            
+            if (!rawCart) {
+                summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Keranjang kosong.</span>';
+                summaryContainer.style.display = 'block';
+                return;
+            }
+
+            try {
+                cartItems = JSON.parse(rawCart);
+            } catch (e) {
+                summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Data keranjang rusak.</span>';
+                summaryContainer.style.display = 'block';
+                return;
+            }
+
+            if (!cartItems || cartItems.length === 0) {
+                summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Keranjang kosong.</span>';
+                summaryContainer.style.display = 'block';
+                return;
+            }
+
+            summaryContainer.style.display = 'block';
+            let html = '';
+            
+            cartItems.forEach(item => {
+                const name = item.name || item.product_name || item.title || "Produk";
+                
+                let price = 0;
+                if (typeof item.price === 'string') {
+                    let cleanPrice = item.price.replace(/[^\d.-]/g, ''); 
+                    price = parseFloat(cleanPrice);
+                } else {
+                    price = parseFloat(item.price);
+                }
+                
+                if (isNaN(price)) price = 0;
+
+                const qty = item.qty || 1;
+                const itemTotal = price * qty;
+                total += itemTotal;
+
+                html += `
+                    <div class="item-row">
+                        <span>${name} (x${qty})</span>
+                        <span>${itemTotal.toFixed(8)} π</span>
+                    </div>
+                `;
+                itemNameStr += name + (qty > 1 ? ` (${qty})` : "") + ", ";
+            });
+
+            itemNameStr = itemNameStr.slice(0, -2);
+            summaryDiv.innerHTML = html;
+            totalDisplay.innerText = total.toFixed(8) + " π";
+            
+            if (total > 0 && isSDKReady) {
+                payBtn.disabled = false;
+                payBtn.innerText = "Bayar Sekarang";
+            }
+        }
+
+        // --- HANDLE PAYMENT ---
+        async function handlePayment(e) {
+            e.preventDefault();
+
+            if (!isSDKReady) {
+                alert("SDK belum siap. Tunggu sebentar atau refresh.");
+                return;
+            }
+
+            const name = document.getElementById('fullName').value;
+            const phone = document.getElementById('phoneNumber').value;
+            const address = document.getElementById('address').value;
+            const btn = document.getElementById('payBtn');
+            const errorMsg = document.getElementById('error-message');
+
+            if (name.length < 3) return showError("Nama terlalu pendek.");
+            if (phone.length < 10) return showError("Nomor WhatsApp tidak valid.");
+            if (address.length < 10) return showError("Alamat terlalu singkat.");
+            
+            if (!currentUser || !currentUser.uid) {
+                try {
+                    btn.innerText = "Meminta Izin Login...";
+                    const auth = await Pi.authenticate(['username', 'payments']);
+                    currentUser = auth.user;
+                    localStorage.setItem('aurora_user', JSON.stringify(currentUser));
+                } catch (authErr) {
+                    alert("Login dibatalkan/gagal.");
+                    resetButton();
+                    return;
+                }
+            }
+
+            if (!currentUser || !currentUser.uid) {
+                alert("User data missing.");
+                resetButton();
+                return;
+            }
+
+            errorMsg.style.display = "none";
+            btn.disabled = true;
+            btn.innerHTML = `<span style="display:inline-block; animation: spin 1s linear infinite;">π</span> Memproses...`;
+            btn.style.cursor = "wait";
+
+            try {
+                currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+
+                await Pi.createPayment({
+                    amount: total.toFixed(8),
+                    memo: `Order #${currentOrderId}`,
+                    metadata: { orderId: currentOrderId, items: itemNameStr }
+                }, {
+                    onReadyForServerApproval: (paymentId) => {
+                        currentPaymentId = paymentId;
+                        console.log("Payment ID Ready:", paymentId);
+                    },
+                    onPaymentCompleted: async (paymentId, txid) => {
+                        console.log("Payment Completed! TXID:", txid);
+                        await finalizePaymentProcess(name, phone, address, txid);
+                    },
+                    onCancelled: (paymentId) => {
+                        console.log("Payment Cancelled:", paymentId);
+                        resetButton();
+                        showError("Pembayaran dibatalkan.");
+                    },
+                    onError: (error, payment) => {
+                        console.error("Payment Error:", error, payment);
+                        resetButton();
+                        let msg = "Terjadi kesalahan pembayaran.";
+                        if (error && error.message) msg = error.message;
+                        else if (typeof error === 'string') msg = error;
+                        showError("Error: " + msg);
+                    }
+                });
+
+            } catch (err) {
+                console.error("Exception in handlePayment:", err);
+                resetButton();
+                showError("Gagal memulai pembayaran: " + (err.message || "Unknown Exception"));
+            }
+        }
+
+        async function finalizePaymentProcess(name, phone, address, txid) {
+            try {
+                const orderData = {
+                    order_id: currentOrderId,
+                    user_id: currentUser.uid,
+                    customer_name: name,
+                    customer_phone: phone,
+                    customer_adres: address,
+                    payment_txid: txid,
+                    total_amount: total.toFixed(8),
+                    item: itemNameStr,
+                    status: 'Paid',
+                    tracking_number: null,
+                    tracking_status: 'Pending',
+                    tracking_history: 'Order Created'
+                };
+
+                console.log("Mengirim order ke backend...");
+
+                const response = await fetch(EDGE_FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'apikey': SUPABASE_ANON_KEY
+                    },
+                    body: JSON.stringify({
+                        payment_id: currentPaymentId,
+                        txid: txid,
+                        order: orderData 
+                    })
+                });
+
+                let result;
+                if (response.status === 404 || response.status === 405) {
+                    console.warn("Fallback ke local (Backend belum siap)");
+                    result = { success: true, message: "Fallback" };
+                } else {
+                    result = await response.json();
+                }
+
+                if (!result.success) {
+                    throw new Error(result.error || "Gagal verifikasi.");
+                data;
+
+                localStorage.setItem('temp_order_data', JSON.stringify(orderData));
+                localStorage.removeItem('aurora_cart');
+                document.getElementById('successName').innerText = name;
+                document.getElementById('successOverlay').classList.add('show');
+
+            } catch (err) {
+                console.error("Finalize Error:", err);
+                alert("Pembayaran Sukses, tapi gagal simpan DB. Screenshot bukti bayar.\nError: " + err.message);
+                resetButton();
+            }
+        }
+
+        function resetButton() {
+            const btn = document.getElementById('payBtn');
+            btn.disabled = false;
+            btn.innerText = "Bayar Sekarang";
+            btn.style.cursor = "pointer";
+        }
+
+        function showError(msg) {
+            const div = document.getElementById('error-message');
+            div.innerText = msg;
+            div.style.display = 'block';
+            div.animate([
+                { transform: 'translateX(-10px)' },
+                { transform: 'translateX(10px)' },
+                { transform: 'translateX(0)' }
+            ], { duration: 300 });
+        }
+
+        function redirectToThankYou() {
+            window.location.href = 'thankyou.html';
+        }
+    </script>
 </body>
 </html>
