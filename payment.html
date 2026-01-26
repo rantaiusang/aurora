@@ -243,6 +243,9 @@
         <!-- SCRIPT PI SDK ASLI (Hanya sekali saja!) -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
+        <!-- SCRIPT PI SDK ASLI -->
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    
     <script>
         // --- KONFIGURASI SUPABASE ---
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
@@ -260,34 +263,50 @@
         let currentPaymentId = null; 
         let currentOrderId = null;
         let currentUser = null;
+        
+        // TANDA: Apakah SDK siap?
+        let isSDKReady = false;
 
-        // --- INISIALISASI (DIPERBAIKI) ---
+        // --- INISIALISASI ---
         document.addEventListener('DOMContentLoaded', async () => {
             console.log("DOM Loaded. Memulai inisialisasi...");
             
-            // 1. Cek LocalStorage Dulu (Fallback Cepat)
+            // 1. Cek LocalStorage User
             const localUserStr = localStorage.getItem('aurora_user');
             if (localUserStr) {
                 try {
                     currentUser = JSON.parse(localUserStr);
-                    console.log("User ditemukan di LocalStorage:", currentUser);
-                } catch (e) {
-                    console.error("Gagal parse local user");
-                }
+                    console.log("User dari LocalStorage:", currentUser);
+                } catch (e) { console.error("Gagal parse local user"); }
             }
 
-            // 2. Inisialisasi Pi SDK
+            // 2. Cek apakah script SDK berhasil dimuat
+            if (typeof Pi === 'undefined') {
+                alert("Error: Script Pi SDK gagal dimuat. Pastikan koneksi internet Anda stabil.");
+                return;
+            }
+
+            // 3. Cek apakah dibuka di Pi Browser
+            // Jika tidak ada window.Pi atau tidak ada identify di environment biasa
+            if (typeof window.Pi === 'undefined' || !window.Pi.identify) {
+                alert("PERINGATAN: Sepertinya Anda tidak membuka ini di dalam Pi Browser.\nFungsi pembayaran mungkin tidak akan berjalan.");
+            }
+
+            // 4. Inisialisasi Pi SDK (Wajib Menunggu 'await')
             try {
+                console.log("Memulai Pi.init...");
                 await Pi.init(PI_APP_ID, { version: "2.0" });
-                console.log("Pi SDK Initialized with ID:", PI_APP_ID);
+                console.log("✅ Pi SDK Berhasil Diinisialisasi dengan ID:", PI_APP_ID);
                 
-                // 3. Coba Authenticate HANYA JIKA LocalStorage Kosong
+                // TANDAI SDK SIAP
+                isSDKReady = true;
+
+                // 5. Coba Authenticate HANYA JIKA LocalStorage Kosong
                 if (!currentUser) {
                     try {
                         console.log("Melakukan autentikasi baru...");
                         const auth = await Pi.authenticate(['username', 'payments']);
                         currentUser = auth.user;
-                        // Simpan ke LocalStorage agar tidak login ulang di reload berikutnya
                         localStorage.setItem('aurora_user', JSON.stringify(currentUser));
                         console.log("User Authenticated & Saved:", currentUser);
                     } catch (e) { 
@@ -297,10 +316,12 @@
                     console.log("Menggunakan sesi user yang sudah ada.");
                 }
             } catch (e) { 
-                console.warn("Pi Init Warning:", e); 
+                console.error("❌ Gagal Inisialisasi Pi SDK:", e);
+                alert("Gagal menghubungkan ke Pi Network SDK. Pastikan Anda menggunakan Pi Browser versi terbaru.");
+                isSDKReady = false;
             }
             
-            // 4. Jalankan loadCart
+            // 6. Jalankan loadCart
             loadCartData();
         });
 
@@ -317,11 +338,9 @@
             payBtn.disabled = true;
             summaryContainer.style.display = 'none'; 
 
-            // 1. CEK LANGSUNG LOCALSTORAGE KERANJANG
             const rawCart = localStorage.getItem('aurora_cart');
             
             if (!rawCart) {
-                console.error("LOCALSTORAGE KOSONG!");
                 summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Keranjang kosong.</span>';
                 summaryContainer.style.display = 'block';
                 return;
@@ -330,7 +349,6 @@
             try {
                 cartItems = JSON.parse(rawCart);
             } catch (e) {
-                console.error("Gagal parse JSON:", e);
                 summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Data keranjang rusak.</span>';
                 summaryContainer.style.display = 'block';
                 return;
@@ -377,15 +395,32 @@
             summaryDiv.innerHTML = html;
             totalDisplay.innerText = total.toFixed(8) + " π";
             
-            if (total > 0) {
+            // Tombol hanya aktif jika Total ada DAN SDK sudah siap
+            if (total > 0 && isSDKReady) {
                 payBtn.disabled = false;
                 payBtn.innerText = "Bayar Sekarang";
+            } else if (total > 0 && !isSDKReady) {
+                payBtn.disabled = true;
+                payBtn.innerText = "Memuat SDK...";
             }
         }
 
-        // --- HANDLE PAYMENT (DIPERBAIKI LOGIKA AUTH) ---
+        // --- HANDLE PAYMENT ---
         async function handlePayment(e) {
             e.preventDefault();
+
+            // CEK PENTING 1: Apakah SDK sudah siap?
+            if (!isSDKReady) {
+                alert("Sistem pembayaran belum siap. Mohon tunggu sebentar atau refresh halaman.");
+                return;
+            }
+
+            // CEK PENTING 2: Pastikan objek 'Pi' tersedia
+            if (typeof Pi === 'undefined') {
+                alert("Pi SDK tidak terdeteksi. Mohon gunakan Pi Browser.");
+                return;
+            }
+
             const name = document.getElementById('fullName').value;
             const phone = document.getElementById('phoneNumber').value;
             const address = document.getElementById('address').value;
@@ -397,7 +432,7 @@
             if (phone.length < 10) return showError("Nomor WhatsApp tidak valid.");
             if (address.length < 10) return showError("Alamat terlalu singkat.");
             
-            // --- PERBAIKAN: Cek Auth yang Lebih Pintar ---
+            // Validasi Auth
             if (!currentUser || !currentUser.uid) {
                 console.warn("User belum login, mencoba login sekarang...");
                 try {
@@ -406,18 +441,17 @@
                     const auth = await Pi.authenticate(['username', 'payments']);
                     currentUser = auth.user;
                     localStorage.setItem('aurora_user', JSON.stringify(currentUser));
-                    console.log("Login berhasil dilanjutkan:", currentUser);
                 } catch (authErr) {
                     console.error("Login Gagal:", authErr);
-                    alert("Anda harus login untuk melanjutkan pembayaran. Mohon klik 'Approve' jika diminta Pi Browser.");
+                    alert("Anda harus login. Mohon klik 'Approve' di jendela Pi Browser yang muncul.");
                     resetButton();
                     return;
                 }
             }
 
-            // Jika masih saja kosong setelah mencoba login
+            // Jika masih saja kosong
             if (!currentUser || !currentUser.uid) {
-                alert("Gagal mendapatkan data user. Pastikan Anda membuka website ini melalui aplikasi Pi Browser.");
+                alert("Gagal mendapatkan data user. Pastikan Anda membuka ini melalui Pi Browser.");
                 resetButton();
                 return;
             }
@@ -437,30 +471,25 @@
                     memo: `Order #${currentOrderId}`,
                     metadata: { orderId: currentOrderId, items: itemNameStr }
                 }, {
-                    // 1. Callback Wajib: Approve
                     onReadyForServerApproval: (paymentId) => {
                         currentPaymentId = paymentId;
                         console.log("Payment ID Ready:", paymentId);
                     },
-                    // 2. Callback Wajib: Completed
                     onPaymentCompleted: async (paymentId, txid) => {
                         console.log("Payment Completed! TXID:", txid);
                         await finalizePaymentProcess(name, phone, address, txid);
                     },
-                    // 3. Callback Wajib: Cancelled
                     onCancelled: (paymentId) => {
                         console.log("Payment Cancelled:", paymentId);
                         resetButton();
                         showError("Pembayaran dibatalkan.");
                     },
-                    // 4. Callback Wajib: Error
                     onError: (error, payment) => {
                         console.error("Payment Error:", error, payment);
                         resetButton();
                         let msg = "Terjadi kesalahan pembayaran.";
                         if (error && error.message) msg = error.message;
                         else if (typeof error === 'string') msg = error;
-                        
                         showError("Error: " + msg);
                     }
                 });
