@@ -285,14 +285,16 @@
                 } catch (e) { console.error("User parse error"); }
             }
 
-            // Cek ketersediaan Pi SDK
+            // PERBAIKAN: Cek ketersediaan Pi SDK dengan lebih tangguh
             let attempts = 0;
             const maxAttempts = 15;
             
+            // Jalankan pengecekan SDK
             const checkSDK = setInterval(() => {
                 attempts++;
                 
-                if (typeof Pi !== 'undefined' && Pi.createPayment) {
+                // Cek apakah objek Pi sudah terdefinisi
+                if (typeof Pi !== 'undefined') {
                     clearInterval(checkSDK);
                     initializePiSystem();
                 } 
@@ -309,6 +311,7 @@
         // Fungsi Inisialisasi SDK Pi
         async function initializePiSystem() {
             try {
+                // Inisialisasi Pi
                 await Pi.init(PI_APP_ID, { version: "2.0" });
                 console.log("✅ Pi SDK Initialized.");
                 isSDKReady = true;
@@ -330,6 +333,9 @@
 
             } catch (e) {
                 console.error("Gagal Init SDK:", e);
+                const btn = document.getElementById('payBtn');
+                btn.innerText = "Gagal Inisialisasi SDK";
+                btn.disabled = true;
             }
         }
 
@@ -348,18 +354,24 @@
             payBtn.disabled = true;
             summaryContainer.style.display = 'none'; 
 
+            // DEBUG: Cek isi LocalStorage
             const rawCart = localStorage.getItem('aurora_cart');
-            
+            console.log("Raw Cart from Storage:", rawCart);
+
+            // Validasi Kosong
             if (!rawCart) {
                 summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Keranjang kosong. Kembali ke Store.</span>';
                 summaryContainer.style.display = 'block';
+                payBtn.innerText = "Keranjang Kosong";
                 return;
             }
 
+            // Parsing JSON
             try {
                 cartItems = JSON.parse(rawCart);
                 itemsJsonString = JSON.stringify(cartItems);
             } catch (e) {
+                console.error("JSON Parse Error:", e);
                 summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Data keranjang rusak.</span>';
                 summaryContainer.style.display = 'block';
                 return;
@@ -371,6 +383,7 @@
                 return;
             }
 
+            // Render HTML Tampilan
             summaryContainer.style.display = 'block';
             let html = '';
             
@@ -395,6 +408,8 @@
             if (total > 0 && isSDKReady) {
                 payBtn.disabled = false;
                 payBtn.innerText = "Bayar Sekarang";
+            } else {
+                payBtn.innerText = "Menunggu SDK...";
             }
         }
 
