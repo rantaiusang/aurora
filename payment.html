@@ -292,18 +292,18 @@
         });
 
         // ==========================================
-        // 4. FIX: initializePiSystem() (FINAL)
+        // 4. FIX: initializePiSystem() (FINAL TESTNET MODE)
         // ==========================================
         async function initializePiSystem() {
             // ✅ GUARD: CEGAH INISIALISASI GANDA
             if (isSDKReady) return;
 
             try {
-                // ✅ FIX FINAL: TAMBAHKAN SANDBOX: false
+                // ✅ FIX FINAL: TAMBAHKAN SANDBOX: true (UNTUK TESTNET)
                 Pi.init({
                     version: "2.0",
                     appId: PI_APP_ID,
-                    sandbox: false // <--- WAJIB UNTUK MAINNET. Jika TESTNET ubah jadi true.
+                    sandbox: true // <--- TRUE untuk TESTNET, FALSE untuk MAINNET.
                 });
 
                 // AMBIL USER DARI SESSION PI (BUKAN LOGIN)
