@@ -245,6 +245,7 @@
         // ==========================================
         // 1. KONFIGURASI SUPABASE & EDGE FUNCTION
         // ==========================================
+        // ✅ PERBAIKAN URL: Hapus double slash
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         
@@ -274,10 +275,12 @@
             let attempts = 0;
             const maxAttempts = 30; // ✅ FIX: NAIKKAN KE 30 UNTUK STABILITAS
             
+            // ✅ FIX FINAL: CEK PI.GETUSER BUKAN PI.INIT
             const checkSDK = setInterval(() => {
                 attempts++;
                 
-                if (window.Pi && typeof Pi.init === 'function') {
+                // Jika window.Pi ADA dan fungsi getUser tersedia (arti SDK siap & session aktif)
+                if (window.Pi && typeof Pi.getUser === 'function') {
                     clearInterval(checkSDK);
                     initializePiSystem();
                 } 
@@ -292,22 +295,26 @@
         });
 
         // ==========================================
-        // 4. FIX: initializePiSystem() (FINAL TESTNET MODE)
+        // 4. FIX: initializePiSystem() (FINAL NO SANDBOX)
         // ==========================================
         async function initializePiSystem() {
             // ✅ GUARD: CEGAH INISIALISASI GANDA
             if (isSDKReady) return;
 
             try {
-                // ✅ FIX FINAL: TAMBAHKAN SANDBOX: true (UNTUK TESTNET)
+                // ✅ FIX FINAL: HAPUS SANDBOX (SDK V2 OTOMATIS)
                 Pi.init({
                     version: "2.0",
-                    appId: PI_APP_ID,
-                    sandbox: true // <--- TRUE untuk TESTNET, FALSE untuk MAINNET.
+                    appId: PI_APP_ID
                 });
 
+                // ✅ TAMBAHKAN LOG (UNTUK DEBUGGING)
+                console.log("Pi object:", window.Pi);
+                
                 // AMBIL USER DARI SESSION PI (BUKAN LOGIN)
                 const piUser = Pi.getUser();
+                console.log("Pi user:", piUser);
+
                 if (!piUser) {
                     alert("Session Pi tidak ditemukan. Kembali ke Store.");
                     window.location.href = 'store.html';
