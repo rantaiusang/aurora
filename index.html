@@ -2,7 +2,7 @@
 <html lang="id">    
 <head>    
     <meta charset="UTF-8">    
-    <!-- META TAG RESPONSIVE (Penting untuk menyesuaikan device) -->
+    <!-- META TAG RESPONSIVE -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">    
     <title>Aurora Store - Exclusive Fragrances</title>    
     <!-- Font Google -->    
@@ -17,17 +17,17 @@
         --dark-card: #161216;    
         --text-gray: #a0a0a0;    
         --text-white: #ffffff;    
-        /* Fluid Spacing */
-        --spacing-section: clamp(60px, 8vw, 100px); /* Ukuran padding section otomatis */
+        --spacing-section: clamp(60px, 8vw, 100px);
     }    
 
     * { margin: 0; padding: 0; box-sizing: border-box; }    
 
     html {    
-        scroll-behavior: smooth;
+        /* FIX 1: Hapus 'scroll-behavior: smooth' agar tidak macet di HP */
+        /* scroll-behavior: smooth; */
         width: 100%;
         overflow-x: hidden; 
-        font-size: 16px; /* Base font size */
+        font-size: 16px; 
     }    
 
     body {    
@@ -38,17 +38,21 @@
         overflow-x: hidden; 
         line-height: 1.6;
         touch-action: pan-y; 
+        /* FIX 2: Optimasi rendering font */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }    
 
-    /* --- 2. HEADER (RESPONSIVE) --- */    
+    /* --- 2. HEADER (OPTIMASI LAG) --- */    
     header {    
-        background: rgba(15, 12, 21, 0.95);    
-        backdrop-filter: blur(10px);    
+        background: rgba(15, 12, 21, 0.98); /* Warna solid lebih ringan daripada blur */
+        /* FIX 3: Hapus 'backdrop-filter' karena menyebabkan lag parah saat scroll */
+        /* backdrop-filter: blur(10px); */ 
+        
         border-bottom: 1px solid rgba(255,255,255,0.05);    
-        /* Padding adaptif: kecil di HP, lebar di PC */
         padding: clamp(10px, 2vw, 20px) 5%;     
         display: flex;    
-        justify-content: space-between; /* Selalu pisahkan logo dan tombol */
+        justify-content: space-between;     
         align-items: center;    
         position: fixed;    
         top: 0;    
@@ -56,12 +60,15 @@
         max-width: 100%;    
         z-index: 1000;     
         transition: 0.3s;    
-        box-sizing: border-box;     
+        box-sizing: border-box; 
+        
+        /* FIX 4: Hardware Acceleration (Paksa GPU render header biar nggak nge-lag) */
+        transform: translateZ(0);
+        will-change: transform;
     }    
 
     .logo {    
         font-family: 'Playfair Display', serif;    
-        /* Font size menyesuaikan dari 1.1rem (HP) s/d 1.5rem (PC) */
         font-size: clamp(1.1rem, 3vw, 1.5rem);     
         font-weight: 700;    
         color: var(--text-white);    
@@ -81,7 +88,6 @@
     .nav-links a {    
         text-decoration: none;    
         color: var(--text-gray);    
-        /* Font size menu menyesuaikan */
         font-size: clamp(0.8rem, 1.5vw, 0.9rem);     
         font-weight: 500;    
         transition: 0.3s;    
@@ -92,7 +98,6 @@
         text-shadow: 0 0 8px 1px var(--luxury-gold);
     }    
 
-    /* Tombol Header Default */    
     .btn-header {    
         padding: 8px 24px;     
         background: var(--luxury-gold);    
@@ -108,16 +113,16 @@
         transform: translateY(-2px);     
         background: #fff;     
         color: #000;    
-        box-shadow: 0 0 15px 2px var(--luxury-gold-light), 0 0 30px 5px rgba(212, 175, 55, 0.4);
+        /* Sederhanakan shadow saat hover agar tidak berat */
+        box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
     }
 
-    /* --- 3. HERO SECTION (RESPONSIVE GRID) --- */    
+    /* --- 3. HERO SECTION --- */    
     .hero {    
         display: flex;    
         align-items: center;    
         justify-content: center;    
         min-height: 100vh;    
-        /* Padding atas disesuaikan untuk header fixed */
         padding: clamp(80px, 15vw, 140px) 5% 60px;     
         position: relative;    
         overflow-x: hidden; 
@@ -125,9 +130,8 @@
 
     .hero-container {    
         display: grid;    
-        /* Grid Otomatis: 2 kolom di PC, 1 kolom di HP */
-        grid-template-columns: 1.2fr 1fr; /* Kolom teks sedikit lebih lebar dari gambar */
-        gap: clamp(30px, 5vw, 60px); /* Jarak otomatis */
+        grid-template-columns: 1.2fr 1fr;    
+        gap: clamp(30px, 5vw, 60px);    
         align-items: center;    
         width: 100%;    
         max-width: 1400px;    
@@ -135,17 +139,13 @@
 
     .glow-bg {    
         position: absolute;    
-        width: clamp(300px, 40vw, 500px); /* Ukuran glow dinamis */
+        width: clamp(300px, 40vw, 500px);    
         height: clamp(300px, 40vw, 500px);    
         background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 70%);    
         top: 20%;    
         left: -10%;    
         z-index: -1;    
         pointer-events: none;    
-    }    
-
-    .hero-text {    
-        /* Text alignment berubah saat mobile (center) atau desktop (left) via media query */
     }    
 
     .hero-tag {    
@@ -163,7 +163,6 @@
 
     .hero h1 {    
         font-family: 'Playfair Display', serif;    
-        /* Font size besar menyesuaikan: 2.2rem (HP) s/d 4.5rem (PC) */
         font-size: clamp(2.2rem, 5vw, 4.5rem);     
         line-height: 1.1;    
         margin-bottom: 24px;    
@@ -176,8 +175,8 @@
         font-size: clamp(0.9rem, 1.5vw, 1.1rem);     
         color: var(--text-gray);    
         margin-bottom: 32px;    
-        max-width: 600px; /* Lebar paragraf di PC */
-        width: 100%;    /* Full lebar di mobile */
+        max-width: 600px;    
+        width: 100%;    
         font-weight: 300;    
     }    
 
@@ -198,7 +197,6 @@
         display: inline-block;    
         text-align: center;    
         font-size: 0.9rem;
-        /* Di PC inline, di mobile lebar */
         min-width: 180px; 
     }    
         
@@ -232,18 +230,22 @@
         display: flex;    
         justify-content: center;    
         align-items: center;    
-        /* Grid posisi default (PC): Kolom 2 */
         grid-column: 2; 
+        
+        /* FIX 5: GPU Acceleration untuk gambar biar tidak pecah saat scroll cepat */
+        transform: translate3d(0, 0, 0);
     }    
 
     .hero-img {    
         width: 100%;    
-        /* Lebar gambar menyesuaikan */
         max-width: 450px; 
         height: auto;
         border-radius: 20px;    
         box-shadow: 20px 20px 60px rgba(0,0,0,0.6);    
         transition: 0.5s;    
+        
+        /* Fix GPU untuk gambar */
+        transform: translateZ(0);
     }    
         
     .hero-img:hover {    
@@ -251,7 +253,7 @@
         box-shadow: 25px 25px 70px rgba(212, 175, 55, 0.15);    
     }    
 
-    /* --- 4. FEATURES SECTION (GRID RESPONSIVE) --- */    
+    /* --- 4. FEATURES SECTION --- */    
     .features {    
         padding: var(--spacing-section) 5%;    
         background: linear-gradient(to bottom, var(--dark-bg), #120e12);    
@@ -278,11 +280,6 @@
 
     .features-grid {    
         display: grid;    
-        /* Grid Otomatis: 
-           HP: 1 kolom
-           Tablet: 2 kolom
-           PC: 3 kolom
-        */
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));    
         gap: 30px;    
     }    
@@ -295,8 +292,11 @@
         transition: 0.4s ease;    
         display: flex;
         flex-direction: column;
-        align-items: center; /* Pusatkan konten kartu */
-        text-align: center; /* Pusatkan teks */
+        align-items: center; 
+        text-align: center; 
+        
+        /* GPU Acceleration Cards */
+        transform: translateZ(0);
     }    
 
     .feature-card:hover {    
@@ -350,25 +350,23 @@
         text-decoration: underline;    
     }    
 
-    /* --- 6. MEDIA QUERIES (TWEAKS SPESIFIK) --- */    
-    /* Tablet Landscape & Mobile Portrait (Re-arrange Grid) */
+    /* --- 6. MEDIA QUERIES --- */    
     @media (max-width: 992px) {    
         .hero-container {     
-            grid-template-columns: 1fr; /* Stack menjadi 1 kolom */
+            grid-template-columns: 1fr;     
             text-align: center;     
             gap: 40px;    
         }    
-        .hero p { margin: 0 auto 32px auto; } /* Pusatkan paragraf */
-        .hero-buttons { justify-content: center; width: 100%; } /* Tombol lebar */
+        .hero p { margin: 0 auto 32px auto; }    
+        .hero-buttons { justify-content: center; width: 100%; }    
         .hero-visual { 
-            grid-column: 1; /* Pindahkan gambar ke bawah */
-            order: 2; /* Urutan: Teks (1), Tombol (opsional), Gambar (2) */
+            grid-column: 1; 
+            order: 2; 
         }    
         .hero-img { max-width: 350px; margin: 0 auto; }    
-        .nav-links a:not(.btn-header) { display: none; } /* Sembunyikan menu text biasa jika ada */
+        .nav-links a:not(.btn-header) { display: none; } 
     }    
 
-    /* Mobile Kecil (<480px) */
     @media (max-width: 480px) {    
         .header { padding: 10px 20px; }        
         .logo { font-size: 1rem; }    
@@ -380,13 +378,13 @@
         .hero { padding-top: 70px; }    
         
         .btn-primary, .btn-outline {     
-            width: 100%;     /* Full width di HP */
+            width: 100%;     
             padding: 12px 20px;     
             font-size: 0.85rem;     
         }    
             
         .hero-buttons { flex-direction: column; gap: 12px; width: 100%; }    
-        .hero-img { max-width: 100%; } /* Gambar full width di HP kecil */
+        .hero-img { max-width: 100%; }    
         .features-grid { grid-template-columns: 1fr; }    
     }    
 </style>
@@ -474,6 +472,7 @@
         window.addEventListener('DOMContentLoaded', () => {    
             window.scrollTo(0, 0);    
             
+            // Membatasi jumlah animasi agar tidak lag
             const observer = new IntersectionObserver((entries) => {    
                 entries.forEach(entry => {    
                     if (entry.isIntersecting) {    
