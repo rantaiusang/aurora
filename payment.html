@@ -213,7 +213,7 @@
 
                 <div class="item-summary" id="itemSummaryContainer">
                     <strong style="color:var(--luxury-gold); display:block; margin-bottom:10px;">Ringkasan Pesanan:</strong>
-                    <div id="summaryList"></div>
+                    <div id="summaryList">Memuat...</div>
                 </div>
 
                 <div class="total-display">
@@ -241,85 +241,94 @@
     <script>
         // --- KONFIGURASI SUPABASE ---
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
-        // PERBAIKAN: Typo SUPABASE_ANON_KEY diubah menjadi huruf kecil o (O)
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         
-        // URL EDGE FUNCTION
-        // Gunakan verify-pi-payment yang baru Anda buat tadi
         const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
 
-        // --- VARIABLES ---
         let total = 0;
         let cartItems = [];
         let itemNameStr = ""; 
         let currentPaymentId = null; 
         let currentOrderId = null;
-        let currentUser = null; // Untuk menyimpan data user Pi
+        let currentUser = null;
 
-        // --- 1. INIT & LOAD ---
         window.addEventListener('load', async () => {
             try {
                 await Pi.init({ version: "2.0" });
-                console.log("Pi SDK Initialized");
-                
-                // Ambil User Info untuk keperluan database (uid, username)
                 try {
                     const auth = await Pi.authenticate(['username', 'payments']);
                     currentUser = auth.user;
-                    console.log("User for Payment:", currentUser);
-                } catch (e) {
-                    console.warn("Auth skipped or failed:", e);
-                }
-
+                } catch (e) { console.warn("Auth skipped:", e); }
             } catch (e) { console.warn("Pi Init Warning:", e); }
+            
+            // Jalankan loadCart
             loadCartData();
         });
 
         function loadCartData() {
-            const cartData = localStorage.getItem('aurora_cart');
             const summaryDiv = document.getElementById('summaryList');
             const summaryContainer = document.getElementById('itemSummaryContainer');
 
-            if (cartData) {
-                cartItems = JSON.parse(cartData);
-                if (cartItems.length > 0) {
-                    summaryContainer.style.display = 'block';
-                    let html = '';
-                    cartItems.forEach(item => {
-                        // --- PERBAIKAN LOGIKA BACA NAMA & HARGA ---
-                        // Cek beberapa kemungkinan nama kolom produk
-                        const name = item.name || item.product_name || item.title || "Produk";
-                        // Pastikan harga angka
-                        const price = parseFloat(item.price) || 0;
-                        const itemTotal = price * item.qty;
-                        
-                        total += itemTotal;
-                        
-                        html += `
-                            <div class="item-row">
-                                <span>${name} (x${item.qty})</span>
-                                <span>${itemTotal.toFixed(2)} π</span>
-                            </div>
-                        `;
-                        itemNameStr += name + (item.qty > 1 ? ` (${item.qty})` : "") + ", ";
-                    });
-                    
-                    // Hapus koma terakhir di string item
-                    itemNameStr = itemNameStr.slice(0, -2);
-                    
-                    summaryDiv.innerHTML = html;
-                    document.getElementById('displayTotal').innerText = total.toFixed(2) + " π";
-                } else {
-                    // Jika kosong, kembalikan ke store
-                    alert("Keranjang kosong.");
-                    window.location.href = 'store.html';
-                }
-            } else {
+            // 1. CEK LANGSUNG LOCALSTORAGE
+            const rawCart = localStorage.getItem('aurora_cart');
+            
+            console.log("=== DEBUGGING CART ===");
+            console.log("Raw Data:", rawCart);
+
+            if (!rawCart) {
+                console.error("LOCALSTORAGE KOSONG!");
+                alert("Keranjang kosong. Mengalihkan ke toko...");
                 window.location.href = 'store.html';
+                return;
             }
+
+            try {
+                cartItems = JSON.parse(rawCart);
+                console.log("Parsed Items:", cartItems);
+            } catch (e) {
+                console.error("Gagal parse JSON:", e);
+                alert("Data keranjang rusak. Mengalihkan...");
+                window.location.href = 'store.html';
+                return;
+            }
+
+            if (cartItems.length === 0) {
+                alert("Keranjang kosong.");
+                window.location.href = 'store.html';
+                return;
+            }
+
+            // Render Items
+            summaryContainer.style.display = 'block';
+            let html = '';
+            
+            cartItems.forEach(item => {
+                // DEBUGGING: Cek properti item
+                console.log("Item Object:", item);
+                
+                const name = item.name || item.product_name || item.title || "Produk";
+                const price = parseFloat(item.price) || 0;
+                const qty = item.qty || 1;
+                
+                const itemTotal = price * qty;
+                total += itemTotal;
+
+                html += `
+                    <div class="item-row">
+                        <span>${name} (x${qty})</span>
+                        <span>${itemTotal.toFixed(2)} π</span>
+                    </div>
+                `;
+                itemNameStr += name + (qty > 1 ? ` (${qty})` : "") + ", ";
+            });
+
+            itemNameStr = itemNameStr.slice(0, -2);
+            summaryDiv.innerHTML = html;
+            document.getElementById('displayTotal').innerText = total.toFixed(2) + " π";
+            
+            console.log("Total Calculation Selesai:", total);
         }
 
-        // --- 2. HANDLE PAYMENT ---
         async function handlePayment(e) {
             e.preventDefault();
             const name = document.getElementById('fullName').value;
@@ -329,68 +338,55 @@
             const btn = document.getElementById('payBtn');
             const errorMsg = document.getElementById('error-message');
 
-            // Validasi
             if (name.length < 3) return showError("Nama terlalu pendek.");
             if (phone.length < 10) return showError("Nomor WhatsApp tidak valid.");
             if (address.length < 10) return showError("Alamat terlalu singkat.");
             
-            // Validasi User (Pastikan login)
             if (!currentUser || !currentUser.uid) {
-                alert("Anda harus login untuk melakukan pembayaran. Mengalihkan...");
+                alert("Anda harus login. Mengalihkan...");
                 window.location.href = 'login.html';
                 return;
             }
 
             errorMsg.style.display = "none";
             btn.disabled = true;
-            btn.innerHTML = `<span style="display:inline-block; animation: spin 1s linear infinite;">π</span> Memproses Pembayaran...`;
+            btn.innerHTML = `<span style="display:inline-block; animation: spin 1s linear infinite;">π</span> Memproses...`;
             btn.style.cursor = "wait";
 
             try {
-                // Buat Order ID yang Unik
                 currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
-                // A. Buat Pembayaran Pi
                 await Pi.createPayment({
                     amount: total.toFixed(2),
-                    memo: `Order #${currentOrderId} - Aurora Store`,
+                    memo: `Order #${currentOrderId}`,
                     metadata: { orderId: currentOrderId, items: itemNameStr }
                 }, {
-                    // Callback 1: Payment ID Siap
                     onReadyForServerApproval: (paymentId) => {
                         currentPaymentId = paymentId;
                         console.log("Payment ID Ready:", paymentId);
                     },
-                    // Callback 2: Pembayaran Selesai
                     onPaymentCompleted: async (paymentId, txid) => {
                         console.log("Payment Completed! TXID:", txid);
-                        // Kirim ke Backend untuk Verifikasi Final
                         await finalizePaymentProcess(name, phone, address, wallet, txid);
                     },
-                    // Callback 3: Dibatalkan
                     onCancelled: (paymentId) => {
                         resetButton();
                         showError("Pembayaran dibatalkan.");
                     },
-                    // Callback 4: Error
                     onError: (error, payment) => {
-                        console.error("Error SDK:", error);
                         resetButton();
                         showError("Error: " + error.message);
                     }
                 });
 
             } catch (err) {
-                console.error(err);
                 resetButton();
                 showError("Gagal memulai pembayaran: " + (err.message || "Unknown"));
             }
         }
 
-        // --- 3. FINALISASI (BACKEND) ---
         async function finalizePaymentProcess(name, phone, address, wallet, txid) {
             try {
-                // --- STRUKTUR DATA YANG SESUAI DENGAN TABEL 'orders' SUPABASE ---
                 const orderData = {
                     order_id: currentOrderId,
                     user_id: currentUser.uid,
@@ -406,9 +402,8 @@
                     tracking_history: 'Order Created'
                 };
 
-                console.log("Mengirim data order ke Edge Function...");
+                console.log("Mengirim order ke backend...");
 
-                // PANGGIL EDGE FUNCTION verify-pi-payment
                 const response = await fetch(EDGE_FUNCTION_URL, {
                     method: 'POST',
                     headers: {
@@ -423,36 +418,29 @@
                     })
                 });
 
-                // Jika endpoint belum ada (404/405), kita tangani secara lokal sementara
                 let result;
                 if (response.status === 404 || response.status === 405) {
-                    console.warn("Endpoint payment belum ada, fallback ke localStorage.");
-                    result = { success: true, message: "Payment Sukses (Fallback)" };
+                    console.warn("Fallback ke local (Backend belum siap)");
+                    result = { success: true, message: "Fallback" };
                 } else {
                     result = await response.json();
                 }
 
                 if (!result.success) {
-                    console.error("Backend Error:", result);
-                    throw new Error(result.error || "Gagal memverifikasi pembayaran di server.");
+                    throw new Error(result.error || "Gagal verifikasi.");
                 }
 
-                console.log("Backend Verified:", result);
-
-                // SUKSES
                 localStorage.setItem('temp_order_data', JSON.stringify(orderData));
                 localStorage.removeItem('aurora_cart');
                 document.getElementById('successName').innerText = name;
                 document.getElementById('successOverlay').classList.add('show');
 
             } catch (err) {
-                console.error("Gagal Finalisasi:", err);
-                alert("Pembayaran Blockchain Sukses, tetapi sistem gagal menyimpan data ke database. Silakan screenshot bukti transfer dan hubungi admin.");
+                alert("Pembayaran Sukses, tapi gagal simpan DB. Screenshot bukti bayar.");
                 resetButton();
             }
         }
 
-        // --- UTILS ---
         function resetButton() {
             const btn = document.getElementById('payBtn');
             btn.disabled = false;
