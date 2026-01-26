@@ -313,8 +313,8 @@
                 // 2. Init SDK
                 Pi.init({ version: "2.0", appId: PI_APP_ID });
                 
-                // 3. Authenticate User
-                const authPromise = Pi.authenticate();
+                // 3. Authenticate User (FIXED: Menambahkan SCOPE)
+                const authPromise = Pi.authenticate(['username', 'payments']);
                 const timeoutPromise = new Promise((_, reject) => 
                     setTimeout(() => reject(new Error("Waktu habis. Silakan refresh halaman.")), 30000)
                 );
