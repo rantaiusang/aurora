@@ -219,40 +219,48 @@
         const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         const functionName = 'verify-pi-login';
         
-        // --- 1. INISIALISASI PI SDK ---
+        // --- 1. LOGIKA PENCEGAHAN SDK ERROR ---
         const isSandbox = window.location.hostname.includes('sandbox') || window.location.hostname.includes('localhost');
         
-        // Kita coba inisialisasi tanpa memblokir UI
-        let piSdkReady = false;
+        // Fungsi inisialisasi yang lebih tangguh
+        function initPiSDK() {
+            if (typeof Pi !== 'undefined') {
+                Pi.init({
+                    version: "2.0",
+                    sandbox: isSandbox
+                });
+                console.log("Pi SDK Berhasil Di-Initialize.");
+                return true;
+            }
+            return false;
+        }
 
-        if (typeof Pi !== 'undefined') {
-            Pi.init({
-                version: "2.0",
-                sandbox: isSandbox
-            });
-            piSdkReady = true;
-            console.log("Pi SDK Initialized. Sandbox mode:", isSandbox);
-        } else {
-            console.error("Pi SDK tidak terdeteksi di window!");
-            // JANGAN HENTIKAN LOADING DI SINI. Biarkan script mencoba.
-            // Hanya log error.
+        // Coba inisialisasi saat script ini terbaca
+        if (!initPiSDK()) {
+            console.warn("Pi SDK belum terbaca saat pertama kali load. Akan dicek ulang...");
         }
         
         window.addEventListener('load', () => {
-            console.log("Halaman Login Dimuat. Pi SDK Status:", piSdkReady);
+            console.log("Halaman Login Dimuat.");
             
+            // Animasi UI
             setTimeout(() => {
                 const card = document.getElementById('loginCard');
                 if(card) card.classList.add('visible');
             }, 200);
 
-            // Jika SDK terdeteksi, jalankan proses login
-            if (piSdkReady) {
-                setTimeout(autoLoginProcess, 1500);
-            } else {
-                // Jika SDK tidak terdeteksi, beri pesan error di UI
-                showError("SDK Error", "Pi SDK tidak dimuat. Refresh halaman atau gunakan Pi Browser terbaru.");
-            }
+            // 2. POLLING: Cek SDK secara berulang setiap 1 detik
+            // Ini akan terus mencoba sampai Pi Browser berhasil memuat SDK-nya
+            const checkInterval = setInterval(() => {
+                if (typeof Pi !== 'undefined') {
+                    clearInterval(checkInterval); // Berhenti cek jika sudah ketemu
+                    console.log("Pi SDK terdeteksi! Memulai login...");
+                    setTimeout(autoLoginProcess, 1000); // Beri jeda sedikit
+                } else {
+                    console.log("Menunggu Pi Browser memuat SDK...");
+                    document.getElementById('sub-status').innerText = "Memuat SDK Pi Network... (Mohon Tunggu)";
+                }
+            }, 1000); // Cek setiap 1 detik
         });
 
         function updateStatus(title, subtitle) {
@@ -271,17 +279,17 @@
             const errorMsg = document.getElementById('error-msg');
             
             if(errorBox) errorBox.style.display = 'block';
-            if(errorMsg) {
-                errorMsg.innerText = message;
-                errorMsg.style.wordWrap = 'break-word'; // Agar pesan error panjang tidak merusak layout
-            }
+            if(errorMsg) errorMsg.innerText = message;
         }
 
         async function autoLoginProcess() {
             try {
+                // Kunci ulang inisialisasi untuk memastikan
+                initPiSDK();
+
                 updateStatus("Mengamankan Koneksi...", "Menginisialisasi Pi Network");
                 
-                // 2. IDENTIFIKASI USER
+                // 3. IDENTIFIKASI USER
                 const authResult = await Pi.identify(['username'], {
                     onIncompletePaymentFound: (payment) => {
                         console.log("Incomplete payment ditemukan:", payment);
