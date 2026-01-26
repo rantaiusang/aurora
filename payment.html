@@ -8,7 +8,7 @@
     <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     
-    <!-- Library Supabase -->
+    <!-- Library Supabase (HANYA SATU KALI) -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     
     <style>
@@ -240,8 +240,7 @@
     <!-- SCRIPT PI SDK ASLI -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
-    <!-- SCRIPT PERBAIKAN INTEGRASI SUPABASE -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SCRIPT LOGIC -->
     <script>
         // ==========================================
         // 1. KONFIGURASI SUPABASE & EDGE FUNCTION
@@ -249,12 +248,7 @@
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         
-        // Inisialisasi Client Supabase (Hanya diperlukan jika ingin query lain diluar payment, 
-        // tapi di sini kita lebih banyak pakai Edge Function untuk keamanan)
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // URL EDGE FUNCTION YANG SUDAH DI-DEPLOY
-        // GANTI dengan URL function Anda jika berbeda
         const EDGE_FUNCTION_URL = 'https://dikapquhusbwjccbqcsb.supabase.co/functions/v1/verify-pi-payment';
 
         // ==========================================
@@ -275,25 +269,14 @@
         // ==========================================
         document.addEventListener('DOMContentLoaded', async () => {
             console.log("Payment Page Loaded.");
-            
-            // Cek User di LocalStorage
-            const localUserStr = localStorage.getItem('aurora_user');
-            if (localUserStr) {
-                try {
-                    currentUser = JSON.parse(localUserStr);
-                    console.log("User loaded from storage:", currentUser.uid);
-                } catch (e) { console.error("User parse error"); }
-            }
 
-            // PERBAIKAN: Cek ketersediaan Pi SDK dengan lebih tangguh
+            // Cek ketersediaan Pi SDK
             let attempts = 0;
             const maxAttempts = 15;
             
-            // Jalankan pengecekan SDK
             const checkSDK = setInterval(() => {
                 attempts++;
                 
-                // Cek apakah objek Pi sudah terdefinisi
                 if (typeof Pi !== 'undefined') {
                     clearInterval(checkSDK);
                     initializePiSystem();
@@ -308,39 +291,41 @@
             }, 500);
         });
 
-        // Fungsi Inisialisasi SDK Pi
+        // ==========================================
+        // 4. FIX: initializePiSystem() (SESUAI INSTRUKSI)
+        // ==========================================
         async function initializePiSystem() {
             try {
-                // Inisialisasi Pi
-                await Pi.init(PI_APP_ID, { version: "2.0" });
-                console.log("✅ Pi SDK Initialized.");
-                isSDKReady = true;
+                // 1️⃣ UBAH FORMAT INIT
+                Pi.init({
+                    version: "2.0",
+                    appId: PI_APP_ID
+                });
 
-                // Jika belum login, paksa login dulu
-                if (!currentUser) {
-                    try {
-                        const auth = await Pi.authenticate(['username', 'payments']);
-                        currentUser = auth.user;
-                        localStorage.setItem('aurora_user', JSON.stringify(currentUser));
-                    } catch (e) { 
-                        console.warn("Auth cancelled"); 
-                        alert("Anda harus login untuk melanjutkan pembayaran.");
-                    }
+                // 3️⃣ AMBIL USER DARI SESSION PI (BUKAN LOGIN)
+                const piUser = Pi.getUser();
+                if (!piUser) {
+                    alert("Session Pi tidak ditemukan. Kembali ke Store.");
+                    window.location.href = 'store.html';
+                    return;
                 }
+
+                currentUser = piUser;
+                isSDKReady = true;
 
                 // Muat data keranjang setelah SDK siap
                 loadCartData();
 
             } catch (e) {
-                console.error("Gagal Init SDK:", e);
+                console.error("Pi SDK error:", e);
                 const btn = document.getElementById('payBtn');
-                btn.innerText = "Gagal Inisialisasi SDK";
+                btn.innerText = "SDK Error";
                 btn.disabled = true;
             }
         }
 
         // ==========================================
-        // 4. FUNGSI LOAD KERANJANG
+        // 5. FUNGSI LOAD KERANJANG
         // ==========================================
         function loadCartData() {
             const summaryDiv = document.getElementById('summaryList');
@@ -354,11 +339,9 @@
             payBtn.disabled = true;
             summaryContainer.style.display = 'none'; 
 
-            // DEBUG: Cek isi LocalStorage
             const rawCart = localStorage.getItem('aurora_cart');
             console.log("Raw Cart from Storage:", rawCart);
 
-            // Validasi Kosong
             if (!rawCart) {
                 summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Keranjang kosong. Kembali ke Store.</span>';
                 summaryContainer.style.display = 'block';
@@ -366,7 +349,6 @@
                 return;
             }
 
-            // Parsing JSON
             try {
                 cartItems = JSON.parse(rawCart);
                 itemsJsonString = JSON.stringify(cartItems);
@@ -383,7 +365,6 @@
                 return;
             }
 
-            // Render HTML Tampilan
             summaryContainer.style.display = 'block';
             let html = '';
             
@@ -414,7 +395,7 @@
         }
 
         // ==========================================
-        // 5. HANDLE PAYMENT UTAMA (DENGAN EDGE FUNCTION)
+        // 6. HANDLE PAYMENT UTAMA (DENGAN EDGE FUNCTION)
         // ==========================================
         async function handlePayment(e) {
             e.preventDefault();
@@ -435,18 +416,11 @@
             if (phone.length < 10) return showError("Nomor WhatsApp tidak valid.");
             if (address.length < 10) return showError("Alamat lengkap diperlukan.");
             
-            // Validasi Login
+            // Validasi Login (Hanya mengecek variabel currentUser, TIDAK login ulang)
             if (!currentUser || !currentUser.uid) {
-                try {
-                    btn.innerText = "Meminta Login...";
-                    const auth = await Pi.authenticate(['username', 'payments']);
-                    currentUser = auth.user;
-                    localStorage.setItem('aurora_user', JSON.stringify(currentUser));
-                } catch (authErr) {
-                    alert("Login dibatalkan. Anda harus login untuk membayar.");
-                    resetButton();
-                    return;
-                }
+                alert("Sesi pengguna tidak valid. Silakan login ulang dari halaman store.");
+                window.location.href = 'store.html';
+                return;
             }
 
             errorMsg.style.display = "none";
@@ -457,7 +431,7 @@
             try {
                 currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
-                // MEMANGGIL PI SDK
+                // 6️⃣ JANGAN UBAH BAGIAN PAYMENT LOGIC
                 await Pi.createPayment({
                     amount: total.toFixed(2),
                     memo: `Order #${currentOrderId}`,
@@ -469,7 +443,6 @@
                         currentPaymentId = paymentId;
                         console.log("Payment ID diterima, meminta approval ke server...");
                         
-                        // Panggil Edge Function /approve
                         try {
                             await fetch(`${EDGE_FUNCTION_URL}/approve`, {
                                 method: 'POST',
@@ -482,7 +455,6 @@
                             console.log("✅ Server Approval Sukses");
                         } catch (e) {
                             console.error("Gagal approval:", e);
-                            // Jika approval gagal, pembayaran tidak bisa dilanjutkan user
                         }
                     },
 
@@ -494,7 +466,6 @@
                         console.log("Blockchain selesai. Memverifikasi di server...");
                         btn.innerText = "Mengkonfirmasi Pesanan...";
 
-                        // KIRIM KE EDGE FUNCTION UNTUK VERIFIKASI & SIMPAN DB
                         try {
                             const response = await fetch(`${EDGE_FUNCTION_URL}/complete`, {
                                 method: 'POST',
