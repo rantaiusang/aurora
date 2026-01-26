@@ -240,7 +240,7 @@
     <!-- SCRIPT PI SDK ASLI -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
-        <!-- SCRIPT LOGIC (PERBAIKAN FINAL) -->
+           <!-- SCRIPT LOGIC (FIX STUCK AUTH) -->
     <script>
         // ==========================================
         // 1. KONFIGURASI
@@ -263,15 +263,15 @@
         let isSDKReady = false;
 
         // ==========================================
-        // 3. INISIALISASI (SOLUSI AUTO-LOGIN)
+        // 3. INISIALISASI (FIX STUCK / HANGING)
         // ==========================================
         document.addEventListener('DOMContentLoaded', async () => {
             console.log("Payment Page Loaded.");
 
             let attempts = 0;
-            const maxAttempts = 30; // 15 detik timeout
+            const maxAttempts = 30; 
             
-            const checkSDK = setInterval(async () => {
+            const checkSDK = setInterval(() => {
                 attempts++;
                 
                 if (window.Pi && typeof Pi.init === 'function') {
@@ -284,43 +284,43 @@
                             appId: PI_APP_ID 
                         });
                         
-                        // 2. Cek Session (Sudah login dari halaman sebelumnya?)
+                        // 2. Cek Session (Hanya ambil user, JANGAN authenticate)
                         let user = Pi.getUser();
                         
                         if (user) {
-                            // SUDAH LOGIN -> Langsung proses
-                            console.log("User ditemukan:", user);
+                            // Sesi Valid -> Lanjut
+                            console.log("User Ditemukan (Session Active):", user);
                             currentUser = user;
                             isSDKReady = true;
                             loadCartData();
                         } else {
-                            // BELUM LOGIN (Refresh/Buka langsung) -> Auto Login
-                            console.log("User belum ditemukan, mencoba autentikasi ulang...");
+                            // Sesi Hilang (Refresh / Browser Clear Cache)
+                            // PERBAIKAN: JANGAN authenticate di sini. 
+                            // Biarkan user melihat keranjang, tapi tombol minta login ulang.
+                            console.warn("Sesi Tidak Ditemukan.");
+                            isSDKReady = false;
+                            loadCartData(); // Load data keranjang dulu biar user tahu isinya
                             
-                            try {
-                                // Panggil authenticate ulang agar session muncul
-                                const authResult = await Pi.authenticate(['username', 'payments']);
-                                currentUser = authResult.user;
-                                console.log("Auto-Login Berhasil:", currentUser);
-                                
-                                isSDKReady = true;
-                                loadCartData();
-                            } catch (authError) {
-                                console.error("Gagal auto-login:", authError);
-                                // Jika user menolak login, kita tetap tampilkan data tapi tombol disabled
-                                forceLoadCart();
-                                document.getElementById('payBtn').innerText = "Login Diperlukan";
-                            }
+                            const btn = document.getElementById('payBtn');
+                            btn.innerText = "Sesi Habis - Klik untuk Login Ulang";
+                            // Ubah tombol jadi tombol redirect, bukan submit form
+                            btn.type = "button"; 
+                            btn.onclick = function() {
+                                window.location.href = 'login.html';
+                            };
+                            btn.disabled = false;
+                            btn.style.background = "var(--luxury-gold)";
+                            btn.style.color = "#000";
                         }
                         
                     } catch (e) {
                         console.error("Init Error:", e);
-                        forceLoadCart();
+                        loadCartData(true);
                     }
                 } 
                 else if (attempts >= maxAttempts) {
                     clearInterval(checkSDK);
-                    forceLoadCart();
+                    loadCartData(true);
                     const btn = document.getElementById('payBtn');
                     btn.innerText = "SDK Error / Buka di Pi Browser";
                     btn.style.background = "#ff4d4d";
@@ -329,12 +329,11 @@
         });
 
         function forceLoadCart() {
-            console.log("Force loading cart...");
             loadCartData(true);
         }
 
         // ==========================================
-        // 4. FUNGSI LOAD KERANJANG (FIX LOGIC TOTAL)
+        // 4. FUNGSI LOAD KERANJANG
         // ==========================================
         function loadCartData(forceMode = false) {
             const summaryDiv = document.getElementById('summaryList');
@@ -345,19 +344,18 @@
             total = 0;
             cartItems = [];
             itemsJsonString = "[]";
-            payBtn.disabled = true;
             
-            // Jangan sembunyikan container jika ada data, biarkan user melihat pesan kosong jika perlu
-            // summaryContainer.style.display = 'none'; -> DIHAPUS agar langsung terlihat proses loading
+            // Kita biarkan payBtn disabled sementara kecuali logic khusus sesi habis dijalankan
+            if(!payBtn.onclick) { 
+                payBtn.disabled = true; 
+            }
 
             const rawCart = localStorage.getItem('aurora_cart');
-            console.log("Raw Cart:", rawCart);
-
+            
             if (!rawCart) {
                 summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Keranjang kosong.</span>';
                 summaryContainer.style.display = 'block';
                 totalDisplay.innerText = "0.00 π";
-                payBtn.innerText = "Keranjang Kosong";
                 return;
             }
 
@@ -385,7 +383,7 @@
                 let price = parseFloat(item.price) || 0;
                 const qty = item.qty || 1;
                 const itemTotal = price * qty;
-                total += itemTotal; // PASTIKAN INI BERJALAN
+                total += itemTotal; 
 
                 html += `
                     <div class="item-row">
@@ -396,20 +394,14 @@
             });
 
             summaryDiv.innerHTML = html;
-            
-            // UPDATE TAMPILAN TOTAL (Bagian yang tadi 0.00)
             totalDisplay.innerText = total.toFixed(2) + " π";
             
-            // LOGIKA TOMBOL
-            if (total > 0 && isSDKReady) {
+            // LOGIKA TOMBOL: Hanya aktif jika SDK Ready dan Total > 0
+            // Jika payBtn sudah punya event onclick (login ulang), jangan override disablednya
+            if (total > 0 && isSDKReady && !payBtn.onclick) {
                 payBtn.disabled = false;
                 payBtn.innerText = "Bayar Sekarang";
-            } else if (total > 0 && !isSDKReady) {
-                payBtn.innerText = "Menunggu Autentikasi...";
-                payBtn.disabled = true;
-            } else {
-                payBtn.innerText = "Keranjang Kosong";
-                payBtn.disabled = true;
+                payBtn.type = "submit"; // Pastikan type submit kembali
             }
         }
 
@@ -420,8 +412,8 @@
             e.preventDefault();
 
             if (!isSDKReady || !currentUser) {
-                alert("Sistem belum siap atau sesi hilang. Halaman akan dimuat ulang untuk login.");
-                location.reload(); // Reload agar trigger auto-login lagi
+                alert("Sesi tidak valid. Silakan login ulang.");
+                window.location.href = 'login.html';
                 return;
             }
 
@@ -548,6 +540,7 @@
         function redirectToThankYou() {
             window.location.href = 'thankyou.html';
         }
-    </script>
+    </script> 
+    
 </body>
 </html>
