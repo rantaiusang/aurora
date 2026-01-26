@@ -240,16 +240,17 @@
     <!-- SCRIPT PI SDK ASLI (Hanya sekali saja!) -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
+        <!-- SCRIPT PI SDK ASLI (Hanya sekali saja!) -->
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    
     <script>
         // --- KONFIGURASI SUPABASE ---
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // (Key asli Anda)
         
-        // URL Edge Function Anda (Ini sudah benar)
         const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
 
         // --- PENTING: MASUKKAN APP ID DARI PI NETWORK DISINI ---
-        // Contoh: const PI_APP_ID = "aurora-4c073a664f9faa3a";
         const PI_APP_ID = "aurora-4c073a664f9faa3a"; 
 
         // Variabel Global
@@ -260,23 +261,46 @@
         let currentOrderId = null;
         let currentUser = null;
 
-        // --- INISIALISASI ---
+        // --- INISIALISASI (DIPERBAIKI) ---
         document.addEventListener('DOMContentLoaded', async () => {
             console.log("DOM Loaded. Memulai inisialisasi...");
             
-            // 1. Inisialisasi Pi SDK dengan APP_ID ANDA
+            // 1. Cek LocalStorage Dulu (Fallback Cepat)
+            const localUserStr = localStorage.getItem('aurora_user');
+            if (localUserStr) {
+                try {
+                    currentUser = JSON.parse(localUserStr);
+                    console.log("User ditemukan di LocalStorage:", currentUser);
+                } catch (e) {
+                    console.error("Gagal parse local user");
+                }
+            }
+
+            // 2. Inisialisasi Pi SDK
             try {
                 await Pi.init(PI_APP_ID, { version: "2.0" });
                 console.log("Pi SDK Initialized with ID:", PI_APP_ID);
                 
-                try {
-                    const auth = await Pi.authenticate(['username', 'payments']);
-                    currentUser = auth.user;
-                    console.log("User Authenticated:", currentUser);
-                } catch (e) { console.warn("Auth skipped:", e); }
-            } catch (e) { console.warn("Pi Init Warning:", e); }
+                // 3. Coba Authenticate HANYA JIKA LocalStorage Kosong
+                if (!currentUser) {
+                    try {
+                        console.log("Melakukan autentikasi baru...");
+                        const auth = await Pi.authenticate(['username', 'payments']);
+                        currentUser = auth.user;
+                        // Simpan ke LocalStorage agar tidak login ulang di reload berikutnya
+                        localStorage.setItem('aurora_user', JSON.stringify(currentUser));
+                        console.log("User Authenticated & Saved:", currentUser);
+                    } catch (e) { 
+                        console.warn("Auth skipped/blocked:", e); 
+                    }
+                } else {
+                    console.log("Menggunakan sesi user yang sudah ada.");
+                }
+            } catch (e) { 
+                console.warn("Pi Init Warning:", e); 
+            }
             
-            // 2. Jalankan loadCart
+            // 4. Jalankan loadCart
             loadCartData();
         });
 
@@ -293,7 +317,7 @@
             payBtn.disabled = true;
             summaryContainer.style.display = 'none'; 
 
-            // 1. CEK LANGSUNG LOCALSTORAGE
+            // 1. CEK LANGSUNG LOCALSTORAGE KERANJANG
             const rawCart = localStorage.getItem('aurora_cart');
             
             if (!rawCart) {
@@ -328,7 +352,6 @@
                 // Parsing Harga String ke Float
                 let price = 0;
                 if (typeof item.price === 'string') {
-                    // Hapus karakter non-angka kecuali titik dan minus
                     let cleanPrice = item.price.replace(/[^\d.-]/g, ''); 
                     price = parseFloat(cleanPrice);
                 } else {
@@ -360,7 +383,7 @@
             }
         }
 
-        // --- HANDLE PAYMENT ---
+        // --- HANDLE PAYMENT (DIPERBAIKI LOGIKA AUTH) ---
         async function handlePayment(e) {
             e.preventDefault();
             const name = document.getElementById('fullName').value;
@@ -374,10 +397,28 @@
             if (phone.length < 10) return showError("Nomor WhatsApp tidak valid.");
             if (address.length < 10) return showError("Alamat terlalu singkat.");
             
-            // Validasi Auth
+            // --- PERBAIKAN: Cek Auth yang Lebih Pintar ---
             if (!currentUser || !currentUser.uid) {
-                alert("Anda harus login. Mengalihkan...");
-                window.location.href = 'login.html';
+                console.warn("User belum login, mencoba login sekarang...");
+                try {
+                    btn.innerText = "Meminta Izin Login...";
+                    // Paksa autentikasi jika sebelumnya gagal/skip
+                    const auth = await Pi.authenticate(['username', 'payments']);
+                    currentUser = auth.user;
+                    localStorage.setItem('aurora_user', JSON.stringify(currentUser));
+                    console.log("Login berhasil dilanjutkan:", currentUser);
+                } catch (authErr) {
+                    console.error("Login Gagal:", authErr);
+                    alert("Anda harus login untuk melanjutkan pembayaran. Mohon klik 'Approve' jika diminta Pi Browser.");
+                    resetButton();
+                    return;
+                }
+            }
+
+            // Jika masih saja kosong setelah mencoba login
+            if (!currentUser || !currentUser.uid) {
+                alert("Gagal mendapatkan data user. Pastikan Anda membuka website ini melalui aplikasi Pi Browser.");
+                resetButton();
                 return;
             }
 
@@ -390,7 +431,7 @@
             try {
                 currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
-                // MEMANGGIL PI SDK DENGAN STRUKTUR YANG BENAR
+                // MEMANGGIL PI SDK
                 await Pi.createPayment({
                     amount: total.toFixed(8),
                     memo: `Order #${currentOrderId}`,
