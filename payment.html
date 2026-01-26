@@ -237,11 +237,11 @@
         </div>
     </div>    
 
-            <!-- SCRIPT PI SDK ASLI -->
+          <!-- SCRIPT PI SDK ASLI -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
     
-       <!-- SCRIPT LOGIC (DEBUGGING VERSION) -->
+       <!-- SCRIPT LOGIC (FIX BUG 'every') -->
     <script>
         // ==========================================
         //1. KONFIGURASI
@@ -265,99 +265,98 @@
         let tempCustomerData = {};
 
         // ==========================================
-        // 3. INISIALISASI (PERBAIKAN LOGIKA & DEBUG)
+        // 3. INISIALISASI (PERBAIKAN BUG CRASH)
         // ==========================================
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log("Halaman dimuat. Memulai pengecekan SDK...");
+            console.log("Halaman dimuat. Memulai inisialisasi...");
             
             const btn = document.getElementById('payBtn');
             const errorMsg = document.getElementById('error-message');
             
-            // Fungsi Helper untuk menunggu objek Pi siap
+            // Fungsi Helper untuk menunggu Pi
             const waitForPi = () => {
                 return new Promise((resolve, reject) => {
                     if (window.Pi) {
                         resolve(window.Pi);
                         return;
                     }
-                    
                     let attempts = 0;
-                    const maxAttempts = 100; // Tunggu sampai 50 detik
-                    
                     const interval = setInterval(() => {
                         attempts++;
                         if (window.Pi) {
                             clearInterval(interval);
                             resolve(window.Pi);
-                        } else if (attempts >= maxAttempts) {
+                        } else if (attempts >= 100) {
                             clearInterval(interval);
-                            reject(new Error("Waktu habis menunggu Pi SDK. Pastikan internet stabil."));
+                            reject(new Error("SDK Gagal Dimuat"));
                         }
                     }, 500);
                 });
             };
 
             try {
-                // 1. Tunggu SDK termuat di window
-                console.log("1. Menunggu Pi SDK...");
+                // 1. Tunggu SDK
                 const Pi = await waitForPi();
-                console.log("   -> SDK Ditemukan:", Pi);
+                console.log("Pi SDK Object:", Pi);
 
-                // 2. Inisialisasi SDK
-                console.log("2. Menjalankan Pi.init...");
-                Pi.init({ version: "2.0", appId: PI_APP_ID });
-                console.log("   -> Init Selesai.");
+                // 2. PERBAIKAN: Tangkap error 'reading every' di dalam blok Pi.init
+                // Error ini terjadi saat SDK membaca localStorage browser
+                try {
+                    Pi.init({ version: "2.0", appId: PI_APP_ID });
+                    console.log("Pi.init berhasil dijalankan.");
+                } catch (initError) {
+                    // Jika error 'every' muncul di sini, kita abaikan dan lanjutkan.
+                    // Terkadang inisialisasi 'gagal' tapi fungsi authenticate tetap bisa dipanggil.
+                    console.warn("Peringatan Init SDK (Diharapkan 'undefined reading every'):", initError.message);
+                    
+                    // Jika errornya BUKAN 'every', maka kita berhenti.
+                    if (!initError.message.includes('every')) {
+                        throw initError;
+                    }
+                }
 
-                // 3. Otentikasi User (Ini bagian yang biasanya error)
-                console.log("3. Memulai Pi.authenticate...");
+                // 3. Coba Authenticate
+                console.log("Mencoba Autentikasi...");
                 
-                // Tambahkan timeout manual jika authenticate macet
+                // Kita buat timeout panjang karena browser mungkin lambat merespon setelah crash tadi
                 const authPromise = Pi.authenticate();
                 const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error("Login Timeout (Popup tidak muncul/terlalu lama)")), 15000)
+                    setTimeout(() => reject(new Error("Waktu Habis")), 20000)
                 );
                 
-                // Gunakan Promise.race untuk membatasi waktu tunggu
                 const user = await Promise.race([authPromise, timeoutPromise]);
 
                 if (user) {
-                    console.log("   -> AUTH SUKSES! User:", user);
+                    console.log("SUKSES LOGIN:", user);
                     currentUser = user;
                     isSDKReady = true;
                     loadCartData();
                 } else {
-                    throw new Error("User kosong setelah authenticate.");
+                    throw new Error("User data kosong.");
                 }
 
             } catch (error) {
-                console.error("=== TERJADI ERROR ===");
-                console.error("Nama Error:", error.name);
-                console.error("Pesan Error:", error.message);
-                console.error("Detail Error:", error);
-
-                // Tampilkan pesan error spesifik di layar
+                console.error("FATAL ERROR:", error);
+                
                 let displayMsg = error.message;
-
-                if (error.message.includes("Timeout")) {
-                    displayMsg = "Waktu habis. Pastikan Popup Login muncul. Jika tidak, cek Izin Aplikasi di Dashboard.";
-                } else if (error.message.includes("not a function")) {
-                    displayMsg = "Versi SDK tidak cocok. Coba bersihkan cache browser.";
+                
+                // Pesan spesifik untuk error 'every' jika lolos dari catch init
+                if (error.message.includes('every')) {
+                    displayMsg = "Bug Internal Pi Browser. Coba Refresh Halaman atau Hapus Cache Pi Browser.";
+                } else if (error.message.includes("User rejected")) {
+                    displayMsg = "Anda menolak izin akses.";
                 }
 
-                // Tampilkan di UI
                 loadCartData(true);
-                
                 if(btn) {
-                    btn.innerText = "Gagal Login";
+                    btn.innerText = "Gagal Init";
                     btn.disabled = false;
                     btn.type = "button";
                     btn.onclick = () => window.location.reload();
                     btn.style.background = "#ff4d4d";
-                    btn.style.color = "#fff";
                 }
-
                 if(errorMsg) {
-                    errorMsg.innerHTML = `<strong>Detail Error:</strong><br>${displayMsg}<br><br><small>CEK CONSOLE (F12) untuk info lebih lanjut.</small>`;
+                    errorMsg.innerHTML = `<strong>Error:</strong> ${displayMsg}`;
                     errorMsg.style.display = 'block';
                 }
             }
@@ -376,7 +375,7 @@
             cartItems = [];
             itemsJsonString = "[]";
             
-            if(!payBtn.onclick && payBtn.innerText !== "Gagal Login") { 
+            if(!payBtn.onclick && payBtn.innerText !== "Gagal Init") { 
                 payBtn.disabled = true; 
             }
 
@@ -578,6 +577,6 @@
         function redirectToThankYou() {
             window.location.href = 'thankyou.html';
         }
-    </script>
+    </script>      
 </body>
 </html>
