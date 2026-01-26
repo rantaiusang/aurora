@@ -240,15 +240,13 @@
     <!-- SCRIPT PI SDK ASLI -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
-    <!-- SCRIPT LOGIC (PERBAIKAN) -->
+        <!-- SCRIPT LOGIC (PERBAIKAN FINAL) -->
     <script>
         // ==========================================
         // 1. KONFIGURASI
         // ==========================================
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
-        
-        // Pastikan nama fungsi ini sesuai dengan Edge Function payment Anda
         const EDGE_FUNCTION_URL = 'https://dikapquhusbwjccbqcsb.supabase.co/functions/v1/verify-pi-payment';
 
         // ==========================================
@@ -265,75 +263,78 @@
         let isSDKReady = false;
 
         // ==========================================
-        // 3. INISIALISASI (PERBAIKAN LOGIKA POLLING)
+        // 3. INISIALISASI (SOLUSI AUTO-LOGIN)
         // ==========================================
         document.addEventListener('DOMContentLoaded', async () => {
             console.log("Payment Page Loaded.");
 
-            // Cek ketersediaan Pi SDK
             let attempts = 0;
-            const maxAttempts = 20; // Cukup 10 detik (20 * 500ms)
+            const maxAttempts = 30; // 15 detik timeout
             
-            const checkSDK = setInterval(() => {
+            const checkSDK = setInterval(async () => {
                 attempts++;
-                
-                // PERBAIKAN KUNCI:
-                // 1. Cek window.Pi ada.
-                // 2. Cek Pi.init ada (tandanya script loaded).
-                // 3. JANGAN cek getUser() di sini, karena itu butuh session.
-                //    Kita asumsikan session sudah ada dari halaman login.
                 
                 if (window.Pi && typeof Pi.init === 'function') {
                     clearInterval(checkSDK);
                     
-                    // Lakukan inisialisasi SEDERHANA
                     try {
-                        // Init tanpa auth, hanya registrasi app ID
+                        // 1. Init SDK
                         Pi.init({ 
                             version: "2.0", 
                             appId: PI_APP_ID 
                         });
                         
-                        console.log("SDK Initialized.");
+                        // 2. Cek Session (Sudah login dari halaman sebelumnya?)
+                        let user = Pi.getUser();
                         
-                        // Coba ambil user untuk memastikan session valid
-                        // Jika gagal, kita tetap lanjutkan (fallback)
-                        const user = Pi.getUser();
                         if (user) {
+                            // SUDAH LOGIN -> Langsung proses
+                            console.log("User ditemukan:", user);
                             currentUser = user;
-                            console.log("Session Valid:", user);
+                            isSDKReady = true;
+                            loadCartData();
                         } else {
-                            console.warn("Session Kosong, tapi kita lanjut.");
+                            // BELUM LOGIN (Refresh/Buka langsung) -> Auto Login
+                            console.log("User belum ditemukan, mencoba autentikasi ulang...");
+                            
+                            try {
+                                // Panggil authenticate ulang agar session muncul
+                                const authResult = await Pi.authenticate(['username', 'payments']);
+                                currentUser = authResult.user;
+                                console.log("Auto-Login Berhasil:", currentUser);
+                                
+                                isSDKReady = true;
+                                loadCartData();
+                            } catch (authError) {
+                                console.error("Gagal auto-login:", authError);
+                                // Jika user menolak login, kita tetap tampilkan data tapi tombol disabled
+                                forceLoadCart();
+                                document.getElementById('payBtn').innerText = "Login Diperlukan";
+                            }
                         }
-
-                        isSDKReady = true;
-                        loadCartData(); // PANGGIL FUNGSI KERANJANG DISINI
                         
                     } catch (e) {
                         console.error("Init Error:", e);
-                        forceLoadCart(); // Paksa load meski SDK error
+                        forceLoadCart();
                     }
                 } 
                 else if (attempts >= maxAttempts) {
                     clearInterval(checkSDK);
+                    forceLoadCart();
                     const btn = document.getElementById('payBtn');
-                    btn.innerText = "SDK Gagal / Buka di Pi Browser";
+                    btn.innerText = "SDK Error / Buka di Pi Browser";
                     btn.style.background = "#ff4d4d";
-                    btn.disabled = true;
-                    
-                    forceLoadCart(); // Tampilkan data keranjang meski error SDK
                 }
             }, 500);
         });
 
-        // Helper: Load cart data walaupun SDK belum 100% siap (Supaya data muncul)
         function forceLoadCart() {
-            console.log("Force loading cart data...");
-            loadCartData(true); // true = force mode
+            console.log("Force loading cart...");
+            loadCartData(true);
         }
 
         // ==========================================
-        // 4. FUNGSI LOAD KERANJANG
+        // 4. FUNGSI LOAD KERANJANG (FIX LOGIC TOTAL)
         // ==========================================
         function loadCartData(forceMode = false) {
             const summaryDiv = document.getElementById('summaryList');
@@ -345,14 +346,17 @@
             cartItems = [];
             itemsJsonString = "[]";
             payBtn.disabled = true;
-            summaryContainer.style.display = 'none'; 
+            
+            // Jangan sembunyikan container jika ada data, biarkan user melihat pesan kosong jika perlu
+            // summaryContainer.style.display = 'none'; -> DIHAPUS agar langsung terlihat proses loading
 
             const rawCart = localStorage.getItem('aurora_cart');
-            console.log("Raw Cart from Storage:", rawCart);
+            console.log("Raw Cart:", rawCart);
 
             if (!rawCart) {
-                summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Keranjang kosong. Kembali ke Store.</span>';
+                summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Keranjang kosong.</span>';
                 summaryContainer.style.display = 'block';
+                totalDisplay.innerText = "0.00 π";
                 payBtn.innerText = "Keranjang Kosong";
                 return;
             }
@@ -362,7 +366,7 @@
                 itemsJsonString = JSON.stringify(cartItems);
             } catch (e) {
                 console.error("JSON Parse Error:", e);
-                summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Data keranjang rusak.</span>';
+                summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Data rusak.</span>';
                 summaryContainer.style.display = 'block';
                 return;
             }
@@ -381,7 +385,7 @@
                 let price = parseFloat(item.price) || 0;
                 const qty = item.qty || 1;
                 const itemTotal = price * qty;
-                total += itemTotal;
+                total += itemTotal; // PASTIKAN INI BERJALAN
 
                 html += `
                     <div class="item-row">
@@ -392,43 +396,33 @@
             });
 
             summaryDiv.innerHTML = html;
+            
+            // UPDATE TAMPILAN TOTAL (Bagian yang tadi 0.00)
             totalDisplay.innerText = total.toFixed(2) + " π";
             
-            // PERBAIKAN: Jika forceMode aktif, kita izinkan tombol diklik
-            // tapi SDK mungkin error saat dicreatePayment. 
-            // Idealnya tunggu isSDKReady.
-            if (total > 0 && (isSDKReady || forceMode)) {
-                if(isSDKReady) {
-                    payBtn.disabled = false;
-                    payBtn.innerText = "Bayar Sekarang";
-                } else {
-                    payBtn.innerText = "Menunggu SDK...";
-                    payBtn.disabled = true;
-                }
+            // LOGIKA TOMBOL
+            if (total > 0 && isSDKReady) {
+                payBtn.disabled = false;
+                payBtn.innerText = "Bayar Sekarang";
+            } else if (total > 0 && !isSDKReady) {
+                payBtn.innerText = "Menunggu Autentikasi...";
+                payBtn.disabled = true;
             } else {
-                payBtn.innerText = "Menunggu SDK...";
+                payBtn.innerText = "Keranjang Kosong";
+                payBtn.disabled = true;
             }
         }
 
         // ==========================================
-        // 5. HANDLE PAYMENT UTAMA
+        // 5. HANDLE PAYMENT
         // ==========================================
         async function handlePayment(e) {
             e.preventDefault();
 
-            if (!isSDKReady) {
-                alert("Sistem pembayaran belum siap. Tunggu sebentar.");
+            if (!isSDKReady || !currentUser) {
+                alert("Sistem belum siap atau sesi hilang. Halaman akan dimuat ulang untuk login.");
+                location.reload(); // Reload agar trigger auto-login lagi
                 return;
-            }
-
-            // Fallback user jika currentUser null (misal page refresh tanpa login ulang)
-            if (!currentUser) {
-                currentUser = Pi.getUser(); 
-                if (!currentUser) {
-                    alert("Sesi berakhir. Silakan login kembali.");
-                    window.location.href = 'login.html';
-                    return;
-                }
             }
 
             const name = document.getElementById('fullName').value;
@@ -443,7 +437,7 @@
             
             errorMsg.style.display = "none";
             btn.disabled = true;
-            btn.innerHTML = `<span style="display:inline-block; animation: spin 1s linear infinite;">π</span> Memproses Pembayaran...`;
+            btn.innerHTML = `<span style="display:inline-block; animation: spin 1s linear infinite;">π</span> Memproses...`;
             btn.style.cursor = "wait";
 
             try {
@@ -455,12 +449,10 @@
                     metadata: { orderId: currentOrderId }
                 }, {
                     
-                    // --- FASE I: APPROVAL SERVER ---
                     onReadyForServerApproval: async (paymentId) => {
                         currentPaymentId = paymentId;
                         console.log("Payment ID:", paymentId);
                         
-                        // PERBAIKAN URL: Tambahkan /approve
                         try {
                             const res = await fetch(`${EDGE_FUNCTION_URL}/approve`, {
                                 method: 'POST',
@@ -468,22 +460,18 @@
                                 body: JSON.stringify({ 
                                     paymentId: paymentId, 
                                     orderId: currentOrderId,
-                                    txid: null // Belum ada txid di fase ini
+                                    txid: null 
                                 })
                             });
-                            console.log("Approval status:", res.status);
-                        } catch (e) {
-                            console.error("Approval Error:", e);
-                        }
+                            console.log("Approval:", res.status);
+                        } catch (e) { console.error(e); }
                     },
 
-                    // --- FASE II: COMPLETION ---
                     onPaymentCompleted: async (paymentId, txid) => {
                         console.log("Payment Completed. Verifying...");
-                        btn.innerText = "Mengkonfirmasi Pesanan...";
+                        btn.innerText = "Mengkonfirmasi...";
 
                         try {
-                            // PERBAIKAN URL: Tambahkan /complete
                             const response = await fetch(`${EDGE_FUNCTION_URL}/complete`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -509,32 +497,31 @@
                                 document.getElementById('successName').innerText = name;
                                 document.getElementById('successOverlay').classList.add('show');
                             } else {
-                                showError("Verifikasi Gagal: " + (result.message || "Server Error"));
+                                showError("Verifikasi Gagal: " + (result.message || "Error"));
                                 resetButton();
                             }
 
                         } catch (err) {
-                            console.error("Verification Error:", err);
-                            showError("Gagal menghubungi server.");
+                            console.error(err);
+                            showError("Gagal koneksi server.");
                             resetButton();
                         }
                     },
                     
                     onCancelled: (paymentId) => {
-                        console.log("Cancelled by user");
                         resetButton();
                         showError("Pembayaran dibatalkan.");
                     },
                     
                     onError: (error, payment) => {
-                        console.error("Payment Error:", error);
+                        console.error(error);
                         resetButton();
                         showError("Error: " + (error.message || "Unknown"));
                     }
                 });
 
             } catch (err) {
-                console.error("Exception:", err);
+                console.error(err);
                 resetButton();
                 showError("Gagal memulai pembayaran.");
             }
