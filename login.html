@@ -7,10 +7,12 @@
     
     <!-- Font Google -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Hanya load Supabase Client jika diperlukan di halaman ini, tapi kita pakai fetch native saja agar ringan -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
     <style>
-        /* --- STYLES TETAP SAMA --- */
+        /* --- STYLES TETAP SAMA (Saya pertahankan desain luxury Anda) --- */
         :root {
             --luxury-gold: #d4af37;
             --luxury-gold-light: #f3e5ab;
@@ -220,9 +222,9 @@
         const functionName = 'verify-pi-login';
         
         // --- 1. INISIALISASI PI SDK (GLOBAL) ---
-        // Lakukan ini segera setelah skrip dimuat agar event listener internal SDK siap
-        const isSandbox = location.hostname.includes('sandbox');
+        const isSandbox = window.location.hostname.includes('sandbox') || window.location.hostname.includes('localhost');
         
+        // Pastikan Pi.init dipanggil dengan benar
         if (typeof Pi !== 'undefined') {
             Pi.init({
                 version: "2.0",
@@ -231,18 +233,25 @@
             console.log("Pi SDK Initialized. Sandbox mode:", isSandbox);
         } else {
             console.error("Pi SDK tidak terdeteksi! Pastikan membuka di Pi Browser.");
+            // Jika tidak di Pi Browser, jangan lanjutkan logic auto-login
+            document.getElementById('main-status').innerText = "Browser Tidak Didukung";
+            document.getElementById('sub-status').innerText = "Silakan buka link ini melalui Aplikasi Pi Browser.";
+            document.querySelector('.pi-spinner').style.display = 'none';
         }
         
         window.addEventListener('load', () => {
             console.log("Halaman Login Dimuat.");
             
+            // Animasi UI
             setTimeout(() => {
                 const card = document.getElementById('loginCard');
                 if(card) card.classList.add('visible');
             }, 200);
 
-            // Beri jeda waktu sedikit agar animasi UI selesai sebelum proses backend
-            setTimeout(autoLoginProcess, 1500);
+            // Beri jeda waktu untuk animasi
+            if (typeof Pi !== 'undefined') {
+                setTimeout(autoLoginProcess, 1500);
+            }
         });
 
         function updateStatus(title, subtitle) {
@@ -268,22 +277,13 @@
             try {
                 // 1. Cek Pi SDK Ulang
                 if (typeof Pi === 'undefined') {
-                    throw new Error("Pi SDK gagal dimuat. Pastikan menggunakan Pi Browser terbaru.");
+                    throw new Error("Pi SDK gagal dimuat. Pastikan menggunakan Pi Browser.");
                 }
                 
                 updateStatus("Mengamankan Koneksi...", "Menginisialisasi Pi Network");
                 
-                // 2. Cek Network (Opsional tapi disarankan)
-                try {
-                    const network = await Pi.getNetwork(); 
-                    console.log("Terkoneksi ke network:", network);
-                } catch (netErr) {
-                    console.warn("Gagal cek network (bisa diabaikan di beberapa versi browser):", netErr);
-                }
-                
-                updateStatus("Memverifikasi Identitas...", "Silakan setujui permintaan akses");
-                
-                // 3. IDENTIFIKASI USER
+                // 2. IDENTIFIKASI USER
+                // Timeout handler untuk Pi.identify jika user merespon lambat
                 const authResult = await Pi.identify(['username'], {
                     onIncompletePaymentFound: (payment) => {
                         console.log("Incomplete payment ditemukan:", payment);
@@ -295,51 +295,55 @@
                 }
 
                 const user = authResult.user;
-                const accessToken = authResult.accessToken; // Token ini berguna jika backend butuh validasi Pi
-                
-                // Validasi: Jika username null (user belum set username), gunakan UID sebagai fallback
+                const accessToken = authResult.accessToken;
                 const usernameToSend = user.username || user.uid; 
                 
                 console.log("User Pi Teridentifikasi:", user);
-                localStorage.setItem('aurora_user', JSON.stringify(user));
-
-                // 4. FETCH POST KE SUPABASE EDGE FUNCTION
+                
+                // 3. KIRIM KE SUPABASE EDGE FUNCTION
                 updateStatus("Sinkronisasi Data...", "Mengecek hak akses pengguna...");
                 
-                console.log(`Mengirim request ke: ${supabaseUrl}/functions/v1/${functionName}`);
-                console.log("Payload:", { uid: user.uid, username: usernameToSend });
+                // URL Endpoint Supabase Functions
+                const endpoint = `${supabaseUrl}/functions/v1/${functionName}`;
+                console.log(`Mengirim request ke: ${endpoint}`);
                 
-                const response = await fetch(
-                    `${supabaseUrl}/functions/v1/${functionName}`, 
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                            // HEADER AUTHORIZATION DIHAPUS KARENA MENYEBABKAN KONFLIK DI EDGE FUNCTION
-                            // Jika Edge Function butuh autentikasi, sebaiknya gunakan validasi Pi Access Token
-                            // atau atur CORS policies di Supabase.
-                        },
-                        body: JSON.stringify({
-                            uid: user.uid,
-                            username: usernameToSend,
-                            accessToken: accessToken // Opsional: kirim token jika backend mau validasi ke Pi Server
-                        })
-                    }
-                );
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${supabaseAnonKey}`, // PENTING: Header ini wajib untuk Supabase Edge Functions
+                        'apikey': supabaseAnonKey // Beberapa setup Supabase butuh header ganda
+                    },
+                    body: JSON.stringify({
+                        uid: user.uid,
+                        username: usernameToSend,
+                        accessToken: accessToken // Kirim token Pi ke backend untuk validasi lebih lanjut jika perlu
+                    })
+                });
 
-                // Cek status HTTP dulu (200 OK, 404, 500, dll)
+                // Debugging Response
+                console.log("Status Response:", response.status);
+                
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error("Server Error Response:", errorText);
-                    throw new Error(`Server Error ${response.status}: ${errorText}`);
+                    // Coba baca error message dari body response
+                    let errText = "Gagal terhubung ke server.";
+                    try {
+                        const errJson = await response.json();
+                        errText = errJson.message || errJson.error || errText;
+                    } catch(e) {
+                        const rawText = await response.text();
+                        if(rawText) errText = rawText;
+                    }
+                    throw new Error(`Server Error ${response.status}: ${errText}`);
                 }
 
                 const data = await response.json();
                 console.log("Respon dari Edge Function:", data);
 
-                // 5. LOGIKA REDIRECT
+                // 4. LOGIKA REDIRECT BERDASARKAN RESPONSE
                 if (data.success === true) {
-                    // Simpan token anon lokal untuk keperluan lain (opsional)
+                    // Simpan data user lokal
+                    localStorage.setItem('aurora_user', JSON.stringify(user));
                     localStorage.setItem('aurora_token', supabaseAnonKey);
                     
                     if (data.role === 'admin') {
@@ -352,7 +356,6 @@
                         setTimeout(() => window.location.href = 'store.html', 1500);
                     }
                 } else {
-                    // Jika sukses:false tapi HTTP 200
                     throw new Error(data.message || "Akses Ditolak oleh sistem.");
                 }
 
@@ -360,10 +363,13 @@
                 console.error("Login Process Error:", err);
                 let msg = err.message || "Terjadi kesalahan sistem.";
                 
-                if(msg.includes("User denied") || msg.includes("denied") || msg.includes("cancel")) {
+                // Pesan error yang lebih spesifik
+                if(msg.includes("User denied") || msg.includes("cancel")) {
                     msg = "Anda membatalkan proses otentikasi.";
-                } else if (msg.includes("Failed to fetch")) {
-                    msg = "Gagal menghubungi server. Periksa koneksi internet Anda.";
+                } else if(msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+                    msg = "Gagal menghubungi server (CORS/Network). Pastikan backend Supabase sudah di-deploy.";
+                } else if(msg.includes("401") || msg.includes("403")) {
+                    msg = "Otorisasi ditolak. Periksa API Key Supabase.";
                 }
                 
                 showError("Gagal Masuk", msg);
