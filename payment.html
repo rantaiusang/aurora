@@ -8,9 +8,6 @@
     <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     
-    <!-- Library Supabase -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    
     <style>
         /* --- VARIABLES --- */
         :root {
@@ -143,16 +140,18 @@
             background: var(--danger-color) !important; color: white !important;
             box-shadow: 0 5px 20px rgba(255, 77, 77, 0.2) !important;
             font-size: 0.9rem !important; padding: 15px !important;
+            white-space: normal !important;
+            text-align: center !important;
         }
         .btn-retry:hover { background: #ff6666 !important; transform: translateY(-3px); }
 
         /* Error Box */
         .error-box {
             display:none; background:rgba(255, 77, 77, 0.1); border:1px solid var(--danger-color); 
-            color:#ffcccc; padding:15px; border-radius:8px; margin-bottom:25px; font-size:0.8rem; 
-            text-align:center; line-height: 1.5;
+            color:#ffcccc; padding:15px; border-radius:8px; margin-bottom:25px; font-size:0.85rem; 
+            text-align:center; line-height: 1.6;
         }
-        .error-box strong { display: block; margin-bottom: 5px; color: #ff4d4d; }
+        .error-box strong { display: block; margin-bottom: 8px; color: #ff4d4d; font-size: 1rem; }
 
         /* Success Overlay */
         .success-overlay {
@@ -254,7 +253,6 @@
     </div>    
 
     <!-- SCRIPT PI SDK ASLI -->
-    <!-- Tambahkan timestamp agar tidak ter-cache by browser jika ada update -->
     <script src="https://sdk.minepi.com/pi-sdk.js?v=2.0"></script>
     
     <!-- SCRIPT LOGIC -->
@@ -281,47 +279,41 @@
         let tempCustomerData = {};
 
         // ==========================================
-        // 3. INISIALISASI (FIXED LOGIC)
+        // 3. INISIALISASI (FIXED: CEK PERMISSIONS)
         // ==========================================
         document.addEventListener('DOMContentLoaded', async () => {
             const btn = document.getElementById('payBtn');
             const errorMsg = document.getElementById('error-message');
 
-            // Cek 1: Pastikan halaman dibuka di Pi Browser
-            // Jika window.Pi tidak ada setelah beberapa detik, berarti bukan di Pi Browser atau JS Error fatal
+            // Cek Environment Pi Browser
             const checkPiEnvironment = () => {
                 return new Promise((resolve, reject) => {
-                    // Cek langsung
                     if (window.Pi) {
                         resolve(window.Pi);
                         return;
                     }
-                    
-                    // Polling sampai 5 detik
                     let attempts = 0;
                     const interval = setInterval(() => {
                         attempts++;
                         if (window.Pi) {
                             clearInterval(interval);
                             resolve(window.Pi);
-                        } else if (attempts >= 10) { // 5 detik (10 * 500ms)
+                        } else if (attempts >= 10) { 
                             clearInterval(interval);
-                            reject(new Error("SDK Pi tidak terdeteksi. Pastikan Anda membuka halaman ini melalui Aplikasi Pi Browser."));
+                            reject(new Error("SDK Pi tidak terdeteksi. Pastikan membuka lewat Aplikasi Pi Browser."));
                         }
                     }, 500);
                 });
             };
 
             try {
-                // 1. Tunggu Object Pi tersedia
+                // 1. Tunggu Object Pi
                 const Pi = await checkPiEnvironment();
 
-                // 2. Inisialisasi SDK
-                // Pastikan version sesuai dengan yang ada di script tag (2.0)
+                // 2. Init SDK
                 Pi.init({ version: "2.0", appId: PI_APP_ID });
                 
                 // 3. Authenticate User
-                // Kita beri timeout 30 detik untuk user approve login
                 const authPromise = Pi.authenticate();
                 const timeoutPromise = new Promise((_, reject) => 
                     setTimeout(() => reject(new Error("Waktu habis. Silakan refresh halaman.")), 30000)
@@ -329,13 +321,30 @@
                 
                 const user = await Promise.race([authPromise, timeoutPromise]);
 
+                // --- FIX PENTING UNTUK ERROR "READING EVERY" ---
+                // Error ini terjadi ketika SDK mencoba membaca user.permissions,
+                // tapi object tersebut undefined/rusak. Kita cek di sini sebelum melanjutkan.
+                
+                if (!user) {
+                    throw new Error("User data kosong.");
+                }
+
+                // Debug log
+                console.log("User Object:", user);
+
+                // Cek keberadaan permissions
+                if (!user.permissions) {
+                    console.error("User permissions missing!", user);
+                    throw new Error("SESI PI BROWSER RUSAK (Corrupt Session).<br><br>Data permission tidak terdeteksi.<br><strong>Solusi:</strong><br>1. Tutup total aplikasi Pi Browser (hapus dari recent apps).<br>2. Tunggu 10 detik.<br>3. Buka kembali dan coba checkout.");
+                }
+
                 if (user && user.uid) {
                     currentUser = user;
                     isSDKReady = true;
-                    console.log("User Authenticated:", user.uid);
+                    console.log("User OK:", user.uid);
                     loadCartData();
                 } else {
-                    throw new Error("Gagal otentikasi user.");
+                    throw new Error("UID User tidak ditemukan.");
                 }
 
             } catch (error) {
@@ -345,37 +354,43 @@
         });
 
         // ==========================================
-        // 4. ERROR HANDLING (FIXED: NO FALSE ALARM)
+        // 4. ERROR HANDLING
         // ==========================================
         function handleInitError(error, btn, errorMsg) {
             let message = error.message || "Terjadi kesalahan tidak diketahui.";
             
-            // Hapus pengecekan spesifik 'reading every' yang menyebabkan alarm palsu.
-            // Fokus pada solusi umum: Reload atau Cek Koneksi.
-            
-            if (message.includes("deteksi") || message.includes("SDK")) {
-                // Error Environment
-                message += "<br><br>Jika Anda sudah di Pi Browser, coba tutup aplikasi dan buka kembali.";
+            // Jika error menyebutkan 'every' atau permissions (tangkap dari catch block atau pesan user)
+            if (message.includes("reading 'every'") || message.includes("Permission") || message.includes("SESI")) {
+                 // Biarkan pesan error asli (yang sudah dibuat custom di throw new Error di atas) tampil
+            } else if (message.includes("deteksi") || message.includes("SDK")) {
+                message += "<br><br>Pastikan Anda membuka halaman ini melalui Aplikasi Pi Browser, bukan Chrome biasa.";
             }
 
-            errorMsg.innerHTML = `<strong>Koneksi Gagal:</strong><br>${message}`;
+            errorMsg.innerHTML = `<strong style="color:var(--danger-color)">Koneksi Gagal:</strong><br>${message}`;
             errorMsg.style.display = 'block';
 
-            // Ubah tombol menjadi tombol reload
             if(btn) {
                 btn.disabled = false;
                 btn.type = "button";
                 btn.classList.add('btn-retry');
-                btn.innerHTML = "Refresh Halaman";
-                btn.onclick = () => window.location.reload();
+                
+                // Pesan tombol dinamis berdasarkan error
+                if (message.includes("SESI") || message.includes("Corrupt")) {
+                    btn.innerHTML = "Tutup & Buka Kembali Aplikasi";
+                    btn.onclick = () => {
+                        window.location.href = "https://minepi.com/pi-browser"; // Arahkan ke download/info jika perlu, atau biarkan user close manual
+                    };
+                } else {
+                    btn.innerHTML = "Refresh Halaman";
+                    btn.onclick = () => window.location.reload();
+                }
             }
 
-            // Tetap coba load keranjang untuk visualisasi (opsional)
             loadCartData(true); 
         }
 
         // ==========================================
-        // 5. FUNGSI LOAD KERANJANG (FIX DISPLAY PRICE)
+        // 5. FUNGSI LOAD KERANJANG
         // ==========================================
         function loadCartData(errorMode = false) {
             const summaryDiv = document.getElementById('summaryList');
@@ -387,7 +402,6 @@
             cartItems = [];
             itemsJsonString = "[]";
             
-            // Kunci tombol jika mode error atau belum siap
             if(!errorMode && !payBtn.classList.contains('btn-retry')) { 
                 payBtn.disabled = true; 
             }
@@ -440,7 +454,6 @@
             const formattedTotal = formatPrice(total);
             totalDisplay.innerText = formattedTotal + " π";
             
-            // Aktifkan tombol bayar jika SDK siap dan total > 0
             if (total > 0 && isSDKReady && !errorMode && !payBtn.onclick) {
                 payBtn.disabled = false;
                 payBtn.innerText = "Bayar Sekarang";
@@ -458,7 +471,7 @@
         }
 
         // ==========================================
-        // 6. HANDLE PAYMENT (FIXED DECIMALS)
+        // 6. HANDLE PAYMENT
         // ==========================================
         async function handlePayment(e) {
             e.preventDefault();
@@ -499,8 +512,7 @@
             try {
                 currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
-                // Pastikan amount adalah number dan max 2 decimal (atau sesuai kebijakan Pi, biasanya 2 desimal umum)
-                // Gunakan parseFloat untuk memastikan tipe data benar
+                // Pastikan amount format benar (2 desimal standar Pi)
                 const paymentAmount = parseFloat(total.toFixed(2));
 
                 await Pi.createPayment({
@@ -527,7 +539,6 @@
                             if(!res.ok) {
                                 const errText = await res.text();
                                 console.error("Gagal approve server:", errText);
-                                // Jangan throw error disini agar flow pembayaran di user tetap lanjut sampai complete/cancel
                             }
                         } catch (e) { 
                             console.error("Error approve:", e); 
@@ -580,7 +591,13 @@
                     onError: (error, payment) => {
                         console.error("Payment Error:", error);
                         resetButton();
-                        showError("Terjadi kesalahan pada pembayaran: " + (error || "Coba lagi nanti."));
+                        
+                        // Cek jika error kembali mengenai 'every' atau permissions
+                        let errMsg = error || "Coba lagi nanti.";
+                        if (typeof errMsg === 'string' && errMsg.includes('every')) {
+                            errMsg = "Error Sesi (Permissions Missing). Silakan tutup total aplikasi Pi Browser dan buka kembali.";
+                        }
+                        showError("Terjadi kesalahan pada pembayaran: " + errMsg);
                     }
                 });
 
