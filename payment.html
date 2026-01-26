@@ -111,7 +111,7 @@
         .item-summary {
             background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;
             margin-bottom: 25px; font-size: 0.85rem; color: #ccc;
-            max-height: 150px; overflow-y: auto; /* Tinggi diperbesar sedikit */
+            max-height: 150px; overflow-y: auto;
             border: 1px solid rgba(255,255,255,0.05); display: none;
         }
         .item-summary::-webkit-scrollbar { width: 4px; }
@@ -237,10 +237,7 @@
         </div>
     </div>    
 
-    <!-- SCRIPT PI SDK ASLI -->
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    
-        <!-- SCRIPT PI SDK ASLI -->
+    <!-- SCRIPT PI SDK ASLI (Hanya sekali saja!) -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
     <script>
@@ -248,7 +245,12 @@
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         
+        // URL Edge Function Anda (Ini sudah benar)
         const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
+
+        // --- PENTING: MASUKKAN APP ID DARI PI NETWORK DISINI ---
+        // Contoh: const PI_APP_ID = "aurora-4c073a664f9faa3a";
+        const PI_APP_ID = "aurora-4c073a664f9faa3a"; 
 
         // Variabel Global
         let total = 0;
@@ -262,9 +264,11 @@
         document.addEventListener('DOMContentLoaded', async () => {
             console.log("DOM Loaded. Memulai inisialisasi...");
             
-            // 1. Inisialisasi Pi SDK
+            // 1. Inisialisasi Pi SDK dengan APP_ID ANDA
             try {
-                await Pi.init({ version: "2.0" });
+                await Pi.init(PI_APP_ID, { version: "2.0" });
+                console.log("Pi SDK Initialized with ID:", PI_APP_ID);
+                
                 try {
                     const auth = await Pi.authenticate(['username', 'payments']);
                     currentUser = auth.user;
@@ -356,7 +360,7 @@
             }
         }
 
-        // --- PERBAIKAN HANDLE PAYMENT ---
+        // --- HANDLE PAYMENT ---
         async function handlePayment(e) {
             e.preventDefault();
             const name = document.getElementById('fullName').value;
@@ -387,7 +391,7 @@
                 currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
                 // MEMANGGIL PI SDK DENGAN STRUKTUR YANG BENAR
-                const paymentResult = await Pi.createPayment({
+                await Pi.createPayment({
                     amount: total.toFixed(8),
                     memo: `Order #${currentOrderId}`,
                     metadata: { orderId: currentOrderId, items: itemNameStr }
@@ -412,7 +416,6 @@
                     onError: (error, payment) => {
                         console.error("Payment Error:", error, payment);
                         resetButton();
-                        // Perbaikan: Cek struktur error object
                         let msg = "Terjadi kesalahan pembayaran.";
                         if (error && error.message) msg = error.message;
                         else if (typeof error === 'string') msg = error;
@@ -496,7 +499,6 @@
             const div = document.getElementById('error-message');
             div.innerText = msg;
             div.style.display = 'block';
-            // Animasi shake sederhana
             div.animate([
                 { transform: 'translateX(-10px)' },
                 { transform: 'translateX(10px)' },
