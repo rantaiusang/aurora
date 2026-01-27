@@ -115,7 +115,7 @@
             font-size: 2.8rem;
             color: var(--text-white);
             font-weight: bold;
-            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+            text-shadow: 0 0 15px rgba(255,255,255,0.3);
             animation: pulse 3s ease-in-out infinite;
             z-index: 2;
         }
@@ -219,14 +219,19 @@
         const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         const functionName = 'verify-pi-login';
         
+        // --- KONFIGURASI PI NETWORK (APP ID BARU) ---
+        const PI_APP_ID = "uyaidqnvfk65mhmmrwa5krsfin72mq5xig5hwgerhlfxrk1i6kopyzjcnyyi3paa";
+        
         // Tentukan apakah ini mode Sandbox (Localhost atau URL sandbox)
         const isSandbox = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1');
         
         // Fungsi Inisialisasi SDK
         function initPiSDK() {
             if (typeof Pi !== 'undefined') {
+                // PERBAIKAN: Gunakan appId yang baru
                 Pi.init({
                     version: "2.0",
+                    appId: PI_APP_ID, 
                     sandbox: isSandbox
                 });
                 console.log("Pi SDK Berhasil Di-Initialize. Sandbox:", isSandbox);
@@ -293,7 +298,6 @@
                 const onIncompletePaymentFound = (payment) => {
                     console.log("Incomplete payment ditemukan:", payment);
                     // Logika untuk menangani pembayaran yang tertunda bisa ditambahkan di sini
-                    // Contoh: redirect ke halaman complete payment
                 };
 
                 // 2. Scopes: 'username' untuk nama, 'payments' untuk transaksi masa depan
