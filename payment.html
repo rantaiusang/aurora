@@ -12,7 +12,7 @@
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
 
     <style>
-        :root { --luxury-gold: #d4af37; --dark-bg: #0f0c15; --card-bg: #1a1620; --danger-color: #ff4d4d; }
+        :root { --luxury-gold: #d4af37; --dark-bg: #0f0c15; --card-bg: #1a1620; --danger-color: #ff4d4d; --info-color: #3498db; }
         body { background-color: var(--dark-bg); color: #ffffff; font-family: 'Poppins', sans-serif; margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
         header { background: rgba(15, 12, 21, 0.95); border-bottom:1px solid rgba(212, 175, 55, 0.2); padding: 20px 8%; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
         .back-link { color: #fff; text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: color 0.3s; cursor: pointer; }
@@ -77,7 +77,15 @@
 
     <script>
         const Pi = window.Pi;
-        Pi.init({ version: "2.0", sandbox: true }); 
+        
+        // ==========================================
+        // PERBAIKAN 1: TAMBAHKAN SCOPES DI SINI
+        // ==========================================
+        Pi.init({ 
+            version: "2.0", 
+            sandbox: true,
+            scopes: ['username', 'payments'] 
+        }); 
 
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const AUTH_TOKEN = localStorage.getItem('aurora_token');
@@ -115,7 +123,7 @@
             document.getElementById('payBtn').innerText = `Bayar ${total.toFixed(2)} π`;
         }
 
-        // Fungsi Pembayaran (Redirect ke success page jika sukses)
+        // Fungsi Pembayaran
         async function handleAutoPayment(e) {
             e.preventDefault();
             const name = document.getElementById('fullName').value.trim();
@@ -127,29 +135,46 @@
             }
 
             const btn = document.getElementById('payBtn');
+            const originalBtnText = btn.innerText;
             btn.disabled = true;
-            btn.innerText = "Membuka Pembayaran...";
+            btn.innerText = "Mengecek Izin Akses...";
             document.getElementById('error-message').style.display = 'none';
 
             if (total <= 0) {
                 showError("Total pembayaran tidak valid.");
                 btn.disabled = false;
-                btn.innerText = "Bayar Sekarang";
+                btn.innerText = originalBtnText;
                 return;
             }
 
             const currentOrderId = "ORD-" + Date.now();
-
-            // Simpan data sementara agar bisa diambil di success page nanti
             localStorage.setItem('temp_order_id', currentOrderId);
 
             try {
-                // Langsung create payment tanpa authenticate manual
+                // ==========================================
+                // PERBAIKAN 2: WAJIB AUTHENTICATE DULU
+                // ==========================================
+                // Error scope hilang karena ini tidak ada. 
+                // Namun ini bisa memicu pop-up. Harap izinkan pop-up browser!
+                
+                console.log("Meminta izin 'payments'...");
+                const authResult = await Pi.authenticate(['username', 'payments']);
+                const piUser = authResult ? authResult.user : null;
+
+                if (!piUser) {
+                    throw new Error("Gagal mengambil data user. Pastikan Anda login di Wallet Pi.");
+                }
+
+                console.log("User Authenticated:", piUser.username);
+
+                // Lanjut ke Payment
+                btn.innerText = "Membuka Pembayaran...";
+                
                 await Pi.createPayment(
                     {
                         amount: Number(total.toFixed(7)), 
                         memo: `Order ${currentOrderId} - Aurora Store`,
-                        metadata: { orderId: currentOrderId, user: currentUser.username }
+                        metadata: { orderId: currentOrderId, user: piUser.username }
                     },
                     {
                         onReadyForServerApproval: async function (paymentId) {
@@ -161,15 +186,14 @@
                                         action: "approve",
                                         paymentId: paymentId,
                                         orderId: currentOrderId,
-                                        uid: currentUser.uid,
-                                        username: currentUser.username
+                                        uid: piUser.uid,
+                                        username: piUser.username
                                     })
                                 });
                             } catch (e) { console.error(e); }
                         },
 
                         onReadyForServerCompletion: async function (paymentId, txid) {
-                            // Kirim data final ke backend
                             try {
                                 await fetch(BACKEND_URL, {
                                     method: "POST",
@@ -179,18 +203,17 @@
                                         paymentId: paymentId,
                                         txid: txid,
                                         orderId: currentOrderId,
-                                        uid: currentUser.uid,
-                                        username: currentUser.username,
+                                        uid: piUser.uid,
+                                        username: piUser.username,
                                         amount: total,
                                         items: cartItems,
                                         customer: { name, phone, address }
                                     })
                                 });
 
-                                // Jika sukses, Hapus cart dan REDIRECT
                                 localStorage.removeItem('aurora_checkout');
                                 localStorage.removeItem("aurora_cart");
-                                window.location.href = 'payment-success.html'; // <--- REDIRECT KE SINI
+                                window.location.href = 'payment-success.html';
                             } catch (error) {
                                 showError("Gagal konfirmasi pembayaran: " + error.message);
                                 btn.disabled = false;
@@ -200,21 +223,29 @@
 
                         onCancel: function () {
                             btn.disabled = false;
-                            btn.innerText = "Bayar Sekarang";
+                            btn.innerText = originalBtnText;
                             showError("Pembayaran dibatalkan.");
                         },
 
                         onError: function (err) {
                             btn.disabled = false;
-                            btn.innerText = "Bayar Sekarang";
+                            btn.innerText = originalBtnText;
                             showError("Error: " + err.message);
                         }
                     }
                 );
             } catch (err) {
-                showError("Gagal memulai pembayaran: " + err.message);
+                console.error("Error Total:", err);
+                let msg = err.message || "Terjadi kesalahan tak terduga.";
+                
+                // Pesan khusus jika suspect pop-up blocker
+                if (msg.includes("timeout") || msg === "Timeout") {
+                    msg = "Lama merespon. Pastikan Anda mengizinkan Pop-up di address bar browser.";
+                }
+
+                showError(msg);
                 btn.disabled = false;
-                btn.innerText = "Bayar Sekarang";
+                btn.innerText = originalBtnText;
             }
         }
 
