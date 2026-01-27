@@ -266,8 +266,6 @@
         </div>
     </div>    
 
-    <!-- TIDAK ADA PI SDK DISINI -->
-
     <!-- SCRIPT LOGIC (BACKEND MANUAL) -->
     <script>
         // ==========================================
@@ -280,7 +278,7 @@
         const SUPABASE_KEY = AUTH_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         
         // Endpoint Backend untuk membuat pesanan manual
-        const BACKEND_URL = `${SUPABASE_URL}/functions/v1/create-manual-order`;
+        const BACKEND_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
 
         // ==========================================
         // 2. VARIABEL GLOBAL
