@@ -91,7 +91,8 @@
 
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const AUTH_TOKEN = localStorage.getItem('aurora_token');
-        const SUPABASE_KEY = AUTH_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // Gunakan Key lengkap Anda
+        // PERHATIAN: Pastikan Key ini valid dan mengizinkan akses Supabase Edge Function
+        const SUPABASE_KEY = AUTH_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; 
         const BACKEND_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
 
         let total = 0;
@@ -143,17 +144,31 @@
             const btn = document.getElementById('payBtn');
             btn.disabled = true;
             btn.innerText = "Mengecek Autentikasi...";
+            document.getElementById('error-message').style.display = 'none';
 
-            // CEK USER PI (Prasyarat sebelum Step 8a)
-            const piUser = await Pi.getUser();
-            if (!piUser) {
-                showError("User tidak dikenali. Login ulang di Pi Browser.");
-                btn.disabled = false; return;
+            // ==========================================
+            // PERBAIKAN 1: SAFE USER AUTH CHECK
+            // ==========================================
+            let piUser;
+            try {
+                if (!window.Pi) throw new Error("Pi SDK belum dimuat.");
+                
+                // Coba ambil user. Jika gagal (misal buka di Chrome biasa), akan masuk catch
+                piUser = await Pi.getUser();
+                
+                if (!piUser || !piUser.uid) {
+                    throw new Error("User tidak ditemukan atau tidak login di Pi Browser.");
+                }
+            } catch (authError) {
+                console.error("Auth Error:", authError);
+                showError("Gagal Autentikasi: " + authError.message + "<br><i>(Pastikan Anda membuka website ini melalui Pi Browser)</i>");
+                btn.disabled = false;
+                btn.innerText = "Bayar Sekarang";
+                return; // Stop di sini agar tidak lanjut ke Payment
             }
 
             btn.innerText = "Membuka Pi Payment...";
             const currentOrderId = "ORD-" + Date.now();
-            document.getElementById('error-message').style.display = 'none';
 
             try {
                 // ==========================================
@@ -169,9 +184,10 @@
                         // --- STEP 8b: SERVER APPROVAL ---
                         onReadyForServerApproval: async function (paymentId) {
                             console.log("Step 8b: Approving Payment", paymentId);
-                            // Kirim ke Backend untuk Approve ke API Pi
+                            
+                            // Kirim ke Backend yang sudah diperbaiki (index.ts)
                             try {
-                                await fetch(BACKEND_URL, {
+                                const response = await fetch(BACKEND_URL, {
                                     method: "POST",
                                     headers: {
                                         "Content-Type": "application/json",
@@ -185,7 +201,16 @@
                                         username: currentUser.username
                                     })
                                 });
-                            } catch (error) { console.error("Gagal Approve:", error); }
+                                
+                                const result = await response.json();
+                                if (!result.success) {
+                                    throw new Error(result.message || "Backend menolak persetujuan");
+                                }
+                            } catch (error) { 
+                                console.error("Gagal Approve:", error);
+                                // Jangan throw error disini agar UI Payment Pi tetap muncul
+                                // Tapi log error agar developer tahu
+                            }
                         },
 
                         // --- STEP 8d: SERVER COMPLETION ---
@@ -194,7 +219,7 @@
                             btn.innerText = "Memverifikasi & Menyimpan...";
 
                             try {
-                                await fetch(BACKEND_URL, {
+                                const response = await fetch(BACKEND_URL, {
                                     method: "POST",
                                     headers: {
                                         "Content-Type": "application/json",
@@ -212,8 +237,15 @@
                                         customer: { name, phone, address }
                                     })
                                 });
+                                
+                                const result = await response.json();
 
-                                // Reset & Show Success
+                                // PERBAIKAN 2: Cek hasil backend sebelum sukses
+                                if (!result.success) {
+                                    throw new Error(result.message || "Verifikasi backend gagal");
+                                }
+
+                                // Jika Backend sukses & Pi Network sukses
                                 localStorage.removeItem('aurora_checkout');
                                 localStorage.removeItem("aurora_cart");
                                 document.getElementById("successOrderId").innerText = currentOrderId;
@@ -221,7 +253,7 @@
                                 
                             } catch (error) {
                                 console.error("Gagal Complete:", error);
-                                showError("Gagal konfirmasi pembayaran.");
+                                showError("Gagal konfirmasi pembayaran di server: " + error.message);
                                 btn.disabled = false;
                                 btn.innerText = "Bayar Sekarang";
                             }
@@ -237,7 +269,7 @@
                             console.error("Error:", err);
                             btn.disabled = false;
                             btn.innerText = "Bayar Sekarang";
-                            showError("Error: " + err.message);
+                            showError("Error: " + (err.message || JSON.stringify(err)));
                         }
                     }
                 );
@@ -245,6 +277,7 @@
                 console.error("Create Payment Failed:", err);
                 showError("Gagal memulai pembayaran: " + err.message);
                 btn.disabled = false;
+                btn.innerText = "Bayar Sekarang";
             }
         }
 
