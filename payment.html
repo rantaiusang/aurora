@@ -218,13 +218,11 @@
         
         const Pi = window.Pi;
         
-        // PENTING: Sesuai permintaan, set sandbox ke FALSE untuk Mainnet.
-        // Ubah ke true jika kamu sedang melakukan development di Testnet
+        // PENTING: Set FALSE jika mainnet, TRUE jika testnet
         Pi.init({ version: "2.0", sandbox: false }); 
 
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const AUTH_TOKEN = localStorage.getItem('aurora_token');
-        // Menggunakan Anon Key dari input kamu untuk akses function
         const SUPABASE_KEY = AUTH_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         const BACKEND_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
 
@@ -310,7 +308,7 @@
         }
 
         // ==========================================
-        // 3. HANDLE PEMBAYARAN OTOMATIS (PERBAIKAN TOTAL)
+        // 3. HANDLE PEMBAYARAN OTOMATIS (PERFECT VERSION)
         // ==========================================
         async function handleAutoPayment(e) {
             e.preventDefault();
@@ -319,6 +317,7 @@
                 return showError("Total pembayaran tidak valid.");
             }
 
+            // Ambil data form di awal supaya tersedia di kedua callback
             const name = document.getElementById('fullName').value.trim();
             const phone = document.getElementById('phoneNumber').value.trim();
             const address = document.getElementById('address').value.trim();
@@ -331,10 +330,7 @@
             btn.disabled = true;
             btn.innerText = "Membuka Pi Payment...";
 
-            // Buat ID Unik Order
             const currentOrderId = "ORD-" + Date.now();
-
-            // Hapus error message jika ada sebelumnya
             document.getElementById('error-message').style.display = 'none';
 
             // =========================================
@@ -342,7 +338,7 @@
             // =========================================
             Pi.createPayment(
                 {
-                    amount: Number(total.toFixed(2)), // Pastikan angka, bukan string
+                    amount: Number(total.toFixed(2)),
                     memo: `Order ${currentOrderId} - Aurora Store`,
                     metadata: {
                         orderId: currentOrderId,
@@ -356,7 +352,7 @@
                     onReadyForServerApproval: async function (paymentId) {
                         console.log("Step 1: Approve Payment", paymentId);
                         
-                        // Kirim data ke backend untuk APPROVE & SIMPAN ORDER
+                        // Kirim ke backend untuk approve ke Pi Network
                         try {
                             await fetch(BACKEND_URL, {
                                 method: "POST",
@@ -369,26 +365,24 @@
                                     paymentId: paymentId,
                                     orderId: currentOrderId,
                                     uid: currentUser.uid,
-                                    username: currentUser.username,
-                                    amount: total,
-                                    items: cartItems,
-                                    customer: { name, phone, address }
+                                    username: currentUser.username
+                                    // NOTE: Data items & customer TIDAK wajib disimpan di sini
+                                    // karena backend kita hanya melakukan approve ke API Pi di langkah ini.
                                 })
                             });
                         } catch (error) {
                             console.error("Gagal Approve:", error);
-                            // Jangan reject di sini biarkan user selesaikan pembayaran di UI Pi
                         }
                     },
 
                     // =========================
-                    // 🟢 STEP 2 — COMPLETE
+                    // 🟢 STEP 2 — COMPLETE (CRITICAL)
                     // =========================
                     onReadyForServerCompletion: async function (paymentId, txid) {
                         console.log("Step 2: Complete Payment", paymentId, txid);
                         btn.innerText = "Memverifikasi...";
 
-                        // Kirim data ke backend untuk COMPLETE
+                        // Kirim data ke backend untuk COMPLETE & SIMPAN KE DB
                         try {
                             await fetch(BACKEND_URL, {
                                 method: "POST",
@@ -400,7 +394,13 @@
                                     action: "complete",
                                     paymentId: paymentId,
                                     txid: txid,
-                                    orderId: currentOrderId
+                                    orderId: currentOrderId,
+                                    // WAJIB: Data berikut dikirim di sini agar backend bisa INSERT ke DB
+                                    uid: currentUser.uid,
+                                    username: currentUser.username,
+                                    amount: total,
+                                    items: cartItems,
+                                    customer: { name, phone, address }
                                 })
                             });
 
