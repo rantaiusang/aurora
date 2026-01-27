@@ -210,8 +210,7 @@
             </div>
         </div>
     </div>    
-
-    <script>
+       <script>
         // ==========================================
         // 1. KONFIGURASI PI SDK & SUPABASE
         // ==========================================
@@ -232,18 +231,28 @@
         document.addEventListener('DOMContentLoaded', () => {
             // Load User
             const userStr = localStorage.getItem('aurora_user');
-            if(!userStr) return window.location.href = 'login.html';
-            currentUser = JSON.parse(userStr);
+            if(!userStr) {
+                // Redirect jika belum login
+                window.location.href = 'login.html';
+                return;
+            }
+            try {
+                currentUser = JSON.parse(userStr);
+            } catch (e) {
+                console.error("User data corrupt", e);
+                localStorage.removeItem('aurora_user');
+                window.location.href = 'login.html';
+                return;
+            }
             
-            // Load Cart
+            // Load Cart (DIPANGGAL SELALU)
             loadCartData();
         });
 
+        // ==========================================
+        // 2. FUNGSI LOAD KERANJANG (FIXED)
+        // ==========================================
         function loadCartData() {
-            const rawCart = localStorage.getItem('aurora_cart');
-            if (!rawCart) return;
-
-            cartItems = JSON.parse(rawCart);
             const summaryDiv = document.getElementById('summaryList');
             const container = document.getElementById('itemSummaryContainer');
             const totalDisplay = document.getElementById('displayTotal');
@@ -251,9 +260,50 @@
 
             let html = '';
             let grandTotal = 0;
+            let hasItems = false;
 
+            const rawCart = localStorage.getItem('aurora_cart');
+
+            // Cek apakah ada data keranjang yang valid
+            if (rawCart) {
+                try {
+                    const parsedCart = JSON.parse(rawCart);
+                    if (Array.isArray(parsedCart) && parsedCart.length > 0) {
+                        cartItems = parsedCart;
+                        hasItems = true;
+                    }
+                } catch (e) {
+                    console.error("Gagal parsing cart", e);
+                }
+            }
+
+            // =======================
+            // SCENARIO 1: KERANJANG KOSONG
+            // =======================
+            if (!hasItems) {
+                html = '<div style="text-align:center; padding: 10px; color:#888;">Keranjang belanja Anda kosong.</div>';
+                summaryDiv.innerHTML = html;
+                
+                // ✅ PASTIKAN CONTAINER TAMPIL WALAUPUN KOSONG
+                container.style.display = 'block'; 
+                
+                totalDisplay.innerText = "0.00 π";
+                
+                // Disable tombol
+                btn.disabled = true;
+                btn.innerText = "Keranjang Kosong";
+                
+                total = 0;
+                cartItems = []; // Reset
+                return;
+            }
+
+            // =======================
+            // SCENARIO 2: ADA ITEM
+            // =======================
             cartItems.forEach(item => {
-                const name = item.name || item.product_name;
+                const name = item.name || item.product_name || "Produk Tanpa Nama";
+                // Pastikan price diubah ke number, jika gagal jadi 0
                 const price = parseFloat(item.price) || 0;
                 const qty = item.qty || 1;
                 const sub = price * qty;
@@ -268,18 +318,27 @@
 
             summaryDiv.innerHTML = html;
             totalDisplay.innerText = grandTotal.toFixed(2) + " π";
+            
+            // Tampilkan container
             container.style.display = 'block';
+            
             total = grandTotal;
             
+            // Aktifkan tombol
             btn.disabled = false;
             btn.innerText = `Bayar ${total.toFixed(2)} π`;
         }
 
         // ==========================================
-        // 2. HANDLE OTOMATIS (PI SDK)
+        // 3. HANDLE PEMBAYARAN OTOMATIS
         // ==========================================
         async function handleAutoPayment(e) {
             e.preventDefault();
+
+            // Cek lagi apakah total valid
+            if (total <= 0) {
+                return showError("Total pembayaran 0. Silakan tambah barang ke keranjang terlebih dahulu.");
+            }
 
             // 1. Ambil Data Form
             const name = document.getElementById('fullName').value.trim();
@@ -297,7 +356,7 @@
             const currentOrderId = "ORD-" + Date.now();
 
             try {
-                // 2. Panggil Pi SDK untuk membuat pembayaran
+                // 2. Panggil Pi SDK
                 const payment = await Pi.createPayment({
                     amount: total.toFixed(2),
                     memo: `Order ${currentOrderId} - Aurora Store`,
@@ -307,9 +366,9 @@
                 console.log("Pi Payment created:", payment);
                 btn.innerText = "Memverifikasi...";
 
-                // 3. Jika user menyetujui di Popup Pi, kirim ke Backend
+                // 3. Kirim ke Backend Verifikasi
                 const payload = {
-                    paymentId: payment.paymentId, // KUNCI OTOMATIS
+                    paymentId: payment.paymentId,
                     orderId: currentOrderId,
                     uid: currentUser.uid,
                     username: currentUser.username,
@@ -335,14 +394,19 @@
                     throw new Error(result.message || "Verifikasi Gagal");
                 }
 
-                // 4. SUKSES TOTAL
+                // 4. SUKSES
                 localStorage.removeItem('aurora_cart');
                 document.getElementById('successOrderId').innerText = currentOrderId;
                 document.getElementById('successOverlay').classList.add('show');
 
             } catch (err) {
                 console.error(err);
-                showError("Pembayaran dibatalkan atau gagal: " + err.message);
+                // Cek apakah error karena user cancel (bukan error server)
+                let msg = err.message;
+                if (msg.includes("cancelled") || msg.includes("cancel")) {
+                    msg = "Pembayaran dibatalkan oleh pengguna.";
+                }
+                showError("Pembayaran gagal: " + msg);
                 btn.disabled = false;
                 btn.innerText = `Bayar ${total.toFixed(2)} π`;
             }
@@ -354,5 +418,6 @@
             div.style.display = 'block';
         }
     </script>
+    
 </body>
 </html>
