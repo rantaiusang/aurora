@@ -43,7 +43,7 @@
             z-index: 10;
         }
 
-        .back-link { color: #fff; text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: color 0.3s; }
+        .back-link { color: #fff; text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: color 0.3s; cursor: pointer; font-family: 'Poppins', sans-serif; }
         .back-link:hover { color: var(--luxury-gold); }
         .brand-name { font-family: 'Playfair Display', serif; color: var(--luxury-gold); font-size: 1.2rem; font-weight: 700; }
 
@@ -63,7 +63,7 @@
             background: var(--card-bg); width: 100%; max-width: 600px;
             padding: 50px 40px; border-radius: 20px;
             border: 1px solid rgba(212, 175, 55, 0.2);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
             position: relative; opacity: 0; transform: translateY(40px);
             animation: slideUpFade 0.8s ease forwards;
         }
@@ -82,14 +82,14 @@
 
         .form-section-title {
             color: var(--luxury-gold); font-size: 0.9rem; text-transform: uppercase;
-            letter-spacing:1px; margin: 25px 0 15px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; font-weight: 600;
+            letter-spacing: 1px; margin: 25px 0 15px 0;
+            border-bottom: 1px solid rgba(255,255, 255,0.1); padding-bottom: 5px; font-weight: 600;
         }
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; color: #ccc; font-size: 0.9rem; font-weight: 500; }
 
         .input-box {
-            width: 100%; padding: 14px; background: rgba(255,255,255,0.05);
+            width: 100%; padding: 14px; background: rgba(255,255,255, 0.05);
             border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
             color: white; font-size: 0.95rem; font-family: 'Poppins', sans-serif;
             transition: 0.3s; box-sizing: border-box;
@@ -99,7 +99,7 @@
         textarea.input-box { resize: vertical; min-height: 80px; }
 
         .item-summary {
-            background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;
+            background: rgba(0,0, 0, 0.2); padding: 15px; border-radius: 8px;
             margin-bottom: 25px; font-size: 0.85rem; color: #ccc;
             max-height: 200px; overflow-y: auto;
             border: 1px solid rgba(255,255,255,0.05); display: none;
@@ -142,12 +142,11 @@
         }
         .btn-pay:hover:not(:disabled) { background: #ffed4a; transform: translateY(-3px); }
         .btn-pay:disabled { background: #444; cursor: not-allowed; color: #888; transform: none; }
-        .empty-msg { text-align: center; color: #666; font-size: 0.9rem; margin-top: 20px; font-style: italic; }
 
         .error-box {
-            display:none; background:rgba(255, 77, 77, 0.1); border:1px solid var(--danger-color); 
-            color:#ffcccc; padding:15px; border-radius:8px; margin-bottom:25px; font-size: 0.85rem; 
-            text-align:center; line-height: 1.5;
+            display:none; background:rgba(255, 77, 77, 0.1); border: 1px solid var(--danger-color); 
+            color:#ffcccc; padding:15px; border-radius: 8px; margin-bottom: 25px; font-size: 0.85rem; 
+            text-align: center; line-height: 1.5;
         }
         
         .success-overlay {
@@ -242,6 +241,7 @@
 
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const AUTH_TOKEN = localStorage.getItem('aurora_token');
+        // Menggunakan Anon Key dari input kamu untuk akses function
         const SUPABASE_KEY = AUTH_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         const BACKEND_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
 
@@ -264,12 +264,12 @@
                 return;
             }
             
-            // 🔍 LOAD DATA CHECKOUT DARI STORE.HTML
+            // Muat Data Checkout dari Store.html
             loadCartData();
         });
 
         // ==========================================
-        // 2. FUNGSI LOAD DATA CHECKOUT (FIXED)
+        // 2. FUNGSI LOAD DATA CHECKOUT (FIXED - NO DELETE)
         // ==========================================
         function loadCartData() {
             const summaryDiv = document.getElementById('summaryList');
@@ -282,7 +282,6 @@
             // =========================================
             const checkoutRaw = localStorage.getItem('aurora_checkout');
             
-            // CEK WAJIB: Jika kosong/invalid, alihkan user balik ke Store
             if (!checkoutRaw) {
                 alert("Sesi pembayaran tidak ditemukan. Silakan pilih produk terlebih dahulu.");
                 window.location.href = 'store.html';
@@ -299,23 +298,13 @@
                     return;
                 }
 
-                // Set Global Variable (TOTAL HITUNG)
-                // Gunakan parseFloat agar bisa membaca harga dari string "0.0001458" dengan benar
+                // Set Global Variable
+                cartItems = checkout.items;
+                // ✅ GUNAKAN parseFloat UNTUK MENGHITUNG TOTAL AKURAT (BISA UBAHANAH INTI)
                 total = parseFloat(checkout.total);
 
-                // Kita sementara delete aurora_checkout di sini? 
-                // (Saranakan hapus data jika user refresh di payment html, user mungkin tidak bisa bayar ulang.
-                // Namun jika kita biarkan, payment hanya bisa dilakukan sekali saja.
-                localStorage.removeItem('aurora_checkout');
-                
-                // Set item list
-                cartItems = checkout.items;
-
-                // 🧠 CEK CEPAT (DEBUGGING AGAR KETEPAST)
-                console.log("PAYMENT AMOUNT READY:", total); // Pastikan angka di Console
-
                 // =========================================
-                // 2️⃣ TAMPILKAN TOTAL & ITEM
+                // 2️⃣ TAMPILKAN TOTAL & ITEM (FIX PRECISION)
                 // =========================================
                 let html = '';
                 cartItems.forEach(item => {
@@ -334,8 +323,11 @@
 
                 summaryDiv.innerHTML = html;
                 
-                // 🔥 TAMPILKAN TOTAL DI UI
-                totalDisplay.innerText = total.toFixed(7) + " π"; 
+                // ✅ PERBAIKAN UTAMA PRECISION
+                // Jika < 0.01 (contoh: 0.0001458) -> Tampilkan 7 digit (0.0001458) agar jelas terbaca.
+                // Jika >= 0.01 (contoh: 50) -> Tampilkan 2 digit (50.00).
+                // Ini agar 0.0001458 tidak jadi 0.00
+                totalDisplay.innerText = (total < 0.01 ? total.toFixed(7) : total.toFixed(2)) + " π"; 
                 container.style.display = 'block';
                 
                 // Aktifkan Tombol
@@ -350,7 +342,7 @@
         }
 
         // ==========================================
-        // 3. HANDLE PEMBAYARAN OTOMATIS
+        // 3. HANDLE PEMBAYARAN OTOMATIS (PERFECT VERSION)
         // ==========================================
         async function handleAutoPayment(e) {
             e.preventDefault();
@@ -378,14 +370,15 @@
             // =========================================
             // 🔥 INI BAGIAN PALING PENTING (WAJIB ADA)
             // =========================================
-            console.log("MEMULAIKUAN PAYMENT...");
             
-            // 🧠 CEK CEPAT AGAR KETEPAST: Debug total yang akan dikirim
-            console.log("SENDING AMOUNT:", total, typeof total);
-
+            // 🧠 CEK CEPAT: DEBUG LOG
+            console.log("PAYMENT AMOUNT SENT:", total);
+            
             Pi.createPayment(
                 {
-                    // 🔥 AMOUNT DIAMBIL DARI TOTAL YANG SUDAH DIKALKULASI STORE (BISA MENAMPILAH 7 DIGIT DI UI PI)
+                    // 🔥 AMOUNT DIAMBIL DARI TOTAL YANG SUDAH DIKALKULASI STORE (BISA UBAKAHAKANAH INTI)
+                    // 💡 BEST PRACTICE: Gunakan toFixed(7) untuk ketelitian Pi
+                    // Jika total = 50.0001458, maka dikirim sebagai 50.0001458 (presisi 7 digit di UI Pi).
                     amount: Number(total.toFixed(7)), 
                     memo: `Order ${currentOrderId} - Aurora Store`,
                     metadata: {
@@ -452,7 +445,6 @@
                             });
 
                             // SUKSES TOTAL
-                            // ✅ TARUH DI SINI (BENAR)
                             localStorage.removeItem('aurora_checkout');
                             localStorage.removeItem("aurora_cart");
                             
@@ -495,6 +487,5 @@
             div.style.display = 'block';
         }
     </script>
-    
 </body>
 </html>
