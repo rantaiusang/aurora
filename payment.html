@@ -90,11 +90,9 @@
         // FIX 1: INIT SDK TANPA SCOPES (INI KRUSIAL)
         // ==========================================
         Pi.init({
-                    version: "2.0",
-                    appId: PI_APP_ID, 
-                    sandbox: isSandbox
-              
-           
+            version: "2.0",
+            sandbox: true
+        });
         // JANGAN TAMBAHKAN SCOPES DI SINI
 
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
