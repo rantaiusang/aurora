@@ -147,24 +147,27 @@
             document.getElementById('error-message').style.display = 'none';
 
             // ==========================================
-            // PERBAIKAN 1: SAFE USER AUTH CHECK
+            // PERBAIKAN PENTING: PENGGUNAAN Pi.authenticate()
             // ==========================================
             let piUser;
             try {
                 if (!window.Pi) throw new Error("Pi SDK belum dimuat.");
                 
-                // Coba ambil user. Jika gagal (misal buka di Chrome biasa), akan masuk catch
-                piUser = await Pi.getUser();
+                // --- GANTI Pi.getUser() MENJADI Pi.authenticate() UNTUK SDK V2.0 ---
+                const authData = await Pi.authenticate();
+                
+                // Struktur data authenticate v2.0 adalah { accessToken, user: { uid, username ... } }
+                piUser = authData ? authData.user : null;
                 
                 if (!piUser || !piUser.uid) {
-                    throw new Error("User tidak ditemukan atau tidak login di Pi Browser.");
+                    throw new Error("User tidak ditemukan.");
                 }
             } catch (authError) {
                 console.error("Auth Error:", authError);
-                showError("Gagal Autentikasi: " + authError.message + "<br><i>(Pastikan Anda membuka website ini melalui Pi Browser)</i>");
+                showError("Gagal Autentikasi: " + authError.message);
                 btn.disabled = false;
                 btn.innerText = "Bayar Sekarang";
-                return; // Stop di sini agar tidak lanjut ke Payment
+                return; // Stop di sini
             }
 
             btn.innerText = "Membuka Pi Payment...";
@@ -185,7 +188,6 @@
                         onReadyForServerApproval: async function (paymentId) {
                             console.log("Step 8b: Approving Payment", paymentId);
                             
-                            // Kirim ke Backend yang sudah diperbaiki (index.ts)
                             try {
                                 const response = await fetch(BACKEND_URL, {
                                     method: "POST",
@@ -208,8 +210,6 @@
                                 }
                             } catch (error) { 
                                 console.error("Gagal Approve:", error);
-                                // Jangan throw error disini agar UI Payment Pi tetap muncul
-                                // Tapi log error agar developer tahu
                             }
                         },
 
@@ -240,12 +240,10 @@
                                 
                                 const result = await response.json();
 
-                                // PERBAIKAN 2: Cek hasil backend sebelum sukses
                                 if (!result.success) {
                                     throw new Error(result.message || "Verifikasi backend gagal");
                                 }
 
-                                // Jika Backend sukses & Pi Network sukses
                                 localStorage.removeItem('aurora_checkout');
                                 localStorage.removeItem("aurora_cart");
                                 document.getElementById("successOrderId").innerText = currentOrderId;
