@@ -98,33 +98,14 @@
         
         textarea.input-box { resize: vertical; min-height: 80px; }
 
-        /* Style Summary Item yang Diperbaiki */
         .item-summary {
             background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;
             margin-bottom: 25px; font-size: 0.85rem; color: #ccc;
-            max-height: 200px; overflow-y: auto;
+            max-height: 150px; overflow-y: auto;
             border: 1px solid rgba(255,255,255,0.05); display: none;
         }
-        .item-row { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-            margin-bottom: 8px; 
-            border-bottom: 1px solid rgba(255,255,255,0.05); 
-            padding-bottom: 8px; 
-        }
+        .item-row { display: flex; justify-content: space-between; margin-bottom:5px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; }
         .item-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-        
-        .item-name { flex: 1; font-weight: 500; }
-        .item-qty { 
-            font-size: 0.75rem; 
-            color: var(--luxury-gold); 
-            background: rgba(212, 175, 55, 0.1); 
-            padding: 2px 6px; 
-            border-radius: 4px; 
-            margin: 0 10px;
-        }
-        .item-price { font-weight: 700; color: #fff; }
 
         .total-display {
             display: flex; justify-content: space-between; align-items: center;
@@ -206,7 +187,7 @@
 
                 <!-- RINGKASAN -->
                 <div class="item-summary" id="itemSummaryContainer">
-                    <strong style="color:var(--luxury-gold); display:block; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;">Detail Pesanan:</strong>
+                    <strong style="color:var(--luxury-gold); display:block; margin-bottom:10px;">Ringkasan:</strong>
                     <div id="summaryList">...</div>
                 </div>
 
@@ -242,7 +223,6 @@
 
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const AUTH_TOKEN = localStorage.getItem('aurora_token');
-        // Menggunakan Anon Key dari input kamu untuk akses function
         const SUPABASE_KEY = AUTH_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         const BACKEND_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
 
@@ -268,7 +248,7 @@
         });
 
         // ==========================================
-        // 2. FUNGSI LOAD KERANJANG (ROBUST VERSION)
+        // 2. FUNGSI LOAD KERANJANG
         // ==========================================
         function loadCartData() {
             const summaryDiv = document.getElementById('summaryList');
@@ -279,13 +259,11 @@
             let html = '';
             let grandTotal = 0;
             let hasItems = false;
-            
             const rawCart = localStorage.getItem('aurora_cart');
 
             if (rawCart) {
                 try {
                     const parsedCart = JSON.parse(rawCart);
-                    // Pastikan data berupa Array
                     if (Array.isArray(parsedCart) && parsedCart.length > 0) {
                         cartItems = parsedCart;
                         hasItems = true;
@@ -295,7 +273,6 @@
                 }
             }
 
-            // SCENARIO 1: KERANJANG KOSONG
             if (!hasItems) {
                 html = '<div style="text-align:center; padding: 10px; color:#888;">Keranjang belanja Anda kosong.</div>';
                 summaryDiv.innerHTML = html;
@@ -308,27 +285,17 @@
                 return;
             }
 
-            // SCENARIO 2: ADA ITEM (Looping Flexibel)
             cartItems.forEach(item => {
-                // Ambil data nama yang fleksibel
-                const name = item.name || item.product_name || item.title || "Produk Tanpa Nama";
-                
-                // Ambil data harga yang fleksibel (pastikan number)
-                const price = parseFloat(item.price) || parseFloat(item.harga) || 0;
-                
-                // Ambil qty (default 1 jika tidak ada)
-                const qty = parseInt(item.qty) || 1;
-                
-                // Hitung subtotal
+                const name = item.name || item.product_name || "Produk Tanpa Nama";
+                const price = parseFloat(item.price) || 0;
+                const qty = item.qty || 1;
                 const sub = price * qty;
                 grandTotal += sub;
 
-                // Render HTML yang lebih rapi dengan Qty Badge
                 html += `
                     <div class="item-row">
-                        <span class="item-name">${name}</span>
-                        <span class="item-qty">x${qty}</span>
-                        <span class="item-price">${sub.toFixed(2)} π</span>
+                        <span>${name} (x${qty})</span>
+                        <span>${sub.toFixed(2)} π</span>
                     </div>`;
             });
 
@@ -336,8 +303,6 @@
             totalDisplay.innerText = grandTotal.toFixed(2) + " π";
             container.style.display = 'block';
             total = grandTotal;
-            
-            // Pastikan tombol aktif
             btn.disabled = false;
             btn.innerText = `Bayar ${total.toFixed(2)} π`;
         }
@@ -401,6 +366,8 @@
                                     orderId: currentOrderId,
                                     uid: currentUser.uid,
                                     username: currentUser.username
+                                    // NOTE: Data items & customer TIDAK wajib disimpan di sini
+                                    // karena backend kita hanya melakukan approve ke API Pi di langkah ini.
                                 })
                             });
                         } catch (error) {
