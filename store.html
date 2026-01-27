@@ -668,16 +668,70 @@
             renderProducts(category);
         }
 
+        // ==========================================
+        // 4. VALIDASI & CHECKOUT (FIX FINAL)
+        // ==========================================
         function validateAndCheckout() {
-            console.log("Checkout clicked. Current Cart:", localStorage.getItem('aurora_cart'));
             const userData = localStorage.getItem('aurora_user');
             if (!userData) {
                 if (confirm("Anda harus login terlebih dahulu. Pindah ke halaman login?")) {
                     window.location.href = 'login.html';
                 }
-            } else {
-                window.location.href = 'payment.html';
+                return;
             }
+
+            // Ambil keranjang
+            const cartItems = JSON.parse(localStorage.getItem('aurora_cart')) || [];
+
+            // Cek kosong
+            if (cartItems.length === 0) {
+                alert("Keranjang Anda kosong.");
+                return;
+            }
+
+            // --- LOGIKA HITUNG TOTAL YANG DIMINTA ---
+            let total = 0;
+            let hasInvalidItem = false;
+
+            cartItems.forEach(item => {
+                const price = Number(item.price);
+                const qty = Number(item.qty);
+
+                // Cek validitas data
+                if (isNaN(price) || isNaN(qty) || price <= 0) {
+                    hasInvalidItem = true;
+                    console.warn("Item bermasalah:", item);
+                } else {
+                    total += price * qty;
+                }
+            });
+            // ----------------------------------------
+
+            // Validasi Total
+            if (total <= 0) {
+                alert("Total harga tidak valid atau ada barang dengan harga 0. Silakan periksa keranjang.");
+                return;
+            }
+
+            if (hasInvalidItem) {
+                alert("Beberapa barang dalam keranjang memiliki data harga/jumlah yang tidak valid. Mohon ulangi atau hubungi admin.");
+                return;
+            }
+
+            // =========================================
+            // ✅ PERBAIKAN WAJIB: SIMPAN KE LOCAL STORAGE
+            // =========================================
+            // SIMPAN DATA CHECKOUT
+            localStorage.setItem('aurora_checkout', JSON.stringify({
+                items: cartItems,
+                total: total,
+                currency: 'PI'
+            }));
+
+            console.log("Checkout dikirim:", { items: cartItems, total });
+
+            // REDIRECT
+            window.location.href = 'payment.html';
         }
 
         function toggleDropdown() { dropdownMenu.classList.toggle('show'); }
