@@ -1,27 +1,54 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-    <title>Verifikasi Pembayaran</title>
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pembayaran Sukses - Aurora Store</title>
+    
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root { --luxury-gold: #d4af37; --dark-bg: #0f0c15; --card-bg: #1a1620; }
+        body { background-color: var(--dark-bg); color: #ffffff; font-family: 'Poppins', sans-serif; margin: 0; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        
+        .success-card { text-align: center; padding: 40px; max-width: 400px; width: 90%; }
+        .checkmark { width: 80px; height: 80px; background: #2ecc71; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin: 0 auto 20px; font-size: 40px; box-shadow: 0 0 20px rgba(46, 204, 113, 0.4); }
+        
+        h2 { font-family: 'Playfair Display', serif; color: var(--luxury-gold); margin-bottom: 10px; font-size: 2rem; }
+        p { color: #aaa; margin-bottom: 30px; }
+        
+        .order-id { background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; margin-bottom: 30px; font-family: monospace; color: var(--luxury-gold); border: 1px solid rgba(212, 175, 55, 0.2); }
+        
+        .btn-home { padding: 15px 30px; background: var(--luxury-gold); color: #000; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block; transition: transform 0.2s; }
+        .btn-home:hover { transform: scale(1.05); background: #ffed4a; }
+    </style>
 </head>
 <body>
-    <div id="status">Memproses Pembayaran...</div>
-    <script>
-        // Ambil data yang tersimpan
-        const pendingData = JSON.parse(localStorage.getItem('temp_pending_order'));
+
+    <div class="success-card">
+        <div class="checkmark">✓</div>
+        <h2>Pembayaran Sukses!</h2>
+        <p>Terima kasih atas pesanan Anda. Pembayaran via Pi Network telah berhasil dikonfirmasi.</p>
         
-        // Lakukan verifikasi ke Backend menggunakan data dari URL params atau localStorage
-        fetch(BACKEND_URL, {
-            method: 'POST',
-            body: JSON.stringify({ 
-                action: 'complete', 
-                orderId: pendingData.orderId,
-                // ... kirim data lainnya
-            })
-        }).then(res => res.json()).then(data => {
-             document.getElementById('status').innerText = "Pembayaran Sukses!";
-             // Redirect kembali ke store setelah 2 detik
-             setTimeout(() => window.location.href = 'store.html', 2000);
+        <div class="order-id">
+            ID Order: <span id="displayOrderId">Memuat...</span>
+        </div>
+
+        <a href="store.html" class="btn-home">Kembali ke Toko</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Ambil ID Order yang disimpan dari halaman sebelumnya
+            const orderId = localStorage.getItem('temp_order_id');
+            if (orderId) {
+                document.getElementById('displayOrderId').innerText = orderId;
+                // Opsional: Hapus ID setelah ditampilkan agar bersih
+                localStorage.removeItem('temp_order_id');
+            } else {
+                document.getElementById('displayOrderId').innerText = "Tidak Ditemukan";
+            }
         });
     </script>
 </body>
