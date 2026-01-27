@@ -269,7 +269,7 @@
         });
 
         // ==========================================
-        // 2. FUNGSI LOAD DATA CHECKOUT (FIXED)
+        // 2. FUNGSI LOAD DATA CHECKOUT (FIXED - NO DELETE)
         // ==========================================
         function loadCartData() {
             const summaryDiv = document.getElementById('summaryList');
@@ -302,9 +302,10 @@
                 cartItems = checkout.items;
                 total = parseFloat(checkout.total);
 
-                // Hapus data checkout agar tidak terpakai ulang jika user refresh
-                localStorage.removeItem('aurora_checkout');
-
+                // 🛑 DIHAPUS: localStorage.removeItem('aurora_checkout');
+                // Kita biarkan data ini hidup sampai pembayaran sukses
+                // untuk mencegah bug Pi SDK jika terjadi refresh/flow issue.
+                
                 // Tampilkan ke Console untuk Debugging
                 console.log("Checkout Data Loaded:", { items: cartItems, total: total });
 
@@ -370,10 +371,15 @@
             // =========================================
             // 🔥 INI BAGIAN PALING PENTING (WAJIB ADA)
             // =========================================
+            
+            // 🧠 CEK CEPAT: DEBUG LOG
+            console.log("PAYMENT AMOUNT SENT:", total);
+            
             Pi.createPayment(
                 {
                     // 🔥 AMOUNT DIAMBIL DARI TOTAL YANG SUDAH DIKALKULASI STORE
-                    amount: Number(total.toFixed(2)), 
+                    // 💡 BEST PRACTICE: Gunakan toFixed(7) untuk ketelitian Pi
+                    amount: Number(total.toFixed(7)), 
                     memo: `Order ${currentOrderId} - Aurora Store`,
                     metadata: {
                         orderId: currentOrderId,
@@ -401,7 +407,6 @@
                                     orderId: currentOrderId,
                                     uid: currentUser.uid,
                                     username: currentUser.username
-                                    // NOTE: Data items & customer TIDAK wajib disimpan di sini
                                 })
                             });
                         } catch (error) {
@@ -439,7 +444,10 @@
                             });
 
                             // SUKSES TOTAL
+                            // ✅ TARUH DI SINI (BENAR)
+                            localStorage.removeItem('aurora_checkout');
                             localStorage.removeItem("aurora_cart");
+                            
                             document.getElementById("successOrderId").innerText = currentOrderId;
                             document.getElementById("successOverlay").classList.add("show");
                             
