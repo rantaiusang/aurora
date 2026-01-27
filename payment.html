@@ -101,11 +101,29 @@
         .item-summary {
             background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;
             margin-bottom: 25px; font-size: 0.85rem; color: #ccc;
-            max-height: 150px; overflow-y: auto;
+            max-height: 200px; overflow-y: auto;
             border: 1px solid rgba(255,255,255,0.05); display: none;
         }
-        .item-row { display: flex; justify-content: space-between; margin-bottom:5px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; }
+        .item-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            margin-bottom: 8px; 
+            border-bottom: 1px solid rgba(255,255,255,0.05); 
+            padding-bottom: 8px; 
+        }
         .item-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        
+        .item-name { flex: 1; font-weight: 500; }
+        .item-qty { 
+            font-size: 0.75rem; 
+            color: var(--luxury-gold); 
+            background: rgba(212, 175, 55, 0.1); 
+            padding: 2px 6px; 
+            border-radius: 4px; 
+            margin: 0 10px;
+        }
+        .item-price { font-weight: 700; color: #fff; }
 
         .total-display {
             display: flex; justify-content: space-between; align-items: center;
@@ -187,7 +205,7 @@
 
                 <!-- RINGKASAN -->
                 <div class="item-summary" id="itemSummaryContainer">
-                    <strong style="color:var(--luxury-gold); display:block; margin-bottom:10px;">Ringkasan:</strong>
+                    <strong style="color:var(--luxury-gold); display:block; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;">Detail Pesanan:</strong>
                     <div id="summaryList">...</div>
                 </div>
 
@@ -223,6 +241,7 @@
 
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const AUTH_TOKEN = localStorage.getItem('aurora_token');
+        // Menggunakan Anon Key dari input kamu untuk akses function
         const SUPABASE_KEY = AUTH_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         const BACKEND_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
 
@@ -244,11 +263,13 @@
                 window.location.href = 'login.html';
                 return;
             }
+            
+            // Muat Data Checkout dari Store.html
             loadCartData();
         });
 
         // ==========================================
-        // 2. FUNGSI LOAD KERANJANG
+        // 2. FUNGSI LOAD DATA CHECKOUT (FIXED)
         // ==========================================
         function loadCartData() {
             const summaryDiv = document.getElementById('summaryList');
@@ -256,68 +277,81 @@
             const totalDisplay = document.getElementById('displayTotal');
             const btn = document.getElementById('payBtn');
 
-            let html = '';
-            let grandTotal = 0;
-            let hasItems = false;
-            const rawCart = localStorage.getItem('aurora_cart');
-
-            if (rawCart) {
-                try {
-                    const parsedCart = JSON.parse(rawCart);
-                    if (Array.isArray(parsedCart) && parsedCart.length > 0) {
-                        cartItems = parsedCart;
-                        hasItems = true;
-                    }
-                } catch (e) {
-                    console.error("Gagal parsing cart", e);
-                }
-            }
-
-            if (!hasItems) {
-                html = '<div style="text-align:center; padding: 10px; color:#888;">Keranjang belanja Anda kosong.</div>';
-                summaryDiv.innerHTML = html;
-                container.style.display = 'block'; 
-                totalDisplay.innerText = "0.00 π";
-                btn.disabled = true;
-                btn.innerText = "Keranjang Kosong";
-                total = 0;
-                cartItems = [];
+            // =========================================
+            // 1️⃣ AMBIL DATA DARI localStorage (WAJIB)
+            // =========================================
+            const checkoutRaw = localStorage.getItem('aurora_checkout');
+            
+            if (!checkoutRaw) {
+                alert("Sesi pembayaran tidak ditemukan. Silakan pilih produk terlebih dahulu.");
+                window.location.href = 'store.html';
                 return;
             }
 
-            cartItems.forEach(item => {
-                const name = item.name || item.product_name || "Produk Tanpa Nama";
-                const price = parseFloat(item.price) || 0;
-                const qty = item.qty || 1;
-                const sub = price * qty;
-                grandTotal += sub;
+            try {
+                const checkout = JSON.parse(checkoutRaw);
 
-                html += `
-                    <div class="item-row">
-                        <span>${name} (x${qty})</span>
-                        <span>${sub.toFixed(2)} π</span>
-                    </div>`;
-            });
+                // Validasi Data
+                if (!checkout.items || !checkout.total) {
+                    alert("Data checkout tidak valid. Silakan ulangi.");
+                    window.location.href = 'store.html';
+                    return;
+                }
 
-            summaryDiv.innerHTML = html;
-            totalDisplay.innerText = grandTotal.toFixed(2) + " π";
-            container.style.display = 'block';
-            total = grandTotal;
-            btn.disabled = false;
-            btn.innerText = `Bayar ${total.toFixed(2)} π`;
+                // Set Global Variable
+                cartItems = checkout.items;
+                total = parseFloat(checkout.total);
+
+                // Hapus data checkout agar tidak terpakai ulang jika user refresh
+                localStorage.removeItem('aurora_checkout');
+
+                // Tampilkan ke Console untuk Debugging
+                console.log("Checkout Data Loaded:", { items: cartItems, total: total });
+
+                // =========================================
+                // 2️⃣ TAMPILKAN TOTAL & ITEM
+                // =========================================
+                let html = '';
+                cartItems.forEach(item => {
+                    const name = item.name || item.product_name || "Produk Tanpa Nama";
+                    const price = parseFloat(item.price) || 0;
+                    const qty = item.qty || 1;
+                    const sub = price * qty;
+
+                    html += `
+                        <div class="item-row">
+                            <span class="item-name">${name}</span>
+                            <span class="item-qty">x${qty}</span>
+                            <span class="item-price">${sub.toFixed(2)} π</span>
+                        </div>`;
+                });
+
+                summaryDiv.innerHTML = html;
+                totalDisplay.innerText = total.toFixed(2) + " π";
+                container.style.display = 'block';
+                
+                // Aktifkan Tombol
+                btn.disabled = false;
+                btn.innerText = `Bayar ${total.toFixed(2)} π`;
+
+            } catch (e) {
+                console.error("Gagal parsing data checkout", e);
+                alert("Terjadi kesalahan data. Silakan kembali ke toko.");
+                window.location.href = 'store.html';
+            }
         }
 
         // ==========================================
-        // 3. HANDLE PEMBAYARAN OTOMATIS (PERFECT VERSION)
+        // 3. HANDLE PEMBAYARAN OTOMATIS
         // ==========================================
         async function handleAutoPayment(e) {
             e.preventDefault();
 
-            if (total <= 0) {
-                return showError("Total pembayaran tidak valid.");
+            // Validasi ulang total sebelum kirim ke SDK
+            if (!total || total <= 0) {
+                return showError("Total pembayaran nol atau invalid.");
             }
 
-            // Ambil data form di awal supaya tersedia di kedua callback
             const name = document.getElementById('fullName').value.trim();
             const phone = document.getElementById('phoneNumber').value.trim();
             const address = document.getElementById('address').value.trim();
@@ -334,11 +368,12 @@
             document.getElementById('error-message').style.display = 'none';
 
             // =========================================
-            // MEMANGGIL PI SDK DENGAN CALLBACK (V2)
+            // 🔥 INI BAGIAN PALING PENTING (WAJIB ADA)
             // =========================================
             Pi.createPayment(
                 {
-                    amount: Number(total.toFixed(2)),
+                    // 🔥 AMOUNT DIAMBIL DARI TOTAL YANG SUDAH DIKALKULASI STORE
+                    amount: Number(total.toFixed(2)), 
                     memo: `Order ${currentOrderId} - Aurora Store`,
                     metadata: {
                         orderId: currentOrderId,
@@ -367,7 +402,6 @@
                                     uid: currentUser.uid,
                                     username: currentUser.username
                                     // NOTE: Data items & customer TIDAK wajib disimpan di sini
-                                    // karena backend kita hanya melakukan approve ke API Pi di langkah ini.
                                 })
                             });
                         } catch (error) {
