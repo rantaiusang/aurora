@@ -79,13 +79,21 @@
         const Pi = window.Pi;
         
         // ==========================================
-        // 1. INIT SDK
+        // FIX 3: VALIDASI SDK HARDEX (WAJIB)
         // ==========================================
-        Pi.init({ 
-            version: "2.0", 
-            sandbox: true,
-            scopes: ['username', 'payments'] 
-        }); 
+        if (!window.Pi) {
+            alert("Pi SDK tidak terdeteksi. Wajib buka via Pi Browser.");
+            throw new Error("Pi SDK not loaded");
+        }
+
+        // ==========================================
+        // FIX 1: INIT SDK TANPA SCOPES (INI KRUSIAL)
+        // ==========================================
+        Pi.init({
+            version: "2.0",
+            sandbox: true
+        });
+        // JANGAN TAMBAHKAN SCOPES DI SINI
 
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const AUTH_TOKEN = localStorage.getItem('aurora_token');
@@ -152,25 +160,23 @@
 
             try {
                 // ==========================================
-                // 2. CALLBACK WAJIB (onIncompletePaymentFound)
+                // FIX 2: CALLBACK WAJIB onIncompletePaymentFound
                 // ==========================================
-                // Error "reading 'every'" hilang karena callback ini ditambahkan
                 function onIncompletePaymentFound(payment) {
                     console.log("Pembayaran belum selesai ditemukan:", payment);
                 }
 
                 // ==========================================
-                // 3. AUTHENTICATE DENGAN FORMAT BENAR
+                // AUTHENTICATE DENGAN FORMAT BENAR (Scope di sini saja)
                 // ==========================================
-                // Format: Pi.authenticate([scopes], callback)
                 const auth = await Pi.authenticate(
                     ["payments", "username"], 
                     onIncompletePaymentFound
                 );
 
-                // Validasi Token
+                // Validasi Token (Fix 3 bagian akhir)
                 if (!auth || !auth.accessToken) {
-                    throw new Error("Gagal autentikasi: Token tidak ditemukan. Coba lagi atau refresh halaman.");
+                    throw new Error("Gagal autentikasi: Token tidak ditemukan.");
                 }
 
                 const piUser = auth.user;
