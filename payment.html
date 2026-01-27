@@ -266,7 +266,7 @@
         </div>
     </div>    
 
-    <!-- SCRIPT LOGIC (BACKEND MANUAL) -->
+        <!-- SCRIPT LOGIC (BACKEND MANUAL) -->
     <script>
         // ==========================================
         // 1. KONFIGURASI
@@ -411,37 +411,54 @@
                 return;
             }
 
-            const name = document.getElementById('fullName').value;
-            const phone = document.getElementById('phoneNumber').value;
-            const address = document.getElementById('address').value;
+            // AMBIL DATA DARI FORM SECARA EKSPLISIT (MENGGUNAK .value)
+            const nameInput = document.getElementById('fullName');
+            const phoneInput = document.getElementById('phoneNumber');
+            const addressInput = document.getElementById('address');
+            
+            const name = nameInput ? nameInput.value : null;
+            const phone = phoneInput ? phoneInput.value : null;
+            const address = addressInput ? addressInput.value : null;
+            
             const btn = document.getElementById('payBtn');
             const errorMsg = document.getElementById('error-message');
 
-            if (name.length < 3) return showError("Nama terlalu pendek.");
-            if (phone.length < 10) return showError("Nomor WhatsApp tidak valid.");
-            if (address.length < 10) return showError("Alamat lengkap diperlukan.");
+            // Validasi Data Input
+            if (!name || name.length < 3) return showError("Nama terlalu pendek.");
+            if (!phone || phone.length < 10) return showError("Nomor WhatsApp tidak valid.");
+            if (!address || address.length < 10) return showError("Alamat lengkap diperlukan.");
             
             if (total <= 0 || isNaN(total)) {
                 showError("Total pembayaran tidak valid.");
                 return;
             }
 
-            errorMsg.style.display = "none";
-            btn.disabled = true;
-            btn.innerHTML = `Memproses...`;
-            btn.style.cursor = "wait";
-
-            currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
-
-            // Payload dikirim ke Supabase Edge Function
+            // Payload untuk dikirim ke Backend
             const payload = {
-                orderId: currentOrderId,
+                orderId: "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
                 uid: currentUser.uid,
                 username: currentUser.username,
                 amount: parseFloat(total.toFixed(2)),
                 items: itemsJsonString,
                 customer: { name, phone, address }
             };
+
+            // --- DEBUGGING: LIHAT DATA DI CONSOLE BROWSER (F12) ---
+            console.log("=== DEBUG DATA YANG AKAN DIKIRIM ===");
+            console.log("Nama:", name);
+            console.log("Phone:", phone);
+            console.log("Address:", address);
+            console.log("Total:", total);
+            console.log("UID:", currentUser.uid);
+            console.log("Items:", itemsJsonString);
+            console.log("Full Payload:", payload);
+            console.log("========================================");
+            // ----------------------------------------------------
+
+            errorMsg.style.display = "none";
+            btn.disabled = true;
+            btn.innerHTML = `Memproses...`;
+            btn.style.cursor = "wait";
 
             try {
                 // Kirim ke Backend Supabase
@@ -462,14 +479,14 @@
                     localStorage.removeItem('aurora_cart');
                     
                     document.getElementById('successTotal').innerText = formatPrice(total);
-                    document.getElementById('successOrderId').innerText = currentOrderId;
+                    document.getElementById('successOrderId').innerText = payload.orderId;
                     document.getElementById('successOverlay').classList.add('show');
                 } else {
                     throw new Error(result.message || "Gagal membuat pesanan di server.");
                 }
 
             } catch (err) {
-                console.error(err);
+                console.error("Full Error Detail:", err);
                 showError("Gagal: " + (err.message || "Koneksi bermasalah."));
                 resetButton();
             }
@@ -491,6 +508,6 @@
         function redirectToStore() {
             window.location.href = 'store.html';
         }
-    </script>      
+    </script> 
 </body>
 </html>
