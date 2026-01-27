@@ -36,8 +36,6 @@
         .btn-pay:disabled { background: #444; cursor: not-allowed; color: #888; }
         
         .error-box { display:none; background:rgba(255, 77, 77, 0.1); border: 1px solid var(--danger-color); color:#ffcccc; padding:15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
-        .success-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--card-bg); border-radius: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; display: none; }
-        .success-overlay.show { display: flex; }
     </style>
 </head>
 <body>
@@ -74,26 +72,12 @@
 
                 <button type="submit" class="btn-pay" id="payBtn" disabled>Bayar Sekarang</button>
             </form>
-
-            <div class="success-overlay" id="successOverlay">
-                <h2 style="margin-bottom:10px;">Pembayaran Sukses!</h2>
-                <p>ID Order: <span id="successOrderId">...</span></p>
-                <button class="btn-pay" style="width: auto; margin-top:20px;" onclick="window.location.href='store.html'">Kembali Belanja</button>
-            </div>
         </div>
     </div>    
 
     <script>
         const Pi = window.Pi;
-        
-        // ==========================================
-        // INIT SDK dengan scopes
-        // ==========================================
-        Pi.init({ 
-            version: "2.0", 
-            sandbox: true,
-            scopes: ['username', 'payments'] 
-        }); 
+        Pi.init({ version: "2.0", sandbox: true }); 
 
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const AUTH_TOKEN = localStorage.getItem('aurora_token');
@@ -131,217 +115,107 @@
             document.getElementById('payBtn').innerText = `Bayar ${total.toFixed(2)} π`;
         }
 
-        // ==========================================
-        // PERBAIKAN FUNGSI UTAMA
-        // ==========================================
+        // Fungsi Pembayaran (Redirect ke success page jika sukses)
         async function handleAutoPayment(e) {
             e.preventDefault();
-
-            // 1. Ambil Data Form
             const name = document.getElementById('fullName').value.trim();
             const phone = document.getElementById('phoneNumber').value.trim();
             const address = document.getElementById('address').value.trim();
 
-            // 2. Validasi Form
             if (name.length < 3 || phone.length < 10 || address.length < 10) {
-                return showError("Mohon lengkapi data pengiriman dengan benar.");
+                return showError("Mohon lengkapi data pengiriman.");
             }
 
             const btn = document.getElementById('payBtn');
-            const originalBtnText = btn.innerText;
             btn.disabled = true;
-            btn.innerText = "Menyiapkan Pembayaran...";
+            btn.innerText = "Membuka Pembayaran...";
             document.getElementById('error-message').style.display = 'none';
 
-            // 3. Validasi Total
             if (total <= 0) {
-                showError("Total pembayaran tidak valid (0).");
+                showError("Total pembayaran tidak valid.");
                 btn.disabled = false;
-                btn.innerText = originalBtnText;
+                btn.innerText = "Bayar Sekarang";
                 return;
             }
 
             const currentOrderId = "ORD-" + Date.now();
 
-            // Simpan data form sementara agar aman saat proses async
-            const tempOrderData = { 
-                orderId: currentOrderId, 
-                name, 
-                phone, 
-                address 
-            };
-            
+            // Simpan data sementara agar bisa diambil di success page nanti
+            localStorage.setItem('temp_order_id', currentOrderId);
+
             try {
-                // ==========================================
-                // AUTENTIKASI (Gabung dengan Payment)
-                // ==========================================
-                console.log("Memulai Autentikasi & Pembayaran...");
-                btn.innerText = "Mengecek Izin Akses...";
-
-                // Lakukan Autentikasi dengan scopes yang benar
-                const authResult = await Pi.authenticate(['username', 'payments']);
-                const piUser = authResult ? authResult.user : null;
-
-                if (!piUser || !piUser.uid) {
-                    throw new Error("Gagal mendapatkan User ID dari Pi Network.");
-                }
-
-                console.log("User Autentikasi:", piUser.username);
-
-                // ==========================================
-                // MEMBUAT PEMBAYARAN (Retry Logic)
-                // ==========================================
-                btn.innerText = "Membuka Jendela Pembayaran...";
-                
-                // Coba lakukan pembayaran. Jika gagal di awal, coba 1x lagi (kadang browser butuh waktu izin popup)
-                let paymentSuccess = false;
-                try {
-                    await createPaymentFlow(currentOrderId, tempOrderData, piUser);
-                    paymentSuccess = true;
-                } catch (firstError) {
-                    console.warn("Percobaan 1 Gagal, mencoba ulang...", firstError);
-                    await new Promise(r => setTimeout(r, 500)); // Delay sebentar
-                    try {
-                        await createPaymentFlow(currentOrderId, tempOrderData, piUser);
-                        paymentSuccess = true;
-                    } catch (retryError) {
-                        throw retryError; // Jika masih gagal, lempar error
-                    }
-                }
-
-            } catch (err) {
-                console.error("Error Total:", err);
-                let msg = err.message || "Terjadi kesalahan tak terduga.";
-                
-                // Cek error spesifik
-                if (msg.includes("Pop-up") || msg.includes("Window")) {
-                    msg = "Mohon Izinkan Pop-up di Browser Anda.";
-                } else if (msg.includes("User not found")) {
-                    msg = "Harap login kembali di Wallet Pi.";
-                }
-
-                showError(msg);
-                btn.disabled = false;
-                btn.innerText = originalBtnText;
-            }
-        }
-
-        // ==========================================
-        // HELPER FUNGSI: ALUR PEMBAYARAN
-        // ==========================================
-        async function createPaymentFlow(orderId, customerData, piUser) {
-            return new Promise(async (resolve, reject) => {
-                
+                // Langsung create payment tanpa authenticate manual
                 await Pi.createPayment(
                     {
                         amount: Number(total.toFixed(7)), 
-                        memo: `Order ${orderId} - Aurora Store`,
-                        metadata: { orderId: orderId, user: piUser.username }
+                        memo: `Order ${currentOrderId} - Aurora Store`,
+                        metadata: { orderId: currentOrderId, user: currentUser.username }
                     },
                     {
-                        // --- STEP 8b: SERVER APPROVAL ---
                         onReadyForServerApproval: async function (paymentId) {
-                            console.log("Step 8b: Approving Payment", paymentId);
-                            
                             try {
-                                const response = await fetch(BACKEND_URL, {
+                                await fetch(BACKEND_URL, {
                                     method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                        "Authorization": `Bearer ${SUPABASE_KEY}`
-                                    },
+                                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_KEY}` },
                                     body: JSON.stringify({
                                         action: "approve",
                                         paymentId: paymentId,
-                                        orderId: orderId,
+                                        orderId: currentOrderId,
                                         uid: currentUser.uid,
                                         username: currentUser.username
                                     })
                                 });
-                                
-                                const result = await response.json();
-                                if (!result.success) {
-                                    throw new Error(result.message || "Backend menolak persetujuan");
-                                }
-                            } catch (error) { 
-                                console.error("Gagal Approve:", error);
-                                // Jangan reject disini, biarkan flow berjalan ke error handler createPayment jika kritis
-                            }
+                            } catch (e) { console.error(e); }
                         },
 
-                        // --- STEP 8d: SERVER COMPLETION ---
                         onReadyForServerCompletion: async function (paymentId, txid) {
-                            console.log("Step 8d: Completing Payment", paymentId, txid);
-                            const btn = document.getElementById('payBtn');
-                            btn.innerText = "Memverifikasi & Menyimpan...";
-
+                            // Kirim data final ke backend
                             try {
-                                const response = await fetch(BACKEND_URL, {
+                                await fetch(BACKEND_URL, {
                                     method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                        "Authorization": `Bearer ${SUPABASE_KEY}`
-                                    },
+                                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_KEY}` },
                                     body: JSON.stringify({
                                         action: "complete",
                                         paymentId: paymentId,
                                         txid: txid,
-                                        orderId: orderId,
+                                        orderId: currentOrderId,
                                         uid: currentUser.uid,
                                         username: currentUser.username,
                                         amount: total,
                                         items: cartItems,
-                                        customer: { 
-                                            name: customerData.name, 
-                                            phone: customerData.phone, 
-                                            address: customerData.address 
-                                        }
+                                        customer: { name, phone, address }
                                     })
                                 });
-                                
-                                const result = await response.json();
 
-                                if (!result.success) {
-                                    throw new Error(result.message || "Verifikasi backend gagal");
-                                }
-
-                                // SUKSES PENUH
+                                // Jika sukses, Hapus cart dan REDIRECT
                                 localStorage.removeItem('aurora_checkout');
                                 localStorage.removeItem("aurora_cart");
-                                document.getElementById("successOrderId").innerText = orderId;
-                                document.getElementById("successOverlay").classList.add("show");
-                                resolve(); // Selesaikan promise
-                                
+                                window.location.href = 'payment-success.html'; // <--- REDIRECT KE SINI
                             } catch (error) {
-                                console.error("Gagal Complete:", error);
-                                showError("Gagal konfirmasi pembayaran di server: " + error.message);
-                                
-                                // Return UI ke normal tapi jangan resolve
-                                const btn = document.getElementById('payBtn');
+                                showError("Gagal konfirmasi pembayaran: " + error.message);
                                 btn.disabled = false;
-                                btn.innerText = "Bayar Sekarang";
-                                reject(error);
+                                btn.innerText = "Coba Lagi";
                             }
                         },
 
                         onCancel: function () {
-                            const btn = document.getElementById('payBtn');
                             btn.disabled = false;
                             btn.innerText = "Bayar Sekarang";
                             showError("Pembayaran dibatalkan.");
-                            reject(new Error("User Cancelled"));
                         },
 
                         onError: function (err) {
-                            console.error("SDK Error:", err);
-                            const btn = document.getElementById('payBtn');
                             btn.disabled = false;
                             btn.innerText = "Bayar Sekarang";
-                            reject(err); // Reject promise agar bisa di-retry
+                            showError("Error: " + err.message);
                         }
                     }
                 );
-            });
+            } catch (err) {
+                showError("Gagal memulai pembayaran: " + err.message);
+                btn.disabled = false;
+                btn.innerText = "Bayar Sekarang";
+            }
         }
 
         function showError(msg) {
