@@ -228,8 +228,7 @@
             </div>
         </div>
     </div>    
-       
-       <script>
+              <script>
         // ==========================================
         // 1. KONFIGURASI PI SDK & SUPABASE
         // ==========================================
@@ -241,7 +240,6 @@
 
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const AUTH_TOKEN = localStorage.getItem('aurora_token');
-        // Menggunakan Anon Key dari input kamu untuk akses function
         const SUPABASE_KEY = AUTH_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         const BACKEND_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
 
@@ -264,7 +262,7 @@
                 return;
             }
             
-            // Muat Data Checkout dari Store.html
+            // 🔍 MUAT DATA CHECKOUT DARI STORE.HTML
             loadCartData();
         });
 
@@ -280,7 +278,10 @@
             // =========================================
             // 1️⃣ AMBIL DATA DARI localStorage (WAJIB)
             // =========================================
+            
+            // 🔍 LOG DEBUGGING PENTING!
             const checkoutRaw = localStorage.getItem('aurora_checkout');
+            console.log("Payment Page Received Data:", checkoutRaw);
             
             if (!checkoutRaw) {
                 alert("Sesi pembayaran tidak ditemukan. Silakan pilih produk terlebih dahulu.");
@@ -300,7 +301,7 @@
 
                 // Set Global Variable
                 cartItems = checkout.items;
-                // ✅ GUNAKAN parseFloat UNTUK MENGHITUNG TOTAL AKURAT (BISA UBAHANAH INTI)
+                // ✅ GUNAKAN parseFloat UNTUK MENAMPILH TOTAL AKURAT (BISA UBAHAKANAH INTI)
                 total = parseFloat(checkout.total);
 
                 // =========================================
@@ -326,7 +327,6 @@
                 // ✅ PERBAIKAN UTAMA PRECISION
                 // Jika < 0.01 (contoh: 0.0001458) -> Tampilkan 7 digit (0.0001458) agar jelas terbaca.
                 // Jika >= 0.01 (contoh: 50) -> Tampilkan 2 digit (50.00).
-                // Ini agar 0.0001458 tidak jadi 0.00
                 totalDisplay.innerText = (total < 0.01 ? total.toFixed(7) : total.toFixed(2)) + " π"; 
                 container.style.display = 'block';
                 
@@ -376,7 +376,7 @@
             
             Pi.createPayment(
                 {
-                    // 🔥 AMOUNT DIAMBIL DARI TOTAL YANG SUDAH DIKALKULASI STORE (BISA UBAKAHAKANAH INTI)
+                    // 🔥 AMOUNT DIAMBIL DARI TOTAL YANG SUDAH DIKALKULASI STORE (BISA UBAHAKANAH INTI)
                     // 💡 BEST PRACTICE: Gunakan toFixed(7) untuk ketelitian Pi
                     // Jika total = 50.0001458, maka dikirim sebagai 50.0001458 (presisi 7 digit di UI Pi).
                     amount: Number(total.toFixed(7)), 
@@ -487,5 +487,9 @@
             div.style.display = 'block';
         }
     </script>
+    
+</body>
+</html>
+       
 </body>
 </html>
