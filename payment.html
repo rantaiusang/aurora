@@ -87,12 +87,12 @@
         const Pi = window.Pi;
         
         // ==========================================
-        // PERBAIKAN CRITICAL: TAMBAHKAN 'scopes' DI PI.INIT
+        // CRITICAL FIX: INIT SDK dengan scopes
         // ==========================================
         Pi.init({ 
             version: "2.0", 
             sandbox: true,
-            scopes: ['username', 'payments'] // Wajib ada di SDK v2.0
+            scopes: ['username', 'payments'] 
         }); 
 
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
@@ -152,14 +152,16 @@
             document.getElementById('error-message').style.display = 'none';
 
             // ==========================================
-            // PENGGUNAAN Pi.authenticate() V2.0
+            // PERBAIKAN UTAMA: Pi.authenticate() V2.0
             // ==========================================
             let piUser;
             try {
                 if (!window.Pi) throw new Error("Pi SDK belum dimuat.");
                 
-                // Authenticating dengan SDK v2.0
-                const authData = await Pi.authenticate();
+                // ---------------------------------------------------------
+                // PERBAIKAN ERROR: Tambahkan array scopes sebagai argumen
+                // ---------------------------------------------------------
+                const authData = await Pi.authenticate(['username', 'payments']);
                 
                 // Struktur data authenticate v2.0: { accessToken, user: { uid, username ... } }
                 piUser = authData ? authData.user : null;
