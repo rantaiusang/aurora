@@ -87,7 +87,7 @@
         const Pi = window.Pi;
         
         // ==========================================
-        // CRITICAL FIX: INIT SDK dengan scopes
+        // INIT SDK dengan scopes
         // ==========================================
         Pi.init({ 
             version: "2.0", 
@@ -132,63 +132,111 @@
         }
 
         // ==========================================
-        // MAIN FUNCTION: HANDLES PAYMENT (STEP 8a)
+        // PERBAIKAN FUNGSI UTAMA
         // ==========================================
         async function handleAutoPayment(e) {
             e.preventDefault();
 
-            // Validasi Form
+            // 1. Ambil Data Form
             const name = document.getElementById('fullName').value.trim();
             const phone = document.getElementById('phoneNumber').value.trim();
             const address = document.getElementById('address').value.trim();
 
+            // 2. Validasi Form
             if (name.length < 3 || phone.length < 10 || address.length < 10) {
-                return showError("Mohon lengkapi data pengiriman.");
+                return showError("Mohon lengkapi data pengiriman dengan benar.");
             }
 
             const btn = document.getElementById('payBtn');
+            const originalBtnText = btn.innerText;
             btn.disabled = true;
-            btn.innerText = "Mengecek Autentikasi...";
+            btn.innerText = "Menyiapkan Pembayaran...";
             document.getElementById('error-message').style.display = 'none';
 
-            // ==========================================
-            // PERBAIKAN UTAMA: Pi.authenticate() V2.0
-            // ==========================================
-            let piUser;
-            try {
-                if (!window.Pi) throw new Error("Pi SDK belum dimuat.");
-                
-                // ---------------------------------------------------------
-                // PERBAIKAN ERROR: Tambahkan array scopes sebagai argumen
-                // ---------------------------------------------------------
-                const authData = await Pi.authenticate(['username', 'payments']);
-                
-                // Struktur data authenticate v2.0: { accessToken, user: { uid, username ... } }
-                piUser = authData ? authData.user : null;
-                
-                if (!piUser || !piUser.uid) {
-                    throw new Error("User tidak ditemukan.");
-                }
-            } catch (authError) {
-                console.error("Auth Error:", authError);
-                showError("Gagal Autentikasi: " + authError.message);
+            // 3. Validasi Total
+            if (total <= 0) {
+                showError("Total pembayaran tidak valid (0).");
                 btn.disabled = false;
-                btn.innerText = "Bayar Sekarang";
-                return; // Stop di sini
+                btn.innerText = originalBtnText;
+                return;
             }
 
-            btn.innerText = "Membuka Pi Payment...";
             const currentOrderId = "ORD-" + Date.now();
 
+            // Simpan data form sementara agar aman saat proses async
+            const tempOrderData = { 
+                orderId: currentOrderId, 
+                name, 
+                phone, 
+                address 
+            };
+            
             try {
                 // ==========================================
-                // STEP 8a: CREATE PAYMENT
+                // AUTENTIKASI (Gabung dengan Payment)
                 // ==========================================
+                console.log("Memulai Autentikasi & Pembayaran...");
+                btn.innerText = "Mengecek Izin Akses...";
+
+                // Lakukan Autentikasi dengan scopes yang benar
+                const authResult = await Pi.authenticate(['username', 'payments']);
+                const piUser = authResult ? authResult.user : null;
+
+                if (!piUser || !piUser.uid) {
+                    throw new Error("Gagal mendapatkan User ID dari Pi Network.");
+                }
+
+                console.log("User Autentikasi:", piUser.username);
+
+                // ==========================================
+                // MEMBUAT PEMBAYARAN (Retry Logic)
+                // ==========================================
+                btn.innerText = "Membuka Jendela Pembayaran...";
+                
+                // Coba lakukan pembayaran. Jika gagal di awal, coba 1x lagi (kadang browser butuh waktu izin popup)
+                let paymentSuccess = false;
+                try {
+                    await createPaymentFlow(currentOrderId, tempOrderData, piUser);
+                    paymentSuccess = true;
+                } catch (firstError) {
+                    console.warn("Percobaan 1 Gagal, mencoba ulang...", firstError);
+                    await new Promise(r => setTimeout(r, 500)); // Delay sebentar
+                    try {
+                        await createPaymentFlow(currentOrderId, tempOrderData, piUser);
+                        paymentSuccess = true;
+                    } catch (retryError) {
+                        throw retryError; // Jika masih gagal, lempar error
+                    }
+                }
+
+            } catch (err) {
+                console.error("Error Total:", err);
+                let msg = err.message || "Terjadi kesalahan tak terduga.";
+                
+                // Cek error spesifik
+                if (msg.includes("Pop-up") || msg.includes("Window")) {
+                    msg = "Mohon Izinkan Pop-up di Browser Anda.";
+                } else if (msg.includes("User not found")) {
+                    msg = "Harap login kembali di Wallet Pi.";
+                }
+
+                showError(msg);
+                btn.disabled = false;
+                btn.innerText = originalBtnText;
+            }
+        }
+
+        // ==========================================
+        // HELPER FUNGSI: ALUR PEMBAYARAN
+        // ==========================================
+        async function createPaymentFlow(orderId, customerData, piUser) {
+            return new Promise(async (resolve, reject) => {
+                
                 await Pi.createPayment(
                     {
                         amount: Number(total.toFixed(7)), 
-                        memo: `Order ${currentOrderId} - Aurora Store`,
-                        metadata: { orderId: currentOrderId, user: currentUser.username }
+                        memo: `Order ${orderId} - Aurora Store`,
+                        metadata: { orderId: orderId, user: piUser.username }
                     },
                     {
                         // --- STEP 8b: SERVER APPROVAL ---
@@ -205,7 +253,7 @@
                                     body: JSON.stringify({
                                         action: "approve",
                                         paymentId: paymentId,
-                                        orderId: currentOrderId,
+                                        orderId: orderId,
                                         uid: currentUser.uid,
                                         username: currentUser.username
                                     })
@@ -217,12 +265,14 @@
                                 }
                             } catch (error) { 
                                 console.error("Gagal Approve:", error);
+                                // Jangan reject disini, biarkan flow berjalan ke error handler createPayment jika kritis
                             }
                         },
 
                         // --- STEP 8d: SERVER COMPLETION ---
                         onReadyForServerCompletion: async function (paymentId, txid) {
                             console.log("Step 8d: Completing Payment", paymentId, txid);
+                            const btn = document.getElementById('payBtn');
                             btn.innerText = "Memverifikasi & Menyimpan...";
 
                             try {
@@ -236,12 +286,16 @@
                                         action: "complete",
                                         paymentId: paymentId,
                                         txid: txid,
-                                        orderId: currentOrderId,
+                                        orderId: orderId,
                                         uid: currentUser.uid,
                                         username: currentUser.username,
                                         amount: total,
                                         items: cartItems,
-                                        customer: { name, phone, address }
+                                        customer: { 
+                                            name: customerData.name, 
+                                            phone: customerData.phone, 
+                                            address: customerData.address 
+                                        }
                                     })
                                 });
                                 
@@ -251,39 +305,43 @@
                                     throw new Error(result.message || "Verifikasi backend gagal");
                                 }
 
+                                // SUKSES PENUH
                                 localStorage.removeItem('aurora_checkout');
                                 localStorage.removeItem("aurora_cart");
-                                document.getElementById("successOrderId").innerText = currentOrderId;
+                                document.getElementById("successOrderId").innerText = orderId;
                                 document.getElementById("successOverlay").classList.add("show");
+                                resolve(); // Selesaikan promise
                                 
                             } catch (error) {
                                 console.error("Gagal Complete:", error);
                                 showError("Gagal konfirmasi pembayaran di server: " + error.message);
+                                
+                                // Return UI ke normal tapi jangan resolve
+                                const btn = document.getElementById('payBtn');
                                 btn.disabled = false;
                                 btn.innerText = "Bayar Sekarang";
+                                reject(error);
                             }
                         },
 
                         onCancel: function () {
+                            const btn = document.getElementById('payBtn');
                             btn.disabled = false;
                             btn.innerText = "Bayar Sekarang";
                             showError("Pembayaran dibatalkan.");
+                            reject(new Error("User Cancelled"));
                         },
 
                         onError: function (err) {
-                            console.error("Error:", err);
+                            console.error("SDK Error:", err);
+                            const btn = document.getElementById('payBtn');
                             btn.disabled = false;
                             btn.innerText = "Bayar Sekarang";
-                            showError("Error: " + (err.message || JSON.stringify(err)));
+                            reject(err); // Reject promise agar bisa di-retry
                         }
                     }
                 );
-            } catch (err) {
-                console.error("Create Payment Failed:", err);
-                showError("Gagal memulai pembayaran: " + err.message);
-                btn.disabled = false;
-                btn.innerText = "Bayar Sekarang";
-            }
+            });
         }
 
         function showError(msg) {
