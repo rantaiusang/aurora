@@ -43,7 +43,7 @@
             z-index: 10;
         }
 
-        .back-link { color: #fff; text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
+        .back-link { color: #fff; text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: color 0.3s; }
         .back-link:hover { color: var(--luxury-gold); }
         .brand-name { font-family: 'Playfair Display', serif; color: var(--luxury-gold); font-size: 1.2rem; font-weight: 700; }
 
@@ -82,14 +82,14 @@
 
         .form-section-title {
             color: var(--luxury-gold); font-size: 0.9rem; text-transform: uppercase;
-            letter-spacing:1px; margin: 25px 0 15px 0;
+            letter-spacing: 1px; margin: 25px 0 15px 0;
             border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; font-weight: 600;
         }
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; color: #ccc; font-size: 0.9rem; font-weight: 500; }
 
         .input-box {
-            width: 100%; padding: 14px; background: rgba(255,255,255,0.05);
+            width: 100%; padding: 14px; background: rgba(255,255,255, 0.05);
             border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
             color: white; font-size: 0.95rem; font-family: 'Poppins', sans-serif;
             transition: 0.3s; box-sizing: border-box;
@@ -135,7 +135,7 @@
 
         .btn-pay {
             width: 100%; padding: 18px; background: var(--luxury-gold); color: #000;
-            border: none; border-radius: 10px; font-size:1.1rem; font-weight: 800;
+            border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 800;
             cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
             transition: 0.3s; box-shadow: 0 5px 20px rgba(255, 215, 0, 0.2);
             margin-top: 20px; display: flex; justify-content: center; align-items: center; gap: 10px;
@@ -145,8 +145,8 @@
 
         .error-box {
             display:none; background:rgba(255, 77, 77, 0.1); border:1px solid var(--danger-color); 
-            color:#ffcccc; padding:15px; border-radius:8px; margin-bottom:25px; font-size:0.85rem; 
-            text-align:center; line-height: 1.5;
+            color:#ffcccc; padding:15px; border-radius:8px; margin-bottom: 25px; font-size: 0.85rem; 
+            text-align: center; line-height: 1.5;
         }
         
         .success-overlay {
@@ -300,6 +300,7 @@
 
                 // Set Global Variable
                 cartItems = checkout.items;
+                // ✅ GUNAKAN parseFloat UNTUK MENGHITUNG TOTAL AKURAT (BISA UBAHAKANAH INTI)
                 total = parseFloat(checkout.total);
 
                 // 🛑 DIHAPUS: localStorage.removeItem('aurora_checkout');
@@ -310,11 +311,11 @@
                 console.log("Checkout Data Loaded:", { items: cartItems, total: total });
 
                 // =========================================
-                // 2️⃣ TAMPILKAN TOTAL & ITEM
+                // 2️⃣ TAMPILKAN TOTAL & ITEM (FIX PRECISION)
                 // =========================================
                 let html = '';
                 cartItems.forEach(item => {
-                    const name = item.name || item.product_name || "Produk Tanpa Nama";
+                    const name = item.name || item.product_name || "Produk Tanama Nama";
                     const price = parseFloat(item.price) || 0;
                     const qty = item.qty || 1;
                     const sub = price * qty;
@@ -328,7 +329,11 @@
                 });
 
                 summaryDiv.innerHTML = html;
-                totalDisplay.innerText = total.toFixed(2) + " π";
+                
+                // ✅ PERBAIKAN UTAMA PRECISION
+                // Jika < 0.01 (contoh: 0.0001458) -> Tampilkan 7 digit (0.0001458) agar jelas terbaca.
+                // Jika >= 0.01 (contoh: 50) -> Tampilkan 2 digit (50.00).
+                totalDisplay.innerText = (total < 0.01 ? total.toFixed(7) : total.toFixed(2)) + " π";
                 container.style.display = 'block';
                 
                 // Aktifkan Tombol
@@ -343,7 +348,7 @@
         }
 
         // ==========================================
-        // 3. HANDLE PEMBAYARAN OTOMATIS
+        // 3. HANDLE PEMBAYARAN OTOMATIS (PERFECT VERSION)
         // ==========================================
         async function handleAutoPayment(e) {
             e.preventDefault();
@@ -371,14 +376,14 @@
             // =========================================
             // 🔥 INI BAGIAN PALING PENTING (WAJIB ADA)
             // =========================================
-            
             // 🧠 CEK CEPAT: DEBUG LOG
             console.log("PAYMENT AMOUNT SENT:", total);
             
             Pi.createPayment(
                 {
-                    // 🔥 AMOUNT DIAMBIL DARI TOTAL YANG SUDAH DIKALKULASI STORE
+                    // 🔥 AMOUNT DIAMBIL DARI TOTAL YANG SUDAH DIKALKULASI STORE (BISA UBAKAHANAH INTI)
                     // 💡 BEST PRACTICE: Gunakan toFixed(7) untuk ketelitian Pi
+                    // Jika total = 50.0001458, maka dikirim sebagai 50.0001458 (presisi 7 digit di UI Pi).
                     amount: Number(total.toFixed(7)), 
                     memo: `Order ${currentOrderId} - Aurora Store`,
                     metadata: {
@@ -407,6 +412,7 @@
                                     orderId: currentOrderId,
                                     uid: currentUser.uid,
                                     username: currentUser.username
+                                    // NOTE: Data items & customer TIDAK wajib disimpan di sini
                                 })
                             });
                         } catch (error) {
@@ -444,7 +450,6 @@
                             });
 
                             // SUKSES TOTAL
-                            // ✅ TARUH DI SINI (BENAR)
                             localStorage.removeItem('aurora_checkout');
                             localStorage.removeItem("aurora_cart");
                             
