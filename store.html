@@ -99,6 +99,7 @@
         .status-completed { background: rgba(212, 175, 55, 0.2); color: var(--luxury-gold); }
         .loading-text { text-align: center; color: #888; padding: 20px; }
         .error-message { text-align: center; color: var(--danger); padding: 20px; background: rgba(255, 77, 77, 0.1); border-radius: 8px; margin: 20px 0; }
+        .empty-msg { text-align: center; color: #666; font-size: 0.9rem; margin-top: 20px; font-style: italic; }
 
         /* Main Layout */
         .main-layout { display: flex; gap: 40px; padding: 40px 8%; max-width: 1600px; margin: 0 auto; width: 100%; box-sizing: border-box; }
@@ -126,7 +127,7 @@
         .product-card:hover .product-img { transform: scale(1.05); }
         .product-info { padding: 20px; text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .product-name { font-family: 'Playfair Display', serif; font-size:1.1rem; color: #fff; margin-bottom:5px; }
-        .product-desc { font-size: 0.8rem; color: #888; margin-bottom:5px; height: 35px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .product-desc { font-size: 0.8rem; color: #888; margin-bottom:5px; height: 35px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .product-stock { font-size: 0.8rem; color: #888; margin-bottom: 10px; }
         .product-stock.out-of-stock { color: #ff6b6b; font-weight: 600; }
         .product-price { font-size: 1rem; color: var(--luxury-gold); font-weight: 700; margin-bottom: 15px; display: block; }
@@ -153,7 +154,7 @@
         .cart-footer { margin-top: auto; flex-shrink: 0; }
         .btn-checkout { width: 100%; padding: 20px; background: linear-gradient(135deg, var(--luxury-gold), #b8860b); color: #000; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; display: flex; justify-content: center; align-items: center; gap: 10px; }
         .btn-checkout span { font-size: 0.8rem; text-transform: none; font-weight: 400; color: rgba(0,0,0,0.6); }
-        .btn-checkout:hover { background: #ffed4a; transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215,0,0.3); }
+        .btn-checkout:hover { background: #ffed4a; transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215, 0, 0.3); }
         .btn-checkout:disabled { background: #2a2a2a; color: #666; cursor: not-allowed; transform: none; box-shadow: none; border: 1px solid #333; }
         .empty-msg { text-align: center; color: #666; font-size: 0.9rem; margin-top: 20px; font-style: italic; }
 
@@ -188,8 +189,7 @@
                     <div class="dropdown-item logout" onclick="handleLogout()">Logout</div>
                 </div>
             </div>
-        </div>
-    </header>
+        </header>
 
     <div class="main-layout">
         
@@ -227,8 +227,6 @@
             </div>
         </div>
 
-    </div>
-
     <!-- MODAL PROFIL -->
     <div class="modal-overlay" id="profileModal">
         <div class="modal-content">
@@ -247,8 +245,7 @@
                 <p class="loading-text">Memuat riwayat pesanan...</p>
             </div>
         </div>
-    </div>
-            <!-- TIDAK ADA SCRIPT PI SDK DISINI -->
+    <!-- TIDAK ADA SCRIPT PI SDK DISINI -->
     
     <script>
         // ==========================================
@@ -297,16 +294,14 @@
         }
 
         function formatPrice(price) {
-            // Gunakan cleanPrice untuk parsing yang bersih
+            // Gunakan fungsi cleanPrice agar tampilan sidebar akurat
             let numPrice = cleanPrice(price);
 
             if (numPrice === 0) return "0.00";
             
-            // =========================================
-            // 📢 LOGIKA TAMPILAN (FIX PRECISION)
-            // =========================================
+            // LOGIKA TAMPILAN:
             // Jika angka sangat kecil (contoh: 0.0001458), tampilkan 7 digit desimal.
-            // Jika angka normal (contoh: 50), tampilkan 2 digit desimal (50.00).
+            // Jika normal (contoh: 50), tampilkan 2 digit desimal (50.00).
             // Ini agar 0.0001458 tidak jadi 0.00
             if (numPrice < 0.01) {
                 return numPrice.toFixed(7); // 0.0001458 -> 0.0001458
@@ -571,13 +566,7 @@
             if (existingItem) {
                 existingItem.qty++;
             } else {
-                // ✅ PERBAIKAN: Simpan harga bersih di cart
-                cart.push({ 
-                    ...product, 
-                    qty: 1,
-                    // Timpa harga mentah dengan harga bersih
-                    price: cleanPrice(product.price)
-                });
+                cart.push({ ...product, qty: 1 });
             }
             
             localStorage.setItem('aurora_cart', JSON.stringify(cart));
@@ -619,7 +608,6 @@
                 let itemName = getSafeValue(item, 'name', 'product_name', 'Produk Tanpa Nama');
                 if (!itemName) itemName = getSafeValue(item, 'title', '', 'Produk Tanpa Nama');
                 const imgSrc = getSafeValue(item, 'image_url', 'img', ''); 
-                // Gunakan formatPrice yang sudah diperbaiki
                 const formattedPrice = formatPrice(item.price);
 
                 html += `
@@ -681,8 +669,8 @@
                 const stockClass = isOutOfStock ? "product-stock out-of-stock" : "product-stock";
                 const btnDisabled = isOutOfStock ? "disabled" : "";
                 const btnText = isOutOfStock ? "Habis" : "Beli Sekarang";
-                
-                // Gunakan cleanPrice untuk tampilan harga kartu produk
+
+                // GUNAKAN cleanPrice agar tampilan harga produk benar
                 const displayPrice = formatPrice(product.price);
                 const imgSrc = getSafeValue(product, 'image_url', 'img', 'https://via.placeholder.com/250?text=No+Image');
                 const descText = getSafeValue(product, 'description', 'desc', 'Tidak ada deskripsi.');
@@ -739,9 +727,9 @@
             let hasInvalidItem = false;
 
             cartItems.forEach(item => {
-                // ✅ PERBAIKAN: Gunakan cleanPrice untuk menghindari NaN/0 pada harga kecil
+                // ✅ PERBAIKAN: Gunakan cleanPrice untuk hitung total
                 const price = cleanPrice(item.price); 
-                const qty = parseInt(item.qty) || 1;
+                const qty = parseInt(item.qty) || 1; // Fallback qty ke 1 jika null
 
                 // Cek validitas data
                 if (isNaN(price) || price <= 0) {
@@ -799,9 +787,5 @@
             }
         }
     </script>
-</body>
-</html>
-
-    
 </body>
 </html>
