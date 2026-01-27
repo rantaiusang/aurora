@@ -245,14 +245,13 @@
                 <p class="loading-text">Memuat riwayat pesanan...</p>
             </div>
         </div>
-    <!-- TIDAK ADA SCRIPT PI SDK DISINI -->
+       <!-- Ganti seluruh isi script bawah dengan ini -->
     
     <script>
         // ==========================================
         // 1. KONFIGURASI SUPABASE
         // ==========================================
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
-        // Ambil token dari localStorage jika ada, jika tidak pakai fallback anon key
         const LOCAL_TOKEN = localStorage.getItem('aurora_token');
         const SUPABASE_KEY = LOCAL_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         
@@ -272,41 +271,37 @@
         // 🔧 FUNGSI BERSIH HARGA (ROBUST FIX)
         // ==========================================
         function cleanPrice(priceInput) {
-            // 1. Cegah null/undefined
             if (priceInput === null || priceInput === undefined) return 0;
 
-            // 2. Ubah jadi string (handle non-string input)
+            // Ubah ke String dan hapus semua KECUALI (simbol mata uang, spasi, dll)
             let p = String(priceInput);
-
-            // 3. Hapus spasi, simbol mata uang, karakter non-angka
-            // Kita hanya butuh angka (0-9), koma (.), dan minus (-)
-            // Regex ini juga menghapus karakter titik dua (") yang mungkin muncul bug
+            // Hanya ambil Angka (0-9), Titik (.), dan Minus (-)
             p = p.replace(/[^0-9.-]+/g, "");
 
-            // 4. Cek jika string kosong setelah dibersih
             if (p.length === 0) return 0;
-
-            // 5. Ubah jadi number
             let val = parseFloat(p);
-
-            // 6. Cek NaN atau negatif (harga tidak boleh negatif)
             return isNaN(val) || val < 0 ? 0 : val;
         }
 
         function formatPrice(price) {
-            // Gunakan fungsi cleanPrice agar tampilan sidebar akurat
+            // Gunakan cleanPrice agar tampilan sidebar akurat
             let numPrice = cleanPrice(price);
 
             if (numPrice === 0) return "0.00";
             
-            // LOGIKA TAMPILAN:
-            // Jika angka sangat kecil (contoh: 0.0001458), tampilkan 7 digit desimal.
-            // Jika normal (contoh: 50), tampilkan 2 digit desimal (50.00).
-            // Ini agar 0.0001458 tidak jadi 0.00
+            // =========================================
+            // 📢 LOGIKA TAMPILANAN (FIX PRECISION)
+            // =========================================
+            // Input: 196       -> Display: 196.00 (2 digit)
+            // Input: 0.00000125 -> Display: 0.0000013 (7 digit, tidak jadi 0.00)
+            // Input: 0.0001458 -> Display: 0.000146 (7 digit)
+            // Input: 50         -> Display: 50.00 (2 digit)
             if (numPrice < 0.01) {
-                return numPrice.toFixed(7); // 0.0001458 -> 0.0001458
+                // Tampilkan 7 digit desimal
+                return numPrice.toFixed(7); 
             } else {
-                return numPrice.toFixed(2); // 50 -> 50.00
+                // Tampilkan 2 digit desimal
+                return numPrice.toFixed(2);
             }
         }
 
@@ -391,8 +386,6 @@
                     .order('created_at', { ascending: false });
 
                 if (error) {
-                    console.error("Supabase Error:", error);
-                    // Tampilkan pesan error dengan tombol refresh
                     productGrid.innerHTML = `
                         <div class="error-message">
                             <p><strong>Gagal memuat produk.</strong></p>
@@ -405,7 +398,6 @@
                     return data;
                 }
             } catch (e) {
-                console.error("Script Crash:", e);
                 productGrid.innerHTML = `
                     <div class="error-message">
                         <p><strong>Terjadi kesalahan sistem.</strong></p>
@@ -566,7 +558,13 @@
             if (existingItem) {
                 existingItem.qty++;
             } else {
-                cart.push({ ...product, qty: 1 });
+                // ✅ PERBAIKAN: Bersihkan harga saat masuk keranjang
+                cart.push({ 
+                    ...product, 
+                    qty: 1,
+                    // Timpa harga mentah dengan harga bersih (Number)
+                    price: cleanPrice(product.price) 
+                });
             }
             
             localStorage.setItem('aurora_cart', JSON.stringify(cart));
@@ -669,8 +667,8 @@
                 const stockClass = isOutOfStock ? "product-stock out-of-stock" : "product-stock";
                 const btnDisabled = isOutOfStock ? "disabled" : "";
                 const btnText = isOutOfStock ? "Habis" : "Beli Sekarang";
-
-                // GUNAKAN cleanPrice agar tampilan harga produk benar
+                
+                // Gunakan cleanPrice agar tampilan harga kartu produk
                 const displayPrice = formatPrice(product.price);
                 const imgSrc = getSafeValue(product, 'image_url', 'img', 'https://via.placeholder.com/250?text=No+Image');
                 const descText = getSafeValue(product, 'description', 'desc', 'Tidak ada deskripsi.');
@@ -727,7 +725,7 @@
             let hasInvalidItem = false;
 
             cartItems.forEach(item => {
-                // ✅ PERBAIKAN: Gunakan cleanPrice untuk hitung total
+                // ✅ PERBAIKAN: Gunakan cleanPrice untuk menghindari NaN/0 pada harga kecil
                 const price = cleanPrice(item.price); 
                 const qty = parseInt(item.qty) || 1; // Fallback qty ke 1 jika null
 
@@ -787,5 +785,7 @@
             }
         }
     </script>
+    
+    
 </body>
 </html>
