@@ -266,7 +266,7 @@
         </div>
     </div>    
 
-            <!-- SCRIPT LOGIC (BACKEND MANUAL) -->
+            <!-- SCRIPT LOGIC (FINAL VERSION) -->
     <script>
         // ==========================================
         // 1. KONFIGURASI
@@ -282,7 +282,6 @@
         // ==========================================
         let total = 0;
         let cartItems = [];
-        let itemsJsonString = "[]";
         let currentUser = null;
         let currentOrderId = null;
 
@@ -293,11 +292,9 @@
             const btn = document.getElementById('payBtn');
             const errorMsg = document.getElementById('error-message');
 
-            // Ambil user dari localStorage (hasil login.html)
             const userStr = localStorage.getItem('aurora_user');
             
             if (!userStr) {
-                // User belum login → redirect
                 errorMsg.innerHTML = `<strong>Sesi Habis:</strong><br>Silakan login kembali untuk melanjutkan pembayaran.`;
                 errorMsg.style.display = 'block';
                 btn.disabled = true;
@@ -308,8 +305,8 @@
 
             try {
                 currentUser = JSON.parse(userStr);
-                console.log("User detected from localStorage:", currentUser);
-                loadCartData(); // Load keranjang setelah user aman
+                console.log("User detected:", currentUser);
+                loadCartData(); 
             } catch (e) {
                 console.error("Gagal parse user", e);
                 localStorage.removeItem('aurora_user');
@@ -328,7 +325,6 @@
 
             total = 0;
             cartItems = [];
-            itemsJsonString = "[]";
             
             if(!errorMode) { 
                 payBtn.disabled = true; 
@@ -345,7 +341,6 @@
 
             try {
                 cartItems = JSON.parse(rawCart);
-                itemsJsonString = JSON.stringify(cartItems);
             } catch (e) {
                 summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Data keranjang rusak.</span>';
                 summaryContainer.style.display = 'block';
@@ -368,7 +363,6 @@
                 const qty = item.qty || 1;
                 const itemTotal = price * qty;
                 total += itemTotal; 
-
                 const formattedPrice = formatPrice(itemTotal);
 
                 html += `
@@ -389,7 +383,6 @@
             }
         }
 
-        // Helper Function Format Harga
         function formatPrice(num) {
             if (num > 0 && num < 0.01) {
                 return num.toPrecision(4);
@@ -398,45 +391,42 @@
         }
 
         // ==========================================
-        // 5. HANDLE MANUAL PAYMENT (KIRIM KE BACKEND)
+        // 5. HANDLE MANUAL PAYMENT (FINAL FIX)
         // ==========================================
         async function handleManualPayment(e) {
             e.preventDefault();
 
             if (!currentUser) {
-                alert("Sesi tidak valid. Silakan refresh halaman.");
+                alert("Sesi tidak valid.");
                 window.location.reload();
                 return;
             }
 
-            // AMBIL DATA SECARA EKSPLISIT (Gunakan .value)
+            // 1. Ambil Data Form
             const nameInput = document.getElementById('fullName');
             const phoneInput = document.getElementById('phoneNumber');
             const addressInput = document.getElementById('address');
             
-            const name = nameInput ? nameInput.value : null;
-            const phone = phoneInput ? phoneInput.value : null;
-            const address = addressInput ? addressInput.value : null;
+            // Validasi Element Exist
+            if (!nameInput || !phoneInput || !addressInput) {
+                return showError("Elemen form tidak ditemukan di HTML.");
+            }
+
+            const name = nameInput.value.trim();
+            const phone = phoneInput.value.trim();
+            const address = addressInput.value.trim();
             
-            const btn = document.getElementById('payBtn');
-            const errorMsg = document.getElementById('error-message');
-
-            console.log("--- DEBUGGING FORM DATA ---");
-            console.log("Name:", name);
-            console.log("Phone:", phone);
-            console.log("Address:", address);
-            console.log("Total:", total);
-            console.log("Cart Items:", cartItems);
-            console.log("------------------------");
-
-            if (!name || name.length < 3) return showError("Nama terlalu pendek.");
-            if (!phone || phone.length < 10) return showError("Nomor WhatsApp tidak valid.");
-            if (!address || address.length < 10) return showError("Alamat lengkap diperlukan.");
+            // 2. Validasi Isi
+            if (name.length < 3) return showError("Nama terlalu pendek.");
+            if (phone.length < 10) return showError("Nomor WA tidak valid.");
+            if (address.length < 10) return showError("Alamat lengkap diperlukan.");
             
             if (total <= 0 || isNaN(total)) {
-                showError("Total pembayaran tidak valid.");
-                return;
+                return showError("Total pembayaran nol.");
             }
+
+            const btn = document.getElementById('payBtn');
+            const errorMsg = document.getElementById('error-message');
 
             errorMsg.style.display = "none";
             btn.disabled = true;
@@ -445,54 +435,51 @@
 
             currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
-            // Payload DIBANGGI
-            // PERHATIKAN: Pastikan object customer ini terisi, karena jika salah satu pun isinya null -> error.
+            // 3. Bangun Payload
             const payload = {
                 orderId: currentOrderId,
                 uid: currentUser.uid,
                 username: currentUser.username,
                 amount: parseFloat(total.toFixed(2)),
-                items: itemsJsonString,
+                // ✅ PERBAIKAN: Kirim Array Object (cartItems), BUKAN JSON String.
+                // Supabase-js di backend akan menangani serialisasi JSONB dengan benar.
+                items: cartItems, 
                 customer: { name, phone, address }
             };
 
-            console.log("--- DEBUGGING PAYLOAD KE BACKEND ---");
-            console.log("Sending Payload:", JSON.stringify(payload));
+            console.log("--- MENGIRIM DATA KE BACKEND ---");
+            console.log("Payload:", JSON.stringify(payload, null, 2));
 
             try {
-    const response = await fetch(BACKEND_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'apikey': SUPABASE_KEY
-        },
-        body: JSON.stringify(payload)
-    });
+                const response = await fetch(BACKEND_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'apikey': SUPABASE_KEY
+                    },
+                    body: JSON.stringify(payload)
+                });
 
-    // 🔑 BACA RESPONSE SEKALI SAJA
-    const result = await response.json();
+                const result = await response.json();
 
-    console.log("Response Status:", response.status);
-    console.log("Backend Result:", result);
+                console.log("RESPON BACKEND:", result);
 
-    // ❌ JIKA GAGAL
-    if (!response.ok) {
-        throw new Error(result.message || "Gagal membuat pesanan di server.");
-    }
+                if (!response.ok) {
+                    throw new Error(result.message || "Gagal membuat pesanan di server.");
+                }
 
-    // ✅ JIKA SUKSES
-    localStorage.removeItem('aurora_cart');
+                // SUKSES
+                localStorage.removeItem('aurora_cart');
+                document.getElementById('successTotal').innerText = formatPrice(total);
+                document.getElementById('successOrderId').innerText = currentOrderId;
+                document.getElementById('successOverlay').classList.add('show');
 
-    document.getElementById('successTotal').innerText = formatPrice(total);
-    document.getElementById('successOrderId').innerText = currentOrderId;
-    document.getElementById('successOverlay').classList.add('show');
-
-} catch (err) {
-    console.error("--- ERROR DETAIL ---", err);
-    showError("Gagal: " + err.message);
-    resetButton();
-}
+            } catch (err) {
+                console.error("--- ERROR FETCH ---", err);
+                showError("Gagal: " + err.message);
+                resetButton();
+            }
         }
 
         function resetButton() {
