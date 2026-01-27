@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Verifikasi Pembayaran</title>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+</head>
+<body>
+    <div id="status">Memproses Pembayaran...</div>
+    <script>
+        // Ambil data yang tersimpan
+        const pendingData = JSON.parse(localStorage.getItem('temp_pending_order'));
+        
+        // Lakukan verifikasi ke Backend menggunakan data dari URL params atau localStorage
+        fetch(BACKEND_URL, {
+            method: 'POST',
+            body: JSON.stringify({ 
+                action: 'complete', 
+                orderId: pendingData.orderId,
+                // ... kirim data lainnya
+            })
+        }).then(res => res.json()).then(data => {
+             document.getElementById('status').innerText = "Pembayaran Sukses!";
+             // Redirect kembali ke store setelah 2 detik
+             setTimeout(() => window.location.href = 'store.html', 2000);
+        });
+    </script>
+</body>
+</html>
