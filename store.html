@@ -694,13 +694,14 @@
             let hasInvalidItem = false;
 
             cartItems.forEach(item => {
-                const price = Number(item.price);
-                const qty = Number(item.qty);
+                // ✅ PERBAIKAN: Gunakan parseFloat untuk membaca string harga dengan aman
+                const price = parseFloat(item.price); 
+                const qty = parseInt(item.qty) || 1; // Fallback qty ke 1 jika null
 
                 // Cek validitas data
-                if (isNaN(price) || isNaN(qty) || price <= 0) {
+                if (isNaN(price) || price < 0) {
                     hasInvalidItem = true;
-                    console.warn("Item bermasalah:", item);
+                    console.warn("Item bermasalah (Harga Invalid):", item);
                 } else {
                     total += price * qty;
                 }
@@ -714,7 +715,7 @@
             }
 
             if (hasInvalidItem) {
-                alert("Beberapa barang dalam keranjang memiliki data harga/jumlah yang tidak valid. Mohon ulangi atau hubungi admin.");
+                alert("Beberapa barang dalam keranjang memiliki data harga yang tidak valid. Mohon ulangi atau hubungi admin.");
                 return;
             }
 
