@@ -272,11 +272,35 @@
         const sidebarCartList = document.getElementById('sidebarCartList');
         const btnCheckoutSidebar = document.getElementById('btnCheckoutSidebar');
 
+        // ==========================================
+        // 🔧 FUNGSI BERSIH HARGA (FIX UTAMA)
+        // ==========================================
+        function cleanPrice(priceInput) {
+            // 1. Ubah jadi string
+            let p = String(priceInput);
+            // 2. Hapus semua karakter KECUALI angka (.), minus (-), dan huruf besar/kecil.
+            // Ini akan membuang spasi, "π", koma, dll.
+            p = p.replace(/[^0-9.-]+/g, "");
+            // 3. Ubah ke number
+            let val = parseFloat(p);
+            // 4. Kembalikan 0 jika gagal
+            return isNaN(val) ? 0 : val;
+        }
+
         function formatPrice(price) {
-            let numPrice = parseFloat(price);
-            if (isNaN(numPrice)) return "0.00";
-            if (numPrice < 0.01) return numPrice.toString();
-            else return numPrice.toFixed(2);
+            // Gunakan fungsi cleanPrice agar tampilan sidebar akurat
+            let numPrice = cleanPrice(price);
+            
+            if (numPrice === 0) return "0.00";
+            
+            // LOGIKA TAMPILAN:
+            // Jika angka sangat kecil (contoh: 0.0001458), tampilkan 7 digit desimal.
+            // Jika normal (contoh: 50), tampilkan 2 digit desimal.
+            if (numPrice < 0.01) {
+                return numPrice.toFixed(7);
+            } else {
+                return numPrice.toFixed(2);
+            }
         }
 
         // ==========================================
@@ -361,7 +385,6 @@
 
                 if (error) {
                     console.error("Supabase Error:", error);
-                    // Tampilkan pesan error dengan tombol refresh
                     productGrid.innerHTML = `
                         <div class="error-message">
                             <p><strong>Gagal memuat produk.</strong></p>
@@ -535,7 +558,13 @@
             if (existingItem) {
                 existingItem.qty++;
             } else {
-                cart.push({ ...product, qty: 1 });
+                // ✅ PERBAIKAN: Bersihkan harga saat masuk keranjang
+                cart.push({ 
+                    ...product, 
+                    qty: 1,
+                    // Timpa harga mentah dengan harga bersih
+                    price: cleanPrice(product.price)
+                });
             }
             
             localStorage.setItem('aurora_cart', JSON.stringify(cart));
@@ -638,6 +667,8 @@
                 const stockClass = isOutOfStock ? "product-stock out-of-stock" : "product-stock";
                 const btnDisabled = isOutOfStock ? "disabled" : "";
                 const btnText = isOutOfStock ? "Habis" : "Beli Sekarang";
+                
+                // Gunakan cleanPrice agar tampilan produk benar
                 const displayPrice = formatPrice(product.price);
                 const imgSrc = getSafeValue(product, 'image_url', 'img', 'https://via.placeholder.com/250?text=No+Image');
                 const descText = getSafeValue(product, 'description', 'desc', 'Tidak ada deskripsi.');
@@ -694,12 +725,12 @@
             let hasInvalidItem = false;
 
             cartItems.forEach(item => {
-                // ✅ PERBAIKAN: Gunakan parseFloat untuk membaca string harga dengan aman
-                const price = parseFloat(item.price); 
-                const qty = parseInt(item.qty) || 1; // Fallback qty ke 1 jika null
+                // ✅ PERBAIKAN: Gunakan cleanPrice untuk hitung total
+                const price = cleanPrice(item.price); 
+                const qty = parseInt(item.qty) || 1;
 
                 // Cek validitas data
-                if (isNaN(price) || price < 0) {
+                if (isNaN(price) || price <= 0) {
                     hasInvalidItem = true;
                     console.warn("Item bermasalah (Harga Invalid):", item);
                 } else {
