@@ -8,160 +8,36 @@
     <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     
-    <!-- PI SDK (WAJIB UNTUK OTOMATIS) -->
+    <!-- PI SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
 
     <style>
-        /* --- VARIABLES --- */
-        :root {
-            --luxury-gold: #d4af37;
-            --dark-bg: #0f0c15;
-            --card-bg: #1a1620;
-            --danger-color: #ff4d4d;
-            --success-color: #4CAF50;
-        }
-
-        body {
-            background-color: var(--dark-bg);
-            color: #ffffff;
-            font-family: 'Poppins', sans-serif;
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        header {
-            background: rgba(15, 12, 21, 0.95);
-            border-bottom:1px solid rgba(212, 175, 55, 0.2);
-            padding: 20px 8%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        .back-link { color: #fff; text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: color 0.3s; cursor: pointer; font-family: 'Poppins', sans-serif; }
-        .back-link:hover { color: var(--luxury-gold); }
+        :root { --luxury-gold: #d4af37; --dark-bg: #0f0c15; --card-bg: #1a1620; --danger-color: #ff4d4d; }
+        body { background-color: var(--dark-bg); color: #ffffff; font-family: 'Poppins', sans-serif; margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
+        header { background: rgba(15, 12, 21, 0.95); border-bottom:1px solid rgba(212, 175, 55, 0.2); padding: 20px 8%; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+        .back-link { color: #fff; text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: color 0.3s; cursor: pointer; }
         .brand-name { font-family: 'Playfair Display', serif; color: var(--luxury-gold); font-size: 1.2rem; font-weight: 700; }
-
-        .payment-wrapper {
-            flex:1; display: flex; align-items: center; justify-content: center;
-            padding: 40px 8%; position: relative; overflow-y: auto;
-        }
-
-        .bg-glow {
-            position: fixed; width: 500px; height: 500px;
-            background: radial-gradient(circle, rgba(212, 175, 55, 0.15), transparent 70%);
-            top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: -1; animation: pulseGlow 4s infinite; pointer-events: none;
-        }
-
-        .payment-card {
-            background: var(--card-bg); width: 100%; max-width: 600px;
-            padding: 50px 40px; border-radius: 20px;
-            border: 1px solid rgba(212, 175, 55, 0.2);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            position: relative; opacity: 0; transform: translateY(40px);
-            animation: slideUpFade 0.8s ease forwards;
-        }
-
-        .coin-visual {
-            width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 30px;
-            background: linear-gradient(135deg, var(--luxury-gold), #b8860b);
-            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
-            display: flex; justify-content: center; align-items: center;
-            font-size: 2rem; color: white; font-weight: bold;
-            animation: floatCoin 3s ease-in-out infinite;
-        }
-
-        h2 { font-family: 'Playfair Display', serif; text-align: center; color: var(--luxury-gold); margin-bottom: 10px; font-size: 2rem; }
-        .sub-text { text-align: center; color: #aaa; margin-bottom: 30px; font-size: 0.9rem; line-height: 1.5; }
-
-        .form-section-title {
-            color: var(--luxury-gold); font-size: 0.9rem; text-transform: uppercase;
-            letter-spacing: 1px; margin: 25px 0 15px 0;
-            border-bottom: 1px solid rgba(255,255, 255,0.1); padding-bottom: 5px; font-weight: 600;
-        }
+        
+        .payment-wrapper { flex:1; display: flex; align-items: center; justify-content: center; padding: 40px 8%; position: relative; }
+        .payment-card { background: var(--card-bg); width: 100%; max-width: 600px; padding: 40px; border-radius: 20px; border: 1px solid rgba(212, 175, 55, 0.2); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); position: relative; }
+        .coin-visual { width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 30px; background: linear-gradient(135deg, var(--luxury-gold), #b8860b); display: flex; justify-content: center; align-items: center; font-size: 2rem; color: white; font-weight: bold; }
+        h2 { font-family: 'Playfair Display', serif; text-align: center; color: var(--luxury-gold); margin-bottom: 10px; }
         .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; color: #ccc; font-size: 0.9rem; font-weight: 500; }
-
-        .input-box {
-            width: 100%; padding: 14px; background: rgba(255,255,255, 0.05);
-            border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
-            color: white; font-size: 0.95rem; font-family: 'Poppins', sans-serif;
-            transition: 0.3s; box-sizing: border-box;
-        }
-        .input-box:focus { outline: none; border-color: var(--luxury-gold); background: rgba(255,255,255,0.1); }
-        
-        textarea.input-box { resize: vertical; min-height: 80px; }
-
-        .item-summary {
-            background: rgba(0,0, 0, 0.2); padding: 15px; border-radius: 8px;
-            margin-bottom: 25px; font-size: 0.85rem; color: #ccc;
-            max-height: 200px; overflow-y: auto;
-            border: 1px solid rgba(255,255,255,0.05); display: none;
-        }
-        .item-row { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-            margin-bottom: 8px; 
-            border-bottom: 1px solid rgba(255,255,255,0.05); 
-            padding-bottom: 8px; 
-        }
-        .item-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-        
-        .item-name { flex: 1; font-weight: 500; }
-        .item-qty { 
-            font-size: 0.75rem; 
-            color: var(--luxury-gold); 
-            background: rgba(212, 175, 55, 0.1); 
-            padding: 2px 6px; 
-            border-radius: 4px; 
-            margin: 0 10px;
-        }
-        .item-price { font-weight: 700; color: #fff; }
-
-        .total-display {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-top: 30px; padding: 20px; background: rgba(0,0,0,0.3);
-            border-radius: 10px; border: 1px solid rgba(212, 175, 55, 0.2);
-        }
-        .total-label { color: #ccc; font-weight: 500; }
+        label { display: block; margin-bottom: 8px; color: #ccc; }
+        .input-box { width: 100%; padding: 14px; background: rgba(255,255,255, 0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; box-sizing: border-box; }
+        .input-box:focus { outline: none; border-color: var(--luxury-gold); }
+        .item-summary { background: rgba(0,0, 0, 0.2); padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.05); }
+        .item-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; }
+        .total-display { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 10px; border: 1px solid rgba(212, 175, 55, 0.2); }
         .total-amount { font-size: 1.5rem; color: var(--luxury-gold); font-weight: 700; }
-
-        .btn-pay {
-            width: 100%; padding: 18px; background: var(--luxury-gold); color: #000;
-            border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 800;
-            cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
-            transition: 0.3s; box-shadow: 0 5px 20px rgba(255, 215, 0, 0.2);
-            margin-top: 20px; display: flex; justify-content: center; align-items: center; gap: 10px;
-        }
-        .btn-pay:hover:not(:disabled) { background: #ffed4a; transform: translateY(-3px); }
-        .btn-pay:disabled { background: #444; cursor: not-allowed; color: #888; transform: none; }
-
-        .error-box {
-            display:none; background:rgba(255, 77, 77, 0.1); border: 1px solid var(--danger-color); 
-            color:#ffcccc; padding:15px; border-radius: 8px; margin-bottom: 25px; font-size: 0.85rem; 
-            text-align: center; line-height: 1.5;
-        }
         
-        .success-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--card-bg); border-radius: 20px;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 10; opacity: 0; pointer-events: none; transition: 0.5s;
-        }
-        .success-overlay.show { opacity: 1; pointer-events: all; }
-        .check-icon { font-size: 4rem; color: #4CAF50; margin-bottom: 20px; animation: scaleUp 0.5s; }
-
-        @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
-        @keyframes floatCoin { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        @keyframes pulseGlow { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
-        @keyframes scaleUp { from { transform: scale(0); } to { transform: scale(1); } }
+        .btn-pay { width: 100%; padding: 18px; background: var(--luxury-gold); color: #000; border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 800; cursor: pointer; margin-top: 20px; }
+        .btn-pay:hover:not(:disabled) { background: #ffed4a; }
+        .btn-pay:disabled { background: #444; cursor: not-allowed; color: #888; }
+        
+        .error-box { display:none; background:rgba(255, 77, 77, 0.1); border: 1px solid var(--danger-color); color:#ffcccc; padding:15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+        .success-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--card-bg); border-radius: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; display: none; }
+        .success-overlay.show { display: flex; }
     </style>
 </head>
 <body>
@@ -174,311 +50,209 @@
     </header>
 
     <div class="payment-wrapper">
-        <div class="bg-glow"></div>
-
         <div class="payment-card">
             <div class="coin-visual">π</div>
 
             <h2>Pembayaran Aman</h2>
-            <p class="sub-text">Sistem pembayaran otomatis via Pi Network. Pesanan akan langsung diproses setelah pembayaran sukses.</p>
+            <p class="sub-text" style="text-align:center; color:#aaa; margin-bottom:20px;">Sistem pembayaran otomatis via Pi Network.</p>
 
             <div id="error-message" class="error-box"></div>
 
             <form id="paymentForm" onsubmit="handleAutoPayment(event)">
-                
-                <div class="form-section-title">Informasi Pengiriman</div>
+                <div class="form-group"><label>Nama Lengkap</label><input type="text" id="fullName" class="input-box" required></div>
+                <div class="form-group"><label>Nomor WhatsApp</label><input type="tel" id="phoneNumber" class="input-box" required></div>
+                <div class="form-group"><label>Alamat Lengkap</label><textarea id="address" class="input-box" rows="2" required></textarea></div>
 
-                <div class="form-group">
-                    <label for="fullName">Nama Lengkap</label>
-                    <input type="text" id="fullName" class="input-box" placeholder="Nama Penerima" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="phoneNumber">Nomor WhatsApp</label>
-                    <input type="tel" id="phoneNumber" class="input-box" placeholder="08xxxxxxxx" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="address">Alamat Lengkap</label>
-                    <textarea id="address" class="input-box" rows="3" placeholder="Jalan, No Rumah, Kelurahan, Kota..." required></textarea>
-                </div>
-
-                <!-- RINGKASAN -->
-                <div class="item-summary" id="itemSummaryContainer">
-                    <strong style="color:var(--luxury-gold); display:block; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;">Detail Pesanan:</strong>
-                    <div id="summaryList">...</div>
+                <div class="item-summary">
+                    <div id="summaryList"></div>
                 </div>
 
                 <div class="total-display">
-                    <span class="total-label">Total Tagihan</span>
+                    <span>Total Tagihan</span>
                     <span class="total-amount" id="displayTotal">0.00 π</span>
                 </div>
 
                 <button type="submit" class="btn-pay" id="payBtn" disabled>Bayar Sekarang</button>
             </form>
 
-            <!-- SUCCESS OVERLAY -->
             <div class="success-overlay" id="successOverlay">
-                <div class="check-icon">✅</div>
-                <h2>Pembayaran Sukses!</h2>
-                <p style="text-align: center; color: #ccc; margin-bottom: 20px;">Pesanan Anda telah diproses secara otomatis.</p>
-                <p style="text-align: center; color: var(--luxury-gold); margin-bottom: 30px;">ID Order: <span id="successOrderId">...</span></p>
-                
-                <button class="btn-pay" style="width: auto; padding: 12px 40px;" onclick="window.location.href='store.html'">Kembali Belanja</button>
+                <h2 style="margin-bottom:10px;">Pembayaran Sukses!</h2>
+                <p>ID Order: <span id="successOrderId">...</span></p>
+                <button class="btn-pay" style="width: auto; margin-top:20px;" onclick="window.location.href='store.html'">Kembali Belanja</button>
             </div>
         </div>
     </div>    
-              <script>
-    // ==========================================
-    // 1. KONFIGURASI PI SDK & SUPABASE
-    // ==========================================
-    
-    const Pi = window.Pi;
-    
-    // ⚠️ PENTING: Ubah sandbox: true saat TESTING/DEVELOPMENT.
-    // Jika sudah resmi di Mainnet dan disetujui Pi, ubah ke false.
-    Pi.init({ version: "2.0", sandbox: true }); 
 
-    const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
-    const AUTH_TOKEN = localStorage.getItem('aurora_token');
-    const SUPABASE_KEY = AUTH_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
-    const BACKEND_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
-
-    let total = 0;
-    let cartItems = [];
-    let currentUser = null;
-
-    document.addEventListener('DOMContentLoaded', async () => {
-        const userStr = localStorage.getItem('aurora_user');
+    <script>
+        const Pi = window.Pi;
         
-        if(!userStr) {
-            window.location.href = 'login.html';
-            return;
-        }
-        try {
+        // 1. CONFIG: Set sandbox: true untuk Testing/Testnet
+        Pi.init({ version: "2.0", sandbox: true }); 
+
+        const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
+        const AUTH_TOKEN = localStorage.getItem('aurora_token');
+        const SUPABASE_KEY = AUTH_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // Gunakan Key lengkap Anda
+        const BACKEND_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
+
+        let total = 0;
+        let cartItems = [];
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const userStr = localStorage.getItem('aurora_user');
+            if(!userStr) return (window.location.href = 'login.html');
             currentUser = JSON.parse(userStr);
-        } catch (e) {
-            console.error("User data corrupt", e);
-            localStorage.removeItem('aurora_user');
-            window.location.href = 'login.html';
-            return;
-        }
-        
-        // 🔍 MUAT DATA CHECKOUT DARI STORE.HTML
-        loadCartData();
-    });
+            loadCartData();
+        });
 
-    // ==========================================
-    // 2. FUNGSI LOAD DATA CHECKOUT
-    // ==========================================
-    function loadCartData() {
-        const summaryDiv = document.getElementById('summaryList');
-        const container = document.getElementById('itemSummaryContainer');
-        const totalDisplay = document.getElementById('displayTotal');
-        const btn = document.getElementById('payBtn');
-
-        const checkoutRaw = localStorage.getItem('aurora_checkout');
-        console.log("Payment Page Received Data:", checkoutRaw);
-        
-        if (!checkoutRaw) {
-            alert("Sesi pembayaran tidak ditemukan. Silakan pilih produk terlebih dahulu.");
-            window.location.href = 'store.html';
-            return;
-        }
-
-        try {
+        function loadCartData() {
+            const checkoutRaw = localStorage.getItem('aurora_checkout');
+            if (!checkoutRaw) return alert("Sesi habis") || (window.location.href = 'store.html');
+            
             const checkout = JSON.parse(checkoutRaw);
-
-            if (!checkout.items || !checkout.total) {
-                alert("Data checkout tidak valid. Silakan ulangi.");
-                window.location.href = 'store.html';
-                return;
-            }
-
             cartItems = checkout.items;
             total = parseFloat(checkout.total);
 
             let html = '';
             cartItems.forEach(item => {
-                const name = item.name || item.product_name || "Produk Tanpa Nama";
-                const price = parseFloat(item.price) || 0;
-                const qty = item.qty || 1;
-                const sub = price * qty;
-
-                html += `
-                    <div class="item-row">
-                        <span class="item-name">${name}</span>
-                        <span class="item-qty">x${qty}</span>
-                        <span class="item-price">${sub.toFixed(2)} π</span>
-                    </div>`;
+                const name = item.name || item.product_name || "Produk";
+                html += `<div class="item-row"><span>${name}</span> <span>x${item.qty}</span> <span>${(item.price * item.qty).toFixed(2)} π</span></div>`;
             });
 
-            summaryDiv.innerHTML = html;
-            
-            // Tampilan Harga Presisi
-            totalDisplay.innerText = (total < 0.01 ? total.toFixed(7) : total.toFixed(2)) + " π"; 
-            container.style.display = 'block';
-            
-            btn.disabled = false;
-            btn.innerText = `Bayar ${total.toFixed(2)} π`;
-
-        } catch (e) {
-            console.error("Gagal parsing data checkout", e);
-            alert("Terjadi kesalahan data. Silakan kembali ke toko.");
-            window.location.href = 'store.html';
-        }
-    }
-
-    // ==========================================
-    // 3. HANDLE PEMBAYARAN OTOMATIS (FIXED)
-    // ==========================================
-    async function handleAutoPayment(e) {
-        e.preventDefault();
-
-        // Validasi Input Form
-        if (!total || total <= 0) {
-            return showError("Total pembayaran nol atau invalid.");
+            document.getElementById('summaryList').innerHTML = html;
+            document.getElementById('displayTotal').innerText = (total < 0.01 ? total.toFixed(7) : total.toFixed(2)) + " π";
+            document.getElementById('payBtn').disabled = false;
+            document.getElementById('payBtn').innerText = `Bayar ${total.toFixed(2)} π`;
         }
 
-        const name = document.getElementById('fullName').value.trim();
-        const phone = document.getElementById('phoneNumber').value.trim();
-        const address = document.getElementById('address').value.trim();
-
-        if (name.length < 3 || phone.length < 10 || address.length < 10) {
-            return showError("Data pengiriman tidak lengkap.");
-        }
-
-        const btn = document.getElementById('payBtn');
-        btn.disabled = true;
-        btn.innerText = "Mengecek Autentikasi Pi...";
-
         // ==========================================
-        // 🔥 CEK AUTENTIKASI PI (PENTING)
+        // MAIN FUNCTION: HANDLES PAYMENT (STEP 8a)
         // ==========================================
-        // Kita harus memastikan SDK Pi mengenali user (Pi.getUser) 
-        // sebelum memanggil createPayment.
-        const piUser = await Pi.getUser();
-        
-        if (!piUser) {
-            showError("User tidak dikenali oleh Pi Browser. Silakan login ulang melalui aplikasi.");
-            btn.disabled = false;
-            btn.innerText = "Bayar Sekarang";
-            return;
-        }
+        async function handleAutoPayment(e) {
+            e.preventDefault();
 
-        btn.innerText = "Membuka Pi Payment...";
-        const currentOrderId = "ORD-" + Date.now();
-        document.getElementById('error-message').style.display = 'none';
+            // Validasi Form
+            const name = document.getElementById('fullName').value.trim();
+            const phone = document.getElementById('phoneNumber').value.trim();
+            const address = document.getElementById('address').value.trim();
 
-        // ==========================================
-        // 🔥 CREATE PAYMENT
-        // ==========================================
-        try {
-            await Pi.createPayment(
-                {
-                    amount: Number(total.toFixed(7)), 
-                    memo: `Order ${currentOrderId} - Aurora Store`,
-                    metadata: {
-                        orderId: currentOrderId,
-                        user: currentUser.username
-                    }
-                },
-                {
-                    // --- STEP 1: APPROVE ---
-                    onReadyForServerApproval: async function (paymentId) {
-                        console.log("Step 1: Approve Payment", paymentId);
-                        
-                        try {
-                            await fetch(BACKEND_URL, {
-                                method: "POST",
-                                headers: {
-                                    "Content-Type": "application/json",
-                                    "Authorization": `Bearer ${SUPABASE_KEY}`
-                                },
-                                body: JSON.stringify({
-                                    action: "approve",
-                                    paymentId: paymentId,
-                                    orderId: currentOrderId,
-                                    uid: currentUser.uid,
-                                    username: currentUser.username
-                                })
-                            });
-                        } catch (error) {
-                            console.error("Gagal Approve:", error);
-                        }
+            if (name.length < 3 || phone.length < 10 || address.length < 10) {
+                return showError("Mohon lengkapi data pengiriman.");
+            }
+
+            const btn = document.getElementById('payBtn');
+            btn.disabled = true;
+            btn.innerText = "Mengecek Autentikasi...";
+
+            // CEK USER PI (Prasyarat sebelum Step 8a)
+            const piUser = await Pi.getUser();
+            if (!piUser) {
+                showError("User tidak dikenali. Login ulang di Pi Browser.");
+                btn.disabled = false; return;
+            }
+
+            btn.innerText = "Membuka Pi Payment...";
+            const currentOrderId = "ORD-" + Date.now();
+            document.getElementById('error-message').style.display = 'none';
+
+            try {
+                // ==========================================
+                // STEP 8a: CREATE PAYMENT
+                // ==========================================
+                await Pi.createPayment(
+                    {
+                        amount: Number(total.toFixed(7)), 
+                        memo: `Order ${currentOrderId} - Aurora Store`,
+                        metadata: { orderId: currentOrderId, user: currentUser.username }
                     },
+                    {
+                        // --- STEP 8b: SERVER APPROVAL ---
+                        onReadyForServerApproval: async function (paymentId) {
+                            console.log("Step 8b: Approving Payment", paymentId);
+                            // Kirim ke Backend untuk Approve ke API Pi
+                            try {
+                                await fetch(BACKEND_URL, {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        "Authorization": `Bearer ${SUPABASE_KEY}`
+                                    },
+                                    body: JSON.stringify({
+                                        action: "approve",
+                                        paymentId: paymentId,
+                                        orderId: currentOrderId,
+                                        uid: currentUser.uid,
+                                        username: currentUser.username
+                                    })
+                                });
+                            } catch (error) { console.error("Gagal Approve:", error); }
+                        },
 
-                    // --- STEP 2: COMPLETE ---
-                    onReadyForServerCompletion: async function (paymentId, txid) {
-                        console.log("Step 2: Complete Payment", paymentId, txid);
-                        btn.innerText = "Memverifikasi...";
+                        // --- STEP 8d: SERVER COMPLETION ---
+                        onReadyForServerCompletion: async function (paymentId, txid) {
+                            console.log("Step 8d: Completing Payment", paymentId, txid);
+                            btn.innerText = "Memverifikasi & Menyimpan...";
 
-                        try {
-                            await fetch(BACKEND_URL, {
-                                method: "POST",
-                                headers: {
-                                    "Content-Type": "application/json",
-                                    "Authorization": `Bearer ${SUPABASE_KEY}`
-                                },
-                                body: JSON.stringify({
-                                    action: "complete",
-                                    paymentId: paymentId,
-                                    txid: txid,
-                                    orderId: currentOrderId,
-                                    uid: currentUser.uid,
-                                    username: currentUser.username,
-                                    amount: total,
-                                    items: cartItems,
-                                    customer: { name, phone, address }
-                                })
-                            });
+                            try {
+                                await fetch(BACKEND_URL, {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        "Authorization": `Bearer ${SUPABASE_KEY}`
+                                    },
+                                    body: JSON.stringify({
+                                        action: "complete",
+                                        paymentId: paymentId,
+                                        txid: txid,
+                                        orderId: currentOrderId,
+                                        uid: currentUser.uid,
+                                        username: currentUser.username,
+                                        amount: total,
+                                        items: cartItems,
+                                        customer: { name, phone, address }
+                                    })
+                                });
 
-                            localStorage.removeItem('aurora_checkout');
-                            localStorage.removeItem("aurora_cart");
-                            
-                            document.getElementById("successOrderId").innerText = currentOrderId;
-                            document.getElementById("successOverlay").classList.add("show");
-                            
-                        } catch (error) {
-                            console.error("Gagal Complete:", error);
-                            showError("Terjadi kesalahan saat konfirmasi pembayaran.");
+                                // Reset & Show Success
+                                localStorage.removeItem('aurora_checkout');
+                                localStorage.removeItem("aurora_cart");
+                                document.getElementById("successOrderId").innerText = currentOrderId;
+                                document.getElementById("successOverlay").classList.add("show");
+                                
+                            } catch (error) {
+                                console.error("Gagal Complete:", error);
+                                showError("Gagal konfirmasi pembayaran.");
+                                btn.disabled = false;
+                                btn.innerText = "Bayar Sekarang";
+                            }
+                        },
+
+                        onCancel: function () {
                             btn.disabled = false;
-                            btn.innerText = `Bayar ${total.toFixed(2)} π`;
+                            btn.innerText = "Bayar Sekarang";
+                            showError("Pembayaran dibatalkan.");
+                        },
+
+                        onError: function (err) {
+                            console.error("Error:", err);
+                            btn.disabled = false;
+                            btn.innerText = "Bayar Sekarang";
+                            showError("Error: " + err.message);
                         }
-                    },
-
-                    // --- CANCEL ---
-                    onCancel: function () {
-                        btn.disabled = false;
-                        btn.innerText = `Bayar ${total.toFixed(2)} π`;
-                        showError("Pembayaran dibatalkan.");
-                    },
-
-                    // --- ERROR ---
-                    onError: function (err) {
-                        console.error("Pi Payment Error:", err);
-                        btn.disabled = false;
-                        btn.innerText = `Bayar ${total.toFixed(2)} π`;
-                        // Tampilkan pesan error detail agar tau penyebabnya
-                        showError("Error Pi Payment: " + (err.message || "Pastikan membuka link ini di Pi Browser"));
                     }
-                }
-            );
-        } catch (err) {
-            console.error("Create Payment Exception:", err);
-            showError("Gagal memulai pembayaran: " + err.message);
-            btn.disabled = false;
-            btn.innerText = "Bayar Sekarang";
+                );
+            } catch (err) {
+                console.error("Create Payment Failed:", err);
+                showError("Gagal memulai pembayaran: " + err.message);
+                btn.disabled = false;
+            }
         }
-    }
 
-    function showError(msg) {
-        const div = document.getElementById('error-message');
-        div.innerHTML = `<strong>Error:</strong> ${msg}`;
-        div.style.display = 'block';
-    }
-</script>
-    
+        function showError(msg) {
+            const div = document.getElementById('error-message');
+            div.innerHTML = `<strong>Error:</strong> ${msg}`;
+            div.style.display = 'block';
+        }
+    </script>
 </body>
 </html>
-       
