@@ -79,7 +79,7 @@
         const Pi = window.Pi;
         
         // ==========================================
-        // PERBAIKAN 1: TAMBAHKAN SCOPES DI SINI
+        // 1. INIT SDK
         // ==========================================
         Pi.init({ 
             version: "2.0", 
@@ -152,19 +152,28 @@
 
             try {
                 // ==========================================
-                // PERBAIKAN 2: WAJIB AUTHENTICATE DULU
+                // 2. CALLBACK WAJIB (onIncompletePaymentFound)
                 // ==========================================
-                // Error scope hilang karena ini tidak ada. 
-                // Namun ini bisa memicu pop-up. Harap izinkan pop-up browser!
-                
-                console.log("Meminta izin 'payments'...");
-                const authResult = await Pi.authenticate(['username', 'payments']);
-                const piUser = authResult ? authResult.user : null;
-
-                if (!piUser) {
-                    throw new Error("Gagal mengambil data user. Pastikan Anda login di Wallet Pi.");
+                // Error "reading 'every'" hilang karena callback ini ditambahkan
+                function onIncompletePaymentFound(payment) {
+                    console.log("Pembayaran belum selesai ditemukan:", payment);
                 }
 
+                // ==========================================
+                // 3. AUTHENTICATE DENGAN FORMAT BENAR
+                // ==========================================
+                // Format: Pi.authenticate([scopes], callback)
+                const auth = await Pi.authenticate(
+                    ["payments", "username"], 
+                    onIncompletePaymentFound
+                );
+
+                // Validasi Token
+                if (!auth || !auth.accessToken) {
+                    throw new Error("Gagal autentikasi: Token tidak ditemukan. Coba lagi atau refresh halaman.");
+                }
+
+                const piUser = auth.user;
                 console.log("User Authenticated:", piUser.username);
 
                 // Lanjut ke Payment
@@ -238,7 +247,6 @@
                 console.error("Error Total:", err);
                 let msg = err.message || "Terjadi kesalahan tak terduga.";
                 
-                // Pesan khusus jika suspect pop-up blocker
                 if (msg.includes("timeout") || msg === "Timeout") {
                     msg = "Lama merespon. Pastikan Anda mengizinkan Pop-up di address bar browser.";
                 }
