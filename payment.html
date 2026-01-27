@@ -8,6 +8,9 @@
     <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     
+    <!-- PI SDK (WAJIB UNTUK OTOMATIS) -->
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+
     <style>
         /* --- VARIABLES --- */
         :root {
@@ -26,10 +29,8 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            -webkit-tap-highlight-color: transparent;
         }
 
-        /* Header */
         header {
             background: rgba(15, 12, 21, 0.95);
             border-bottom:1px solid rgba(212, 175, 55, 0.2);
@@ -46,7 +47,6 @@
         .back-link:hover { color: var(--luxury-gold); }
         .brand-name { font-family: 'Playfair Display', serif; color: var(--luxury-gold); font-size: 1.2rem; font-weight: 700; }
 
-        /* Layout */
         .payment-wrapper {
             flex:1; display: flex; align-items: center; justify-content: center;
             padding: 40px 8%; position: relative; overflow-y: auto;
@@ -68,7 +68,6 @@
             animation: slideUpFade 0.8s ease forwards;
         }
 
-        /* Visual Elements */
         .coin-visual {
             width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 30px;
             background: linear-gradient(135deg, var(--luxury-gold), #b8860b);
@@ -81,7 +80,6 @@
         h2 { font-family: 'Playfair Display', serif; text-align: center; color: var(--luxury-gold); margin-bottom: 10px; font-size: 2rem; }
         .sub-text { text-align: center; color: #aaa; margin-bottom: 30px; font-size: 0.9rem; line-height: 1.5; }
 
-        /* Form */
         .form-section-title {
             color: var(--luxury-gold); font-size: 0.9rem; text-transform: uppercase;
             letter-spacing:1px; margin: 25px 0 15px 0;
@@ -97,16 +95,9 @@
             transition: 0.3s; box-sizing: border-box;
         }
         .input-box:focus { outline: none; border-color: var(--luxury-gold); background: rgba(255,255,255,0.1); }
-        .input-box::placeholder { color: #666; }
         
-        .wallet-readonly {
-            font-family: 'Courier New', monospace; font-size: 0.85rem; letter-spacing: 0.5px;
-            background-color: rgba(0,0,0,0.4) !important; color: var(--luxury-gold) !important;
-            border-color: var(--luxury-gold) !important; cursor: not-allowed !important;
-        }
         textarea.input-box { resize: vertical; min-height: 80px; }
 
-        /* Summary */
         .item-summary {
             background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;
             margin-bottom: 25px; font-size: 0.85rem; color: #ccc;
@@ -116,7 +107,6 @@
         .item-row { display: flex; justify-content: space-between; margin-bottom:5px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; }
         .item-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
 
-        /* Total */
         .total-display {
             display: flex; justify-content: space-between; align-items: center;
             margin-top: 30px; padding: 20px; background: rgba(0,0,0,0.3);
@@ -125,35 +115,22 @@
         .total-label { color: #ccc; font-weight: 500; }
         .total-amount { font-size: 1.5rem; color: var(--luxury-gold); font-weight: 700; }
 
-        /* Button */
         .btn-pay {
             width: 100%; padding: 18px; background: var(--luxury-gold); color: #000;
             border: none; border-radius: 10px; font-size:1.1rem; font-weight: 800;
             cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
             transition: 0.3s; box-shadow: 0 5px 20px rgba(255, 215, 0, 0.2);
-            margin-top: 20px; position: relative; display: flex; justify-content: center; align-items: center; gap: 10px;
+            margin-top: 20px; display: flex; justify-content: center; align-items: center; gap: 10px;
         }
-        .btn-pay:hover:not(:disabled) { background: #ffed4a; transform: translateY(-3px); box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4); }
-        .btn-pay:disabled { background: #444; cursor: not-allowed; transform: none; box-shadow: none; color: #888; border: 1px solid #555; }
+        .btn-pay:hover:not(:disabled) { background: #ffed4a; transform: translateY(-3px); }
+        .btn-pay:disabled { background: #444; cursor: not-allowed; color: #888; transform: none; }
 
-        .btn-retry {
-            background: var(--danger-color) !important; color: white !important;
-            box-shadow: 0 5px 20px rgba(255, 77, 77, 0.2) !important;
-            font-size: 0.9rem !important; padding: 15px !important;
-            white-space: normal !important;
-            text-align: center !important;
-        }
-        .btn-retry:hover { background: #ff6666 !important; transform: translateY(-3px); }
-
-        /* Error Box */
         .error-box {
             display:none; background:rgba(255, 77, 77, 0.1); border:1px solid var(--danger-color); 
             color:#ffcccc; padding:15px; border-radius:8px; margin-bottom:25px; font-size:0.85rem; 
             text-align:center; line-height: 1.5;
         }
-        .error-box strong { display: block; margin-bottom: 8px; color: #ff4d4d; font-size: 1rem; }
-
-        /* Success Overlay */
+        
         .success-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--card-bg); border-radius: 20px;
@@ -161,27 +138,12 @@
             z-index: 10; opacity: 0; pointer-events: none; transition: 0.5s;
         }
         .success-overlay.show { opacity: 1; pointer-events: all; }
-        .check-icon { font-size: 4rem; color: #4CAF50; margin-bottom: 20px; animation: scaleUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .check-icon { font-size: 4rem; color: #4CAF50; margin-bottom: 20px; animation: scaleUp 0.5s; }
 
-        .instruction-box {
-            background: rgba(212, 175, 55, 0.1); border: 1px dashed var(--luxury-gold);
-            padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left; font-size: 0.9rem;
-        }
-        .instruction-box ul { padding-left: 20px; margin: 5px 0; }
-        .instruction-box li { margin-bottom: 5px; }
-
-        /* Animations */
         @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
         @keyframes floatCoin { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         @keyframes pulseGlow { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
         @keyframes scaleUp { from { transform: scale(0); } to { transform: scale(1); } }
-
-        /* Responsive */
-        @media (max-width: 600px) {
-            .payment-card { padding: 30px 20px; }
-            h2 { font-size: 1.5rem; }
-            .total-amount { font-size: 1.2rem; }
-        }
     </style>
 </head>
 <body>
@@ -199,258 +161,163 @@
         <div class="payment-card">
             <div class="coin-visual">π</div>
 
-            <h2>Konfirmasi Pembayaran</h2>
-            <p class="sub-text">Lengkapi data pengiriman. Pesanan akan diverifikasi admin.</p>
+            <h2>Pembayaran Aman</h2>
+            <p class="sub-text">Sistem pembayaran otomatis via Pi Network. Pesanan akan langsung diproses setelah pembayaran sukses.</p>
 
             <div id="error-message" class="error-box"></div>
 
-            <form id="paymentForm" onsubmit="handleManualPayment(event)">
+            <form id="paymentForm" onsubmit="handleAutoPayment(event)">
                 
                 <div class="form-section-title">Informasi Pengiriman</div>
 
                 <div class="form-group">
                     <label for="fullName">Nama Lengkap</label>
-                    <input type="text" id="fullName" class="input-box" placeholder="Contoh: Budi Santoso" required>
+                    <input type="text" id="fullName" class="input-box" placeholder="Nama Penerima" required>
                 </div>
 
                 <div class="form-group">
                     <label for="phoneNumber">Nomor WhatsApp</label>
-                    <input type="tel" id="phoneNumber" class="input-box" placeholder="Contoh: 0812xxxx" required>
+                    <input type="tel" id="phoneNumber" class="input-box" placeholder="08xxxxxxxx" required>
                 </div>
 
                 <div class="form-group">
                     <label for="address">Alamat Lengkap</label>
-                    <textarea id="address" class="input-box" rows="3" placeholder="Jalan, No Rumah, Kelurahan, Kota, Kode Pos" required></textarea>
+                    <textarea id="address" class="input-box" rows="3" placeholder="Jalan, No Rumah, Kelurahan, Kota..." required></textarea>
                 </div>
 
-                <div class="form-section-title">Detail Pembayaran Manual</div>
-
-                <div class="form-group">
-                    <label>Wallet Toko (Tujuan Transfer)</label>
-                    <input type="text" class="input-box wallet-readonly" 
-                           value="GDOBH3VBKO4LD5MHYHQSWSE365UWSIOAJJOARNGKKWT4NZMBCA63DC3Y" 
-                           readonly>
-                </div>
-
-                <!-- CONTAINER RINGKASAN -->
+                <!-- RINGKASAN -->
                 <div class="item-summary" id="itemSummaryContainer">
-                    <strong style="color:var(--luxury-gold); display:block; margin-bottom:10px;">Ringkasan Pesanan:</strong>
-                    <div id="summaryList">Memuat data...</div>
+                    <strong style="color:var(--luxury-gold); display:block; margin-bottom:10px;">Ringkasan:</strong>
+                    <div id="summaryList">...</div>
                 </div>
 
                 <div class="total-display">
-                    <span class="total-label">Total Pembayaran</span>
+                    <span class="total-label">Total Tagihan</span>
                     <span class="total-amount" id="displayTotal">0.00 π</span>
                 </div>
 
-                <button type="submit" class="btn-pay" id="payBtn" disabled>Memuat Data...</button>
+                <button type="submit" class="btn-pay" id="payBtn" disabled>Bayar Sekarang</button>
             </form>
 
             <!-- SUCCESS OVERLAY -->
             <div class="success-overlay" id="successOverlay">
                 <div class="check-icon">✅</div>
-                <h2 style="margin-bottom: 10px;">Pesanan Berhasil Dibuat!</h2>
+                <h2>Pembayaran Sukses!</h2>
+                <p style="text-align: center; color: #ccc; margin-bottom: 20px;">Pesanan Anda telah diproses secara otomatis.</p>
+                <p style="text-align: center; color: var(--luxury-gold); margin-bottom: 30px;">ID Order: <span id="successOrderId">...</span></p>
                 
-                <div class="instruction-box">
-                    <p><strong>Langkah Selanjutnya:</strong></p>
-                    <ol>
-                        <li>Transfer sebesar <strong><span id="successTotal">0</span> π</strong> ke wallet tujuan.</li>
-                        <li>Konfirmasi pembayaran melalui WhatsApp Admin.</li>
-                        <li>Pesanan akan diproses setelah verifikasi.</li>
-                    </ol>
-                    <p style="text-align: center; margin-top: 10px; color: var(--luxury-gold); font-size: 0.8rem;">ID Order: <span id="successOrderId">...</span></p>
-                </div>
-
-                <button class="btn-pay" style="padding: 12px 30px; font-size: 1rem;" onclick="redirectToStore()">Kembali ke Toko</button>
+                <button class="btn-pay" style="width: auto; padding: 12px 40px;" onclick="window.location.href='store.html'">Kembali Belanja</button>
             </div>
         </div>
     </div>    
 
-            <!-- SCRIPT LOGIC (FINAL VERSION) -->
     <script>
         // ==========================================
-        // 1. KONFIGURASI
+        // 1. KONFIGURASI PI SDK & SUPABASE
         // ==========================================
+        
+        // Inisialisasi Pi SDK
+        const Pi = window.Pi;
+        Pi.init({ version: "2.0", sandbox: true }); // Set false jika di Mainnet
+
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const AUTH_TOKEN = localStorage.getItem('aurora_token');
         const SUPABASE_KEY = AUTH_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
-        
         const BACKEND_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
 
-        // ==========================================
-        // 2. VARIABEL GLOBAL
-        // ==========================================
         let total = 0;
         let cartItems = [];
         let currentUser = null;
-        let currentOrderId = null;
 
-        // ==========================================
-        // 3. INISIALISASI (LOAD USER FROM LOCAL STORAGE)
-        // ==========================================
         document.addEventListener('DOMContentLoaded', () => {
-            const btn = document.getElementById('payBtn');
-            const errorMsg = document.getElementById('error-message');
-
+            // Load User
             const userStr = localStorage.getItem('aurora_user');
+            if(!userStr) return window.location.href = 'login.html';
+            currentUser = JSON.parse(userStr);
             
-            if (!userStr) {
-                errorMsg.innerHTML = `<strong>Sesi Habis:</strong><br>Silakan login kembali untuk melanjutkan pembayaran.`;
-                errorMsg.style.display = 'block';
-                btn.disabled = true;
-                btn.innerText = "Login Ulang";
-                btn.onclick = () => window.location.href = 'login.html';
-                return;
-            }
-
-            try {
-                currentUser = JSON.parse(userStr);
-                console.log("User detected:", currentUser);
-                loadCartData(); 
-            } catch (e) {
-                console.error("Gagal parse user", e);
-                localStorage.removeItem('aurora_user');
-                location.reload();
-            }
+            // Load Cart
+            loadCartData();
         });
 
-        // ==========================================
-        // 4. FUNGSI LOAD KERANJANG
-        // ==========================================
-        function loadCartData(errorMode = false) {
-            const summaryDiv = document.getElementById('summaryList');
-            const summaryContainer = document.getElementById('itemSummaryContainer');
-            const totalDisplay = document.getElementById('displayTotal');
-            const payBtn = document.getElementById('payBtn');
-
-            total = 0;
-            cartItems = [];
-            
-            if(!errorMode) { 
-                payBtn.disabled = true; 
-            }
-
+        function loadCartData() {
             const rawCart = localStorage.getItem('aurora_cart');
-            
-            if (!rawCart) {
-                summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Keranjang kosong.</span>';
-                summaryContainer.style.display = 'block';
-                totalDisplay.innerText = "0.00 π";
-                return;
-            }
+            if (!rawCart) return;
 
-            try {
-                cartItems = JSON.parse(rawCart);
-            } catch (e) {
-                summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Data keranjang rusak.</span>';
-                summaryContainer.style.display = 'block';
-                return;
-            }
+            cartItems = JSON.parse(rawCart);
+            const summaryDiv = document.getElementById('summaryList');
+            const container = document.getElementById('itemSummaryContainer');
+            const totalDisplay = document.getElementById('displayTotal');
+            const btn = document.getElementById('payBtn');
 
-            if (!cartItems || cartItems.length === 0) {
-                summaryDiv.innerHTML = '<span style="color:var(--danger-color)">Keranjang kosong.</span>';
-                summaryContainer.style.display = 'block';
-                totalDisplay.innerText = "0.00 π";
-                return;
-            }
-
-            summaryContainer.style.display = 'block';
             let html = '';
-            
+            let grandTotal = 0;
+
             cartItems.forEach(item => {
-                const name = item.name || item.product_name || item.title || "Produk";
-                let price = parseFloat(item.price) || 0;
+                const name = item.name || item.product_name;
+                const price = parseFloat(item.price) || 0;
                 const qty = item.qty || 1;
-                const itemTotal = price * qty;
-                total += itemTotal; 
-                const formattedPrice = formatPrice(itemTotal);
+                const sub = price * qty;
+                grandTotal += sub;
 
                 html += `
                     <div class="item-row">
                         <span>${name} (x${qty})</span>
-                        <span>${formattedPrice} π</span>
-                    </div>
-                `;
+                        <span>${sub.toFixed(2)} π</span>
+                    </div>`;
             });
 
             summaryDiv.innerHTML = html;
-            const formattedTotal = formatPrice(total);
-            totalDisplay.innerText = formattedTotal + " π";
+            totalDisplay.innerText = grandTotal.toFixed(2) + " π";
+            container.style.display = 'block';
+            total = grandTotal;
             
-            if (total > 0 && !errorMode) {
-                payBtn.disabled = false;
-                payBtn.innerText = "Buat Pesanan Manual";
-            }
-        }
-
-        function formatPrice(num) {
-            if (num > 0 && num < 0.01) {
-                return num.toPrecision(4);
-            }
-            return num.toFixed(2);
+            btn.disabled = false;
+            btn.innerText = `Bayar ${total.toFixed(2)} π`;
         }
 
         // ==========================================
-        // 5. HANDLE MANUAL PAYMENT (FINAL FIX)
+        // 2. HANDLE OTOMATIS (PI SDK)
         // ==========================================
-        async function handleManualPayment(e) {
+        async function handleAutoPayment(e) {
             e.preventDefault();
 
-            if (!currentUser) {
-                alert("Sesi tidak valid.");
-                window.location.reload();
-                return;
-            }
-
             // 1. Ambil Data Form
-            const nameInput = document.getElementById('fullName');
-            const phoneInput = document.getElementById('phoneNumber');
-            const addressInput = document.getElementById('address');
-            
-            // Validasi Element Exist
-            if (!nameInput || !phoneInput || !addressInput) {
-                return showError("Elemen form tidak ditemukan di HTML.");
-            }
+            const name = document.getElementById('fullName').value.trim();
+            const phone = document.getElementById('phoneNumber').value.trim();
+            const address = document.getElementById('address').value.trim();
 
-            const name = nameInput.value.trim();
-            const phone = phoneInput.value.trim();
-            const address = addressInput.value.trim();
-            
-            // 2. Validasi Isi
-            if (name.length < 3) return showError("Nama terlalu pendek.");
-            if (phone.length < 10) return showError("Nomor WA tidak valid.");
-            if (address.length < 10) return showError("Alamat lengkap diperlukan.");
-            
-            if (total <= 0 || isNaN(total)) {
-                return showError("Total pembayaran nol.");
+            if (name.length < 3 || phone.length < 10 || address.length < 10) {
+                return showError("Mohon lengkapi data pengiriman dengan benar.");
             }
 
             const btn = document.getElementById('payBtn');
-            const errorMsg = document.getElementById('error-message');
-
-            errorMsg.style.display = "none";
             btn.disabled = true;
-            btn.innerHTML = `Memproses...`;
-            btn.style.cursor = "wait";
+            btn.innerText = "Membuka Pembayaran...";
 
-            currentOrderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
-
-            // 3. Bangun Payload
-            const payload = {
-                orderId: currentOrderId,
-                uid: currentUser.uid,
-                username: currentUser.username,
-                amount: parseFloat(total.toFixed(2)),
-                // ✅ PERBAIKAN: Kirim Array Object (cartItems), BUKAN JSON String.
-                // Supabase-js di backend akan menangani serialisasi JSONB dengan benar.
-                items: cartItems, 
-                customer: { name, phone, address }
-            };
-
-            console.log("--- MENGIRIM DATA KE BACKEND ---");
-            console.log("Payload:", JSON.stringify(payload, null, 2));
+            const currentOrderId = "ORD-" + Date.now();
 
             try {
+                // 2. Panggil Pi SDK untuk membuat pembayaran
+                const payment = await Pi.createPayment({
+                    amount: total.toFixed(2),
+                    memo: `Order ${currentOrderId} - Aurora Store`,
+                    metadata: { orderId: currentOrderId }
+                });
+
+                console.log("Pi Payment created:", payment);
+                btn.innerText = "Memverifikasi...";
+
+                // 3. Jika user menyetujui di Popup Pi, kirim ke Backend
+                const payload = {
+                    paymentId: payment.paymentId, // KUNCI OTOMATIS
+                    orderId: currentOrderId,
+                    uid: currentUser.uid,
+                    username: currentUser.username,
+                    amount: total,
+                    items: cartItems,
+                    customer: { name, phone, address }
+                };
+
                 const response = await fetch(BACKEND_URL, {
                     method: 'POST',
                     headers: {
@@ -462,41 +329,29 @@
                 });
 
                 const result = await response.json();
-
-                console.log("RESPON BACKEND:", result);
+                console.log("Backend Result:", result);
 
                 if (!response.ok) {
-                    throw new Error(result.message || "Gagal membuat pesanan di server.");
+                    throw new Error(result.message || "Verifikasi Gagal");
                 }
 
-                // SUKSES
+                // 4. SUKSES TOTAL
                 localStorage.removeItem('aurora_cart');
-                document.getElementById('successTotal').innerText = formatPrice(total);
                 document.getElementById('successOrderId').innerText = currentOrderId;
                 document.getElementById('successOverlay').classList.add('show');
 
             } catch (err) {
-                console.error("--- ERROR FETCH ---", err);
-                showError("Gagal: " + err.message);
-                resetButton();
+                console.error(err);
+                showError("Pembayaran dibatalkan atau gagal: " + err.message);
+                btn.disabled = false;
+                btn.innerText = `Bayar ${total.toFixed(2)} π`;
             }
-        }
-
-        function resetButton() {
-            const btn = document.getElementById('payBtn');
-            btn.disabled = false;
-            btn.innerText = "Buat Pesanan Manual";
-            btn.style.cursor = "pointer";
         }
 
         function showError(msg) {
             const div = document.getElementById('error-message');
-            div.innerHTML = `<strong style="color:var(--danger-color)">Error:</strong> ${msg}`;
+            div.innerHTML = `<strong>Error:</strong> ${msg}`;
             div.style.display = 'block';
-        }
-
-        function redirectToStore() {
-            window.location.href = 'store.html';
         }
     </script>
 </body>
