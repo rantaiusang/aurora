@@ -86,12 +86,17 @@
     <script>
         const Pi = window.Pi;
         
-        // 1. CONFIG: Set sandbox: true untuk Testing/Testnet
-        Pi.init({ version: "2.0", sandbox: true }); 
+        // ==========================================
+        // PERBAIKAN CRITICAL: TAMBAHKAN 'scopes' DI PI.INIT
+        // ==========================================
+        Pi.init({ 
+            version: "2.0", 
+            sandbox: true,
+            scopes: ['username', 'payments'] // Wajib ada di SDK v2.0
+        }); 
 
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const AUTH_TOKEN = localStorage.getItem('aurora_token');
-        // PERHATIAN: Pastikan Key ini valid dan mengizinkan akses Supabase Edge Function
         const SUPABASE_KEY = AUTH_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; 
         const BACKEND_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
 
@@ -147,16 +152,16 @@
             document.getElementById('error-message').style.display = 'none';
 
             // ==========================================
-            // PERBAIKAN PENTING: PENGGUNAAN Pi.authenticate()
+            // PENGGUNAAN Pi.authenticate() V2.0
             // ==========================================
             let piUser;
             try {
                 if (!window.Pi) throw new Error("Pi SDK belum dimuat.");
                 
-                // --- GANTI Pi.getUser() MENJADI Pi.authenticate() UNTUK SDK V2.0 ---
+                // Authenticating dengan SDK v2.0
                 const authData = await Pi.authenticate();
                 
-                // Struktur data authenticate v2.0 adalah { accessToken, user: { uid, username ... } }
+                // Struktur data authenticate v2.0: { accessToken, user: { uid, username ... } }
                 piUser = authData ? authData.user : null;
                 
                 if (!piUser || !piUser.uid) {
