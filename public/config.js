@@ -1,6 +1,6 @@
 // config.js
-const PI_APP_ID = "aurora-4c073a664f9faa3a"; // SLUG / APP ID (BUKAN API KEY)
-const IS_SANDBOX = true; // true = testnet | false = mainnet
+const PI_APP_ID = "aurora-4c073a664f9faa3a"; // SLUG / APP ID
+const IS_SANDBOX = true; 
 
 function initPiSDK() {
     if (typeof Pi === "undefined") {
@@ -10,9 +10,12 @@ function initPiSDK() {
 
     if (Pi._isInitialized) return true;
 
+    // ==========================================
+    // PERBAIKAN KRUSIAL: TAMBAHKAN appId
+    // ==========================================
     Pi.init({
         version: "2.0",
-        appId: PI_APP_ID,
+        appId: PI_APP_ID,   // <--- INI WAJIB ADA
         sandbox: IS_SANDBOX
     });
 
