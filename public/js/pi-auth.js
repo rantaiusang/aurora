@@ -1,9 +1,9 @@
-async function piLogin() {
-  if (!initPiSDK()) throw "Pi Browser wajib";
+async function startPiAuth() {
+  if (!initPiSDK()) {
+    throw new Error("Pi SDK gagal init");
+  }
 
-  const auth = await Pi.authenticate(['username'], () => {});
-  console.log("LOGIN OK", auth);
-  return auth;
+  return Pi.authenticate(['username'], () => {});
 }
 
-window.piLogin = piLogin;
+window.startPiAuth = startPiAuth;
