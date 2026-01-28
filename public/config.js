@@ -1,50 +1,35 @@
 // config.js
-
-// ==========================================
-// KONFIGURASI UTAMA
-// ==========================================
 const PI_APP_ID = "aurora-4c073a664f9faa3a"; 
-
-// ⬇️ LETAKAN SANDBOX DI SINI (Ubah ke false jika sudah rilis Mainnet)
 const IS_SANDBOX = true; 
+const LOGIN_TIMEOUT_MS = 15000; // 15 detik timeout
 
-// ==========================================
-// FUNGSI INISIALISASI SDK
-// ==========================================
 function initPiSDK() {
-  // Cek apakah SDK sudah terload di browser
-  if (typeof window.Pi === "undefined") {
-    console.warn("[Config] Pi SDK belum terdeteksi oleh browser.");
-    return false;
-  }
-
-  // Cegah inisialisasi ganda
-  if (window.__PI_INITIALIZED__) {
-    console.log("[Config] SDK sudah diinisialisasi sebelumnya.");
-    return true;
-  }
-
+  if (typeof window.Pi === "undefined") return false;
+  if (window.__PI_INITIALIZED__) return true;
   try {
-    console.log(`[Config] Memulai inisialisasi... Mode: ${IS_SANDBOX ? "SANDBOX" : "MAINNET"}`);
-    
-    // Melakukan Inisialisasi
-    Pi.init({
-      version: "2.0",
-      appId: PI_APP_ID,
-      sandbox: IS_SANDBOX
-    });
-
+    Pi.init({ version: "2.0", appId: PI_APP_ID, sandbox: IS_SANDBOX });
     window.__PI_INITIALIZED__ = true;
-    console.log("[Config] ✅ Pi SDK berhasil siap.");
     return true;
-    
   } catch (err) {
-    console.error("[Config] ❌ Gagal inisialisasi:", err);
+    console.error("Init Error:", err);
     return false;
   }
 }
 
-// Helper untuk cek status
 function isSandboxMode() {
-  return IS_SANDBOX;
+    return IS_SANDBOX;
+}
+
+// FUNGSI YANG TADI HILANG / ERROR
+async function authenticateWithTimeout(scopes, onIncompletePaymentFound) {
+    console.log("[PiSDK] Memulai authenticate...");
+    const authPromise = new Promise((resolve, reject) => {
+        Pi.authenticate(scopes, onIncompletePaymentFound).then(resolve).catch(reject);
+    });
+    const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+            reject(new Error("Waktu habis (Timeout). Server lambat merespon."));
+        }, LOGIN_TIMEOUT_MS);
+    });
+    return await Promise.race([authPromise, timeoutPromise]);
 }
