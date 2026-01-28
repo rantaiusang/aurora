@@ -213,18 +213,20 @@
     <!-- SDK Pi Network -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
 
-    <!-- Config.js -->
+    <!-- Config.js (Pastikan file ini ada di folder yang sama) -->
     <script src="config.js"></script>
 
-    <!-- Script login (DIUBAH: Menambahkan Variabel Backend) -->
+    <!-- Script login -->
     <script>
         // ==========================================
-        // TAMBAHKAN VARIABEL INI AGAR TIDAK ERROR
+        // KONFIGURASI VARIABEL BACKEND
         // ==========================================
         const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co';
-        // Gunakan nama fungsi backend yang sesuai (contoh: 'verify-pi-login')
+        // Pastikan nama fungsi edge function di Supabase sama dengan ini
         const functionName = 'verify-pi-login'; 
-        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; 
+        
+        // KUNCI LENGKAP (Pastikan kunci ini benar dari dashboard Supabase Anda)
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
 
         // --- PERBAIKAN 2: Polling Logic yang Lebih Bersih ---
         window.addEventListener('load', () => {
@@ -235,15 +237,18 @@
                 if(card) card.classList.add('visible');
             },200);
 
+            // Coba inisialisasi pertama kali (menggunakan config.js)
             if (initPiSDK()) {
                 startLoginProcess();
                 return;
             }
 
+            // Polling: Cek setiap 500ms jika SDK belum terbaca
             const checkInterval = setInterval(() => {
                 if (typeof Pi !== 'undefined') {
                     clearInterval(checkInterval);
                     console.log("Pi SDK terdeteksi!");
+                    // Beri jeda sedikit agar stabil
                     setTimeout(startLoginProcess, 500);
                 }
             }, 500);
@@ -268,21 +273,23 @@
             if(errorMsg) errorMsg.innerText = message;
         }
 
+        // --- PERBAIKAN 3: Menggunakan Pi.authenticate (Standar SDK) ---
         async function startLoginProcess() {
             try {
-                // Init ulang untuk memastikan config.js berjalan
-                initPiSDK(); 
+                // Init ulang (menggunakan function dari config.js)
+                initPiSDK();
 
                 updateStatus("Membaca Sistem SDK", "Gunakan Pi Browser");
 
-                // Callback wajib (meskipun login sering tidak pakai payment)
+                // 1. Callback untuk pembayaran incomplete
                 const onIncompletePaymentFound = (payment) => {
                     console.log("Incomplete payment ditemukan:", payment);
                 };
 
+                // 2. Scopes: 'username' untuk nama, 'payments' untuk transaksi masa depan
                 const scopes = ['username', 'payments'];
 
-                // Authenticate memanggil config.js secara internal melalui init
+                // 3. Panggil fungsi AUTHENTICATE
                 const authResult = await Pi.authenticate(scopes, onIncompletePaymentFound);
 
                 if (!authResult || !authResult.user) {
@@ -299,6 +306,7 @@
                 
                 updateStatus("Menghubungi Server...", "Memverifikasi data pengguna...");
                 
+                // 4. Kirim ke Backend (Supabase Edge Function)
                 const endpoint = `${supabaseUrl}/functions/v1/${functionName}`;
                 
                 const response = await fetch(endpoint, {
@@ -327,6 +335,7 @@
                 const data = await response.json();
                 console.log("Respon Backend:", data);
 
+                // 5. Logika Redirect Berhasil
                 if (data.success === true) {
                     localStorage.setItem('aurora_user', JSON.stringify(user));
                     localStorage.setItem('aurora_token', supabaseAnonKey);
