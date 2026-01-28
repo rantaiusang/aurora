@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koleksi Aurora - Store</title>
+    
+    <!-- Preconnect for Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --luxury-gold: #d4af37;
+            --dark-bg: #0f0c15;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --panel-bg: #1a1620;
+            --danger: #ff4d4d;
+        }
+        
+        body {
+            background-color: var(--dark-bg);
+            color: #f0f0f0;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden; 
+        }
+
+        /* Header */
+        header {
+            background: rgba(15, 12, 21, 0.95);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            padding: 15px 8%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .back-link { color: #ffffff; text-decoration: none; font-size: 1rem; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: color 0.3s; cursor: pointer; font-family: 'Poppins', sans-serif;}
+        .back-link:hover { color: var(--luxury-gold); }
+        
+        .store-nav { display: flex; gap: 30px; align-items: center; }
+        .store-nav a { color: #ccc; text-decoration: none; font-size: 0.95rem; transition: color 0.3s; cursor: pointer; }
+        .store-nav a:hover, .store-nav a.active { color: var(--luxury-gold); }
+
+        /* User Menu */
+        .user-menu-container { position: relative; }
+        .user-btn { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 8px 12px; border-radius: 20px; transition: background 0.3s; }
+        .user-btn:hover { background: rgba(255,255,255,0.1); }
+        .user-avatar { width: 35px; height: 35px; background: var(--luxury-gold); color: #000; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 0.9rem; }
+        
+        .dropdown-menu { position: absolute; top: 120%; right: 0; width: 200px; background: #1a1a1a; border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; flex-direction: column; overflow: hidden; z-index: 10; }
+        .dropdown-menu.show { display: flex; animation: fadeIn 0.3s ease; transform-origin: top right; }
+        .dropdown-item { padding: 12px 20px; color: #ccc; text-decoration: none; font-size: 0.9rem; transition: 0.2s; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .dropdown-item:last-child { border-bottom: none; }
+        .dropdown-item:hover { background: var(--luxury-gold); color: #000; }
+        .dropdown-item.logout { color: #ff6b6b; font-weight: 600; }
+        .dropdown-item.logout:hover { background: #ff6b6b; color: #fff; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-overlay.show { display: flex; }
+        .modal-content { background: #1a1a1a; border: 1px solid var(--luxury-gold); padding: 30px; width: 90%; max-width: 600px; border-radius: 15px; color: #fff; position: relative; max-height: 80vh; display: flex; flex-direction: column; }
+        .modal-header { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--luxury-gold); margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .close-modal { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; color: #888; }
+        .close-modal:hover { color: #fff; }
+
+        .profile-detail-row { margin-bottom: 15px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
+        .profile-label { color: #888; font-size: 0.9rem; }
+        .profile-value { font-weight: 600; color: var(--luxury-gold); }
+        .profile-value.points { color: #4CAF50; font-size: 1.1rem; }
+
+        /* History Styles */
+        .history-container { overflow-y: auto; flex: 1; padding-right: 10px; }
+        .history-container::-webkit-scrollbar { width: 6px; }
+        .history-container::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+        .order-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .order-card:hover { border-color: var(--luxury-gold); }
+        .order-header { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+        .order-id { font-weight: bold; color: var(--luxury-gold); font-size: 0.9rem; }
+        .order-date { font-size: 0.8rem; color: #888; }
+        .order-info-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px; color: #ccc; }
+        .order-info-label { color: #888; }
+        .order-items-box { background: rgba(0,0,0,0.2); padding: 8px; border-radius: 5px; margin: 10px 0; font-size: 0.8rem; color: #aaa; }
+        .order-status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
+        .status-pending { background: rgba(255, 165, 0, 0.2); color: orange; }
+        .status-paid { background: rgba(76, 175, 80, 0.2); color: #4CAF50; }
+        .status-shipping { background: rgba(33, 150, 243, 0.2); color: #2196F3; }
+        .status-completed { background: rgba(212, 175, 55, 0.2); color: var(--luxury-gold); }
+        .loading-text { text-align: center; color: #888; padding: 20px; }
+        .error-message { text-align: center; color: var(--danger); padding: 20px; background: rgba(255, 77, 77, 0.1); border-radius: 8px; margin: 20px 0; }
+        .empty-msg { text-align: center; color: #666; font-size: 0.9rem; margin-top: 20px; font-style: italic; }
+
+        /* Main Layout */
+        .main-layout { display: flex; gap: 40px; padding: 40px 8%; max-width: 1600px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+        .catalog-section { flex: 3; padding-right: 20px; }
+
+        .page-entry { opacity: 0; animation: slideUpFade 0.8s ease-out forwards; }
+        .delay-1 { animation-delay: 0.2s; }
+        .delay-2 { animation-delay: 0.4s; }
+        .delay-3 { animation-delay: 0.6s; }
+
+        .store-header { text-align: center; margin-bottom: 50px; }
+        .store-header h1 { font-family: 'Playfair Display', serif; font-size: 3rem; color: var(--luxury-gold); margin-bottom: 10px; font-weight: 700; letter-spacing: -1px; }
+        .store-header p { color: #888; font-style: italic; line-height: 1.5rem; }
+
+        .filter-bar { display: flex; justify-content: center; gap: 15px; margin-bottom: 50px; flex-wrap: wrap; }
+        .filter-btn { padding: 10px 25px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255, 0.05); color: #aaa; border-radius: 30px; cursor: pointer; transition: all 0.3s; font-size: 0.9rem; }
+        .filter-btn.active, .filter-btn:hover { background: var(--luxury-gold); color: #000; border-color: var(--luxury-gold); font-weight: 600; }
+
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 25px; }
+
+        .product-card { background: var(--card-bg); border: 1px solid rgba(212, 175, 55, 0.1); border-radius: 8px; overflow: hidden; transition: all 0.4s ease; position: relative; display: flex; flex-direction: column; }
+        .product-card:hover { transform: translateY(-5px); border-color: var(--luxury-gold); box-shadow: 0 10px 30px rgba(0,0,0, 0.5); }
+        .product-img-wrapper { width: 100%; height: 250px; overflow: hidden; position: relative; background: #000; }
+        .product-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; display: block; }
+        .product-card:hover .product-img { transform: scale(1.05); }
+        .product-info { padding: 20px; text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .product-name { font-family: 'Playfair Display', serif; font-size:1.1rem; color: #fff; margin-bottom:5px; }
+        .product-desc { font-size: 0.8rem; color: #888; margin-bottom:5px; height: 35px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .product-stock { font-size: 0.8rem; color: #888; margin-bottom: 10px; }
+        .product-stock.out-of-stock { color: #ff6b6b; font-weight: 600; }
+        .product-price { font-size: 1rem; color: var(--luxury-gold); font-weight: 700; margin-bottom: 15px; display: block; }
+        .btn-buy { width: 100%; padding: 10px; background: transparent; border: 1px solid var(--luxury-gold); color: var(--luxury-gold); font-weight: 600; cursor: pointer; transition: 0.3s; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; border-radius: 5px; }
+        .btn-buy:hover:not(:disabled) { background: var(--luxury-gold); color: #000; }
+        .btn-buy:disabled { border-color: #444; color: #666; cursor: not-allowed; background: transparent; }
+        .category-badge { position: absolute; top: 10px; left: 10px; background: rgba(0, 0, 0, 0.7); color: #fff; padding: 4px 10px; font-size: 0.65rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; z-index: 2; }
+
+        /* Cart Sidebar */
+        .cart-section { flex: 1; min-width: 320px; position: relative; }
+        .cart-sidebar { background: var(--panel-bg); border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 15px; padding: 25px; position: sticky; top: 100px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); max-height: calc(100vh - 140px); display: flex; flex-direction: column; }
+        .sidebar-title { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: var(--luxury-gold); margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; flex-shrink: 0; }
+        .cart-items-scroll { overflow-y: auto; margin-bottom: 20px; padding-right: 5px; flex: 1; min-height: 0; }
+        .cart-items-scroll::-webkit-scrollbar { width: 5px; }
+        .cart-items-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+        .sidebar-cart-item { display: flex; gap: 12px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 10px; border: 1px solid transparent; transition: 0.3s; }
+        .sidebar-cart-item:hover { border-color: rgba(212, 175, 55, 0.3); background: rgba(255,255,255,0.06); }
+        .sidebar-item-img { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; border: 1px solid #333; }
+        .sidebar-item-details { flex: 1; }
+        .sidebar-item-name { font-size: 0.9rem; font-weight: 600; color: #fff; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+        .sidebar-item-meta { font-size: 0.8rem; color: #aaa; display: flex; justify-content: space-between; }
+        .sidebar-remove-btn { background: none; border: none; color: #666; font-size: 1.2rem; cursor: pointer; line-height: 1; }
+        .sidebar-remove-btn:hover { color: #ff6b6b; }
+        .cart-footer { margin-top: auto; flex-shrink: 0; }
+        .btn-checkout { width: 100%; padding: 20px; background: linear-gradient(135deg, var(--luxury-gold), #b8860b); color: #000; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        .btn-checkout span { font-size: 0.8rem; text-transform: none; font-weight: 400; color: rgba(0,0,0,0.6); }
+        .btn-checkout:hover { background: #ffed4a; transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215, 0, 0.3); }
+        .btn-checkout:disabled { background: #2a2a2a; color: #666; cursor: not-allowed; transform: none; box-shadow: none; border: 1px solid #333; }
+        .empty-msg { text-align: center; color: #666; font-size: 0.9rem; margin-top: 20px; font-style: italic; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity:1; } }
+        @keyframes slideUpFade { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 1024px) {
+            .main-layout { flex-direction: column-reverse; }
+            .cart-section { width: 100%; }
+            .cart-sidebar { position: static; margin-bottom: 30px; max-height: 500px; }
+            .catalog-section { padding-right: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="index.html" class="back-link">
+            <span>&larr;</span>Back
+        </a>
+        
+        <div class="store-nav">
+            <div class="user-menu-container">
+                <div class="user-btn" onclick="toggleDropdown()">
+                    <div class="user-avatar" id="userAvatar">?</div>
+                    <span id="userName" style="color: #fff; font-size: 0.9rem;">Loading...</span>
+                    <span style="color: #666;">▼</span>
+                </div>
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <div class="dropdown-item" onclick="openProfileModal()">Profil Saya</div>
+                    <div class="dropdown-item" onclick="openHistoryModal()">Riwayat Pesanan</div>
+                    <div class="dropdown-item logout" onclick="handleLogout()">Logout</div>
+                </div>
+            </div>
+        </header>
+
+    <div class="main-layout">
+        
+        <!-- KIRI: KATALOG PRODUK -->
+        <div class="catalog-section">
+            <div class="store-header page-entry delay-1">
+                <h1>Exklusive Collection</h1>
+                <p>Aroma yang mendefinisikan karakter Anda.</p>
+            </div>
+
+            <div class="filter-bar page-entry delay-2">
+                <button class="filter-btn active" onclick="filterProducts('all', this)">Semua</button>
+                <button class="filter-btn" onclick="filterProducts('women', this)">Women</button>
+                <button class="filter-btn" onclick="filterProducts('men', this)">Men</button>
+                <button class="filter-btn" onclick="filterProducts('unisex', this)">Unisex</button>
+            </div>
+
+            <div class="product-grid" id="productGrid">
+                <p style="text-align:center; width:100%; grid-column: 1/-1; color: #888;">Memuat produk...</p>
+            </div>
+        </div>
+
+        <!-- KANAN: RINGKASAN KERANJANG -->
+        <div class="cart-section">
+            <div class="cart-sidebar page-entry delay-3">
+                <div class="sidebar-title">Keranjang</div>
+                <div class="cart-items-scroll" id="sidebarCartList">
+                    <p class="empty-msg">Keranjang masih kosong.</p>
+                </div>
+                <div class="cart-footer">
+                    <button class="btn-checkout" id="btnCheckoutSidebar" onclick="validateAndCheckout()" disabled>
+                        Checkout
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    <!-- MODAL PROFIL -->
+    <div class="modal-overlay" id="profileModal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('profileModal')">&times;</span>
+            <div class="modal-header">Profil Saya</div>
+            <div id="profileContent">Loading data...</div>
+        </div>
+    </div>
+
+    <!-- MODAL RIWAYAT -->
+    <div class="modal-overlay" id="historyModal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('historyModal')">&times;</span>
+            <div class="modal-header">Riwayat Pesanan</div>
+            <div id="historyContent" class="history-container">
+                <p class="loading-text">Memuat riwayat pesanan...</p>
+            </div>
+        </div>
+       <!-- Ganti seluruh isi script bawah dengan ini -->
+    
+    <script>
+        // ==========================================
+        // 1. KONFIGURASI SUPABASE
+        // ==========================================
+        const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
+        const LOCAL_TOKEN = localStorage.getItem('aurora_token');
+        const SUPABASE_KEY = LOCAL_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
+        
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Variabel Global
+        let productsData = [];
+        let currentUser = null;
+        let dbUser = null;
+
+        const productGrid = document.getElementById('productGrid');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+        const sidebarCartList = document.getElementById('sidebarCartList');
+        const btnCheckoutSidebar = document.getElementById('btnCheckoutSidebar');
+
+        // ==========================================
+        // 🔧 FUNGSI BERSIH HARGA (ROBUST FIX)
+        // ==========================================
+        function cleanPrice(priceInput) {
+            if (priceInput === null || priceInput === undefined) return 0;
+
+            // Ubah ke String dan hapus semua KECUALI (simbol mata uang, spasi, dll)
+            let p = String(priceInput);
+            // Hanya ambil Angka (0-9), Titik (.), dan Minus (-)
+            p = p.replace(/[^0-9.-]+/g, "");
+
+            if (p.length === 0) return 0;
+            let val = parseFloat(p);
+            return isNaN(val) || val < 0 ? 0 : val;
+        }
+
+        function formatPrice(price) {
+            // Gunakan cleanPrice agar tampilan sidebar akurat
+            let numPrice = cleanPrice(price);
+
+            if (numPrice === 0) return "0.00";
+            
+            // =========================================
+            // 📢 LOGIKA TAMPILANAN (FIX PRECISION)
+            // =========================================
+            // Input: 196       -> Display: 196.00 (2 digit)
+            // Input: 0.00000125 -> Display: 0.0000013 (7 digit, tidak jadi 0.00)
+            // Input: 0.0001458 -> Display: 0.000146 (7 digit)
+            // Input: 50         -> Display: 50.00 (2 digit)
+            if (numPrice < 0.01) {
+                // Tampilkan 7 digit desimal
+                return numPrice.toFixed(7); 
+            } else {
+                // Tampilkan 2 digit desimal
+                return numPrice.toFixed(2);
+            }
+        }
+
+        // ==========================================
+        // 2. FUNGSI SYNC USER KE SUPABASE
+        // ==========================================
+        async function syncUserToSupabase(piUser) {
+            try {
+                console.log("Sinkronisasi user ke database dimulai...");
+                const { data: existingUser, error } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .eq('pi_uid', piUser.uid)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') {
+                    console.error("Error cek user:", error);
+                    return null;
+                }
+
+                if (existingUser) {
+                    console.log("User ditemukan di DB:", existingUser);
+                    dbUser = existingUser;
+                    return existingUser;
+                } else {
+                    console.log("User baru, mendaftarkan...");
+                    const { data: newUser, error: insertError } = await supabaseClient
+                        .from('users')
+                        .insert([{
+                            username: piUser.username,
+                            pi_uid: piUser.uid,
+                            total_spent: 0,
+                            total_orders: 0,
+                            points: 0
+                        }])
+                        .select()
+                        .single();
+
+                    if (insertError) {
+                        console.error("Gagal daftar user:", insertError);
+                        return null;
+                    }
+                    console.log("User baru terdaftar:", newUser);
+                    dbUser = newUser;
+                    return newUser;
+                }
+            } catch (e) {
+                console.error("Sync user error:", e);
+                return null;
+            }
+        }
+
+        // ==========================================
+        // 3. INISIALISASI (HANYA LOCAL STORAGE)
+        // ==========================================
+        async function initApp() {
+            const localUserStr = localStorage.getItem('aurora_user');
+            
+            if (localUserStr) {
+                currentUser = JSON.parse(localUserStr);
+                updateUserUI(currentUser);
+                // Sync ke background
+                await syncUserToSupabase(currentUser);
+            } else {
+                // Jika tidak ada di localstorage, redirect login
+                alert("Sesi tidak ditemukan. Silakan login.");
+                window.location.href = 'login.html';
+            }
+        }
+
+        function updateUserUI(user) {
+            const username = user.username || "Pioneer";
+            document.getElementById('userName').innerText = username;
+            document.getElementById('userAvatar').innerText = username.charAt(0).toUpperCase();
+        }
+
+        async function fetchProducts() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('products')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    productGrid.innerHTML = `
+                        <div class="error-message">
+                            <p><strong>Gagal memuat produk.</strong></p>
+                            <p style="font-size:0.9rem; margin-top:10px;">${error.message || "Cek koneksi internet atau perizinan database."}</p>
+                            <button onclick="window.location.reload()" style="margin-top:15px; padding:10px 20px; background:var(--luxury-gold); border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Coba Lagi</button>
+                        </div>`;
+                    return [];
+                } else {
+                    productsData = data;
+                    return data;
+                }
+            } catch (e) {
+                productGrid.innerHTML = `
+                    <div class="error-message">
+                        <p><strong>Terjadi kesalahan sistem.</strong></p>
+                        <button onclick="window.location.reload()" style="margin-top:15px; padding:10px 20px; background:var(--luxury-gold); border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Refresh Halaman</button>
+                    </div>`;
+                return [];
+            }
+        }
+
+        window.addEventListener('load', async () => {
+            await initApp();
+            await fetchProducts();
+            // Cek lagi jika data produk valid
+            if(productsData && productsData.length > 0) {
+                renderProducts('all');
+                renderSidebarCart();
+            }
+        });
+
+        function getSafeValue(obj, key1, key2, fallback) {
+            if (obj && obj[key1]) return obj[key1];
+            if (obj && obj[key2]) return obj[key2];
+            return fallback || '';
+        }
+
+        function openProfileModal() {
+            const contentDiv = document.getElementById('profileContent');
+            const modal = document.getElementById('profileModal');
+            
+            if (!currentUser) { alert("Anda belum login."); return; }
+
+            modal.classList.add('show');
+
+            if (dbUser) {
+                const points = dbUser.points || 0;
+                const totalSpent = formatPrice(dbUser.total_spent || 0);
+                const totalOrders = dbUser.total_orders || 0;
+
+                contentDiv.innerHTML = `
+                    <div class="profile-detail-row"><span class="profile-label">Username</span><span class="profile-value">${dbUser.username || "-"}</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">UID</span><span class="profile-value">${dbUser.pi_uid || "-"}</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">Status</span><span class="profile-value" style="color: #4CAF50;">Aktif</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">Total Belanja</span><span class="profile-value">${totalSpent} π</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">Total Order</span><span class="profile-value">${totalOrders}x</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">Poin Loyalitas</span><span class="profile-value points">${points} Pts</span></div>
+                `;
+            } else {
+                const username = currentUser.username || "Pioneer";
+                const piUid = currentUser.uid || "-"; 
+                contentDiv.innerHTML = `
+                    <div class="profile-detail-row"><span class="profile-label">Username</span><span class="profile-value">${username}</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">UID</span><span class="profile-value">${piUid}</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">Status</span><span class="profile-value" style="color: #4CAF50;">Aktif</span></div>
+                    <div class="profile-detail-row" style="justify-content:center; color:#888; font-style:italic;">Memuat statistik belanja...</div>
+                `;
+                if(!dbUser) {
+                    setTimeout(async () => {
+                        await syncUserToSupabase(currentUser);
+                        if(dbUser) openProfileModal(); 
+                    }, 500);
+                }
+            }
+        }
+
+        async function openHistoryModal() {
+            const contentDiv = document.getElementById('historyContent');
+            const modal = document.getElementById('historyModal');
+            
+            contentDiv.innerHTML = '<p class="loading-text">Memuat riwayat pesanan...</p>';
+            modal.classList.add('show');
+
+            if (!currentUser) {
+                contentDiv.innerHTML = '<p style="text-align:center; color:#ff6b6b;">Anda belum login.</p>';
+                return;
+            }
+
+            const userUid = currentUser.uid;
+
+            try {
+                const { data: orders, error } = await supabaseClient
+                    .from('orders')
+                    .select('*')
+                    .eq('user_id', userUid) 
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error("Error ambil orders:", error);
+                    contentDiv.innerHTML = '<p style="text-align:center; color:#ff6b6b;">Gagal memuat riwayat.</p>';
+                    return;
+                }
+
+                if (!orders || orders.length === 0) {
+                    contentDiv.innerHTML = '<p style="text-align:center; color:#888;">Belum ada riwayat pesanan.</p>';
+                    return;
+                }
+
+                let html = '';
+                orders.forEach(order => {
+                    const statusClass = getStatusClass(order.status || 'pending');
+                    const formattedDate = new Date(order.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'});
+                    
+                    html += `
+                        <div class="order-card">
+                            <div class="order-header">
+                                <div class="order-id">#${order.order_id || order.id}</div>
+                                <div class="order-date">${formattedDate}</div>
+                            </div>
+                            <div class="order-info-row">
+                                <span class="order-info-label">Total:</span>
+                                <span>${formatPrice(order.total_amount)} π</span>
+                            </div>
+                            <div class="order-info-row">
+                                <span class="order-info-label">Status:</span>
+                                <span class="order-status-badge ${statusClass}">${order.status || 'Pending'}</span>
+                            </div>
+                            ${order.tracking_number ? `
+                            <div class="order-info-row">
+                                <span class="order-info-label">Resi:</span>
+                                <span>${order.tracking_number}</span>
+                            </div>` : ''}
+                            ${order.items ? `
+                            <div class="order-items-box">
+                                <strong>Item:</strong><br>
+                                ${typeof order.items === 'object' ? JSON.stringify(order.items) : order.items}
+                            </div>` : ''}
+                        </div>
+                    `;
+                });
+
+                contentDiv.innerHTML = html;
+
+            } catch (e) {
+                console.error("Script Crash:", e);
+                contentDiv.innerHTML = '<p style="text-align:center; color:#ff6b6b;">Terjadi kesalahan sistem.</p>';
+            }
+        }
+
+        function getStatusClass(status) {
+            const s = status.toLowerCase();
+            if (s.includes('paid') || s.includes('lunas')) return 'status-paid';
+            if (s.includes('ship') || s.includes('dikirim')) return 'status-shipping';
+            if (s.includes('compl') || s.includes('selesai')) return 'status-completed';
+            return 'status-pending';
+        }
+
+        function closeModal(modalId) { document.getElementById(modalId).classList.remove('show'); }
+
+        function addToCart(clickedId) {
+            const product = productsData.find(p => String(p.id) === String(clickedId));
+            if (!product) { alert("Produk tidak ditemukan."); return; }
+            
+            const currentStock = parseInt(product.stock) || 0;
+            if (currentStock <= 0) { alert("Stok habis."); return; }
+
+            let cart = JSON.parse(localStorage.getItem('aurora_cart')) || [];
+            const existingItem = cart.find(item => String(item.id) === String(clickedId));
+
+            if (existingItem) {
+                existingItem.qty++;
+            } else {
+                // ✅ PERBAIKAN: Bersihkan harga saat masuk keranjang
+                cart.push({ 
+                    ...product, 
+                    qty: 1,
+                    // Timpa harga mentah dengan harga bersih (Number)
+                    price: cleanPrice(product.price) 
+                });
+            }
+            
+            localStorage.setItem('aurora_cart', JSON.stringify(cart));
+            renderSidebarCart();
+
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "✓ Masuk";
+            btn.style.background = "var(--luxury-gold)";
+            btn.style.color = "#000";
+            setTimeout(() => { 
+                btn.innerHTML = originalText; 
+                btn.style.background = "transparent";
+                btn.style.color = "var(--luxury-gold)";
+            }, 1000);
+        }
+
+        function removeFromSidebar(productId) {
+            let cart = JSON.parse(localStorage.getItem('aurora_cart')) || [];
+            const index = cart.findIndex(item => String(item.id) === String(productId));
+            if (index !== -1) {
+                cart.splice(index, 1);
+                localStorage.setItem('aurora_cart', JSON.stringify(cart));
+                renderSidebarCart();
+            }
+        }
+
+        function renderSidebarCart() {
+            const cart = JSON.parse(localStorage.getItem('aurora_cart')) || [];
+
+            if (cart.length === 0) {
+                sidebarCartList.innerHTML = '<p class="empty-msg">Keranjang masih kosong.</p>';
+                btnCheckoutSidebar.disabled = true;
+                return;
+            }
+
+            let html = '';
+            cart.forEach(item => {
+                let itemName = getSafeValue(item, 'name', 'product_name', 'Produk Tanpa Nama');
+                if (!itemName) itemName = getSafeValue(item, 'title', '', 'Produk Tanpa Nama');
+                const imgSrc = getSafeValue(item, 'image_url', 'img', ''); 
+                const formattedPrice = formatPrice(item.price);
+
+                html += `
+                    <div class="sidebar-cart-item">
+                        <img src="${imgSrc}" alt="${itemName}" class="sidebar-item-img" onerror="this.src='https://via.placeholder.com/50?text=No+Img'">
+                        <div class="sidebar-item-details">
+                            <div class="sidebar-item-name">${itemName}</div>
+                            <div class="sidebar-item-meta">
+                                <span>${item.qty} x ${formattedPrice}</span>
+                                <span style="color:var(--luxury-gold)">${formatPrice(item.price * item.qty)} π</span>
+                            </div>
+                        </div>
+                        <button class="sidebar-remove-btn" onclick="removeFromSidebar('${item.id}')" title="Hapus">&times;</button>
+                    </div>`;
+            });
+
+            sidebarCartList.innerHTML = html;
+            btnCheckoutSidebar.disabled = false;
+        }
+
+        function renderProducts(filter) {
+            productGrid.innerHTML = ''; 
+            
+            let categoryKey = 'category';
+            if (productsData.length > 0) {
+                const sample = productsData[0];
+                if (sample.kategori) categoryKey = 'kategori';
+                else if (sample.type) categoryKey = 'type';
+            }
+
+            const filteredData = filter === 'all' 
+                ? productsData 
+                : productsData.filter(p => {
+                    const pCat = p[categoryKey] ? p[categoryKey].toLowerCase() : '';
+                    return pCat === filter.toLowerCase();
+                });
+
+            if (!filteredData || filteredData.length === 0) {
+                productGrid.innerHTML = '<p style="text-align:center; width:100%; grid-column: 1/-1; color: #888;">Tidak ada produk di kategori ini.</p>';
+                return;
+            }
+
+            let delay = 0;
+            filteredData.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                card.style.opacity = '0'; 
+                card.style.animation = `slideUpFade 0.6s ease forwards ${0.7 + delay}s`;
+
+                let displayName = getSafeValue(product, 'name', '', '');
+                if (!displayName) displayName = getSafeValue(product, 'product_name', '', '');
+                if (!displayName) displayName = getSafeValue(product, 'title', '', '');
+                if (!displayName) displayName = "Tanpa Nama";
+
+                let displayCategory = product[categoryKey] || "Uncategorized";
+                const stockVal = parseInt(product.stock);
+                const isOutOfStock = isNaN(stockVal) || stockVal <= 0;
+                const stockText = isOutOfStock ? "Stok Habis" : `Stok: ${stockVal}`;
+                const stockClass = isOutOfStock ? "product-stock out-of-stock" : "product-stock";
+                const btnDisabled = isOutOfStock ? "disabled" : "";
+                const btnText = isOutOfStock ? "Habis" : "Beli Sekarang";
+                
+                // Gunakan cleanPrice agar tampilan harga kartu produk
+                const displayPrice = formatPrice(product.price);
+                const imgSrc = getSafeValue(product, 'image_url', 'img', 'https://via.placeholder.com/250?text=No+Image');
+                const descText = getSafeValue(product, 'description', 'desc', 'Tidak ada deskripsi.');
+                const productId = String(product.id);
+
+                card.innerHTML = `
+                    <div class="category-badge">${displayCategory}</div>
+                    <div class="product-img-wrapper">
+                        <img src="${imgSrc}" alt="${displayName}" class="product-img" onerror="this.src='https://via.placeholder.com/250?text=Image+Error'">
+                    </div>
+                    <div class="product-info">
+                        <div>
+                            <h3 class="product-name">${displayName}</h3>
+                            <p class="product-desc" title="${descText}">${descText}</p>
+                            <span class="product-price">${displayPrice} π</span>
+                            <div class="${stockClass}">${stockText}</div>
+                        </div>
+                        <button class="btn-buy" onclick="addToCart('${productId}')" ${btnDisabled}>${btnText}</button>
+                    </div>`;
+                productGrid.appendChild(card);
+                delay += 0.05; 
+            });
+        }
+
+        function filterProducts(category, btnElement) {
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+            renderProducts(category);
+        }
+
+        // ==========================================
+        // 4. VALIDASI & CHECKOUT (FIX FINAL)
+        // ==========================================
+        function validateAndCheckout() {
+            const userData = localStorage.getItem('aurora_user');
+            if (!userData) {
+                if (confirm("Anda harus login terlebih dahulu. Pindah ke halaman login?")) {
+                    window.location.href = 'login.html';
+                }
+                return;
+            }
+
+            // Ambil keranjang
+            const cartItems = JSON.parse(localStorage.getItem('aurora_cart')) || [];
+
+            // Cek kosong
+            if (cartItems.length === 0) {
+                alert("Keranjang Anda kosong.");
+                return;
+            }
+
+            // --- LOGIKA HITUNG TOTAL YANG DIMINTA ---
+            let total = 0;
+            let hasInvalidItem = false;
+
+            cartItems.forEach(item => {
+                // ✅ PERBAIKAN: Gunakan cleanPrice untuk menghindari NaN/0 pada harga kecil
+                const price = cleanPrice(item.price); 
+                const qty = parseInt(item.qty) || 1; // Fallback qty ke 1 jika null
+
+                // Cek validitas data
+                if (isNaN(price) || price <= 0) {
+                    hasInvalidItem = true;
+                    console.warn("Item bermasalah (Harga Invalid):", item);
+                } else {
+                    total += price * qty;
+                }
+            });
+            // ----------------------------------------
+
+            // Validasi Total
+            if (total <= 0) {
+                alert("Total harga tidak valid atau ada barang dengan harga 0. Silakan periksa keranjang.");
+                return;
+            }
+
+            if (hasInvalidItem) {
+                alert("Beberapa barang dalam keranjang memiliki data harga yang tidak valid. Mohon ulangi atau hubungi admin.");
+                return;
+            }
+
+            // =========================================
+            // ✅ PERBAIKAN WAJIB: SIMPAN KE LOCAL STORAGE
+            // =========================================
+            // SIMPAN DATA CHECKOUT
+            localStorage.setItem('aurora_checkout', JSON.stringify({
+                items: cartItems,
+                total: total,
+                currency: 'PI'
+            }));
+
+            console.log("Checkout dikirim:", { items: cartItems, total });
+
+            // REDIRECT
+            window.location.href = 'payment.html';
+        }
+
+        function toggleDropdown() { dropdownMenu.classList.toggle('show'); }
+
+        function handleLogout() {
+            if (confirm("Yakin ingin keluar?")) {
+                localStorage.removeItem('aurora_user');
+                localStorage.removeItem('aurora_token');
+                localStorage.removeItem('is_admin');
+                window.location.href = 'index.html'; 
+            }
+        }
+
+        window.onclick = function(event) {
+            if (!event.target.closest('.user-menu-container')) {
+                if (dropdownMenu.classList.contains('show')) {
+                    dropdownMenu.classList.remove('show');
+                }
+            }
+        }
+    </script>
+    
+    
+</body>
+</html>
