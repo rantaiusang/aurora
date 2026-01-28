@@ -1,30 +1,32 @@
-// config.js (VERSI PERBAIKAN)
+// config.js (FINAL AMAN)
 
 const PI_APP_ID = "aurora-4c073a664f9faa3a"; 
 const IS_SANDBOX = true; 
 
 function initPiSDK() {
-    // Cek apakah objek Pi sudah ada di window
-    if (typeof Pi === "undefined") {
-        console.warn("[Config] Pi SDK belum terdeteksi. Pastikan loading SDK selesai.");
+    if (typeof window.Pi === "undefined") {
+        console.warn("[Config] Pi SDK belum terdeteksi.");
         return false;
     }
 
+    // ✅ CEGAH INIT ULANG
+    if (window.__PI_INITIALIZED__) {
+        return true;
+    }
+
     try {
-        // Lakukan inisialisasi langsung. 
-        // SDK Pi Network biasanya aman dipanggil berulang atau hanya dijalankan sekali.
-        console.log("[Config] Melakukan inisialisasi SDK...");
-        
+        console.log("[Config] Init Pi SDK...");
         Pi.init({
             version: "2.0",
             appId: PI_APP_ID,
             sandbox: IS_SANDBOX
         });
-        
-        console.log("[Config] SDK Berhasil di-init.");
+
+        window.__PI_INITIALIZED__ = true;
+        console.log("[Config] Pi SDK siap.");
         return true;
-    } catch (error) {
-        console.error("[Config] Error saat init SDK:", error);
+    } catch (err) {
+        console.error("[Config] Init gagal:", err);
         return false;
     }
 }
