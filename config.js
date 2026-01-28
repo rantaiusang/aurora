@@ -1,5 +1,5 @@
 // config.js
-const PI_APP_ID = "PI_APP_ID_KAMU";   // ganti dengan App ID resmi Pi
+const PI_APP_ID = "aurora-4c073a664f9faa3a";   // ganti dengan App ID resmi Pi
 const IS_SANDBOX = true;              // true = testnet/sandbox, false = mainnet
 
 // Fungsi inisialisasi Pi SDK
