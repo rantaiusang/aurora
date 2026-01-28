@@ -1,23 +1,35 @@
 // pi-sdk-init.js
+
 function initPiSDK() {
-  // Cek apakah SDK sudah terload
+  // Cek 1: Apakah script Pi dari HTML sudah terload?
   if (!window.Pi) {
-    console.error("Pi SDK belum siap (script belum terload).");
+    console.error("Pi SDK tidak ditemukan! Cek koneksi internet atau adblocker.");
+    alert("Gagal memuat Pi SDK. Matikan AdBlocker/VPN dan refresh halaman.");
     return false;
   }
 
-  // Cek agar tidak init dua kali
-  if (window.__PI_INITIALIZED__) return true;
+  // Cek 2: Jangan inisialisasi 2x
+  if (window.__PI_INITIALIZED__) {
+    console.log("Pi SDK sudah terinisialisasi sebelumnya.");
+    return true;
+  }
 
-  // Inisialisasi SDK
-  Pi.init({
-    version: "2.0",
-    sandbox: window.APP_CONFIG?.IS_SANDBOX ?? true // Fallback ke true jika config tidak ada
-  });
+  try {
+    // Pastikan config terbaca
+    const isSandbox = (typeof APP_CONFIG !== 'undefined') ? APP_CONFIG.IS_SANDBOX : true;
 
-  window.__PI_INITIALIZED__ = true;
-  console.log("Pi SDK Initialized:", APP_CONFIG?.IS_SANDBOX ? "SANDBOX" : "MAINNET");
-  return true;
+    Pi.init({
+      version: "2.0",
+      sandbox: isSandbox
+    });
+
+    window.__PI_INITIALIZED__ = true;
+    console.log("✅ Pi SDK Sukses Init (Mode: " + (isSandbox ? "SANDBOX" : "MAINNET") + ")");
+    return true;
+  } catch (e) {
+    console.error("Gagal saat menjalankan Pi.init:", e);
+    return false;
+  }
 }
 
 window.initPiSDK = initPiSDK;
