@@ -210,58 +210,32 @@
         </div>
     </div>
 
-    <!-- PERBAIKAN 1: Menggunakan URL Resmi SDK Pi Network -->
+    <!-- SDK Pi Network -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
 
+    <!-- Config.js -->
+    <script src="config.js"></script>
+
+    <!-- Script login tetap sama -->
     <script>
-        // --- KONFIGURASI ---
-        const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co';
-        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
-        const functionName = 'verify-pi-login';
-        
-        // --- KONFIGURASI PI NETWORK (APP ID BARU) ---
-        const PI_APP_ID = "uyaidqnvfk65mhmmrwa5krsfin72mq5xig5hwgerhlfxrk1i6kopyzjcnyyi3paa";
-        
-        // Tentukan apakah ini mode Sandbox (Localhost atau URL sandbox)
-        const isSandbox = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1');
-        
-        // Fungsi Inisialisasi SDK
-        function initPiSDK() {
-            if (typeof Pi !== 'undefined') {
-                // PERBAIKAN: Gunakan appId yang baru
-                Pi.init({
-                    version: "2.0",
-                    appId: PI_APP_ID, 
-                    sandbox: isSandbox
-                });
-                console.log("Pi SDK Berhasil Di-Initialize. Sandbox:", isSandbox);
-                return true;
-            }
-            return false;
-        }
-        
         // --- PERBAIKAN 2: Polling Logic yang Lebih Bersih ---
         window.addEventListener('load', () => {
             console.log("Halaman Login Dimuat.");
             
-            // Animasi UI
             setTimeout(() => {
                 const card = document.getElementById('loginCard');
                 if(card) card.classList.add('visible');
-            }, 200);
+            },200);
 
-            // Coba inisialisasi pertama kali (jika script sudah load cepat)
             if (initPiSDK()) {
                 startLoginProcess();
                 return;
             }
 
-            // Polling: Cek setiap 500ms jika SDK belum terbaca (umum terjadi di Pi Browser)
             const checkInterval = setInterval(() => {
                 if (typeof Pi !== 'undefined') {
                     clearInterval(checkInterval);
                     console.log("Pi SDK terdeteksi!");
-                    // Beri jeda sedikit agar stabil
                     setTimeout(startLoginProcess, 500);
                 }
             }, 500);
@@ -286,24 +260,18 @@
             if(errorMsg) errorMsg.innerText = message;
         }
 
-        // --- PERBAIKAN 3: Menggunakan Pi.authenticate (Standar SDK) ---
         async function startLoginProcess() {
             try {
-                // Pastikan init dijalankan lagi untuk keamanan
                 initPiSDK();
 
                 updateStatus("Membaca Sistem SDK", "Gunakan Pi Browser");
 
-                // 1. Callback untuk pembayaran incomplete (opsional tapi disarankan)
                 const onIncompletePaymentFound = (payment) => {
                     console.log("Incomplete payment ditemukan:", payment);
-                    // Logika untuk menangani pembayaran yang tertunda bisa ditambahkan di sini
                 };
 
-                // 2. Scopes: 'username' untuk nama, 'payments' untuk transaksi masa depan
                 const scopes = ['username', 'payments'];
 
-                // 3. Panggil fungsi AUTHENTICATE (bukan identify)
                 const authResult = await Pi.authenticate(scopes, onIncompletePaymentFound);
 
                 if (!authResult || !authResult.user) {
@@ -313,7 +281,6 @@
                 const user = authResult.user;
                 const accessToken = authResult.accessToken;
                 
-                // Gunakan username jika ada, jika tidak gunakan UID
                 const usernameToSend = user.username || user.uid;
                 
                 console.log("User Pi Teridentifikasi:", user);
@@ -321,7 +288,6 @@
                 
                 updateStatus("Menghubungi Server...", "Memverifikasi data pengguna...");
                 
-                // 4. Kirim ke Backend (Supabase Edge Function)
                 const endpoint = `${supabaseUrl}/functions/v1/${functionName}`;
                 
                 const response = await fetch(endpoint, {
@@ -350,7 +316,6 @@
                 const data = await response.json();
                 console.log("Respon Backend:", data);
 
-                // 5. Logika Redirect Berhasil
                 if (data.success === true) {
                     localStorage.setItem('aurora_user', JSON.stringify(user));
                     localStorage.setItem('aurora_token', supabaseAnonKey);
