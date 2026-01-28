@@ -199,18 +199,21 @@
         }
 
         // 2. AUTHENTICATE WRAPPER
-        function startPiAuth() {
-            const scopes = ['username'];
-            return Pi.authenticate(scopes, {})
-                .then(function(auth) {
-                    console.log("[SDK] Auth Berhasil:", auth);
-                    return auth;
-                })
-                .catch(function(error) {
-                    console.error("[SDK] Auth Error:", error);
-                    throw error;
-                });
-        }
+        function onIncompletePaymentFound(payment) {
+        console.log("[SDK] Incomplete payment:", payment);
+    }
+    function startPiAuth() {
+        const scopes = ['username'];
+        return Pi.authenticate(scopes, onIncompletePaymentFound)
+            .then(function(auth) {
+                console.log("[SDK] Auth Berhasil:", auth);
+                return auth;
+            })
+            .catch(function(error) {
+                console.error("[SDK] Auth Error:", error);
+                throw error;
+            });
+    }
     </script>
 </head>
 <body>
