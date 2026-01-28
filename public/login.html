@@ -282,10 +282,11 @@
                 // ===============================
                 // 2. INIT SDK (SEKALI SAJA)
                 // ===============================
-                const ready = initPiSDK();
-                if (!ready) {
-                    throw new Error("Gagal inisialisasi Pi SDK.");
-                }
+                if (typeof initPiSDK === "function") {
+    const ready = initPiSDK();
+    if (!ready) throw new Error("Gagal inisialisasi Pi SDK.");
+}
+
 
                 updateStatus(
                     "Konfirmasi Login",
