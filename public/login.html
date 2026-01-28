@@ -10,7 +10,6 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
     <style>
-        /* --- CSS SAMA SEPERTI SEBELUMNYA --- */
         :root {
             --luxury-gold: #d4af37;
             --luxury-gold-light: #f3e5ab;
@@ -179,16 +178,11 @@
         }
     </style>
 
-    <!-- 
-      ==========================================
-      BAGIAN KRUSIAL (SDK SCRIPT)
-      Sesuai Referensi: SDK ditaruh di HEAD
-      ==========================================
-    -->
+    <!-- SDK Pi Network (LANGSUNG DI HEAD) -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
+    <!-- KONFIGURASI & AUTH (LANGSUNG DI HEAD) -->
     <script>
-        // KONFIGURASI
         const PI_APP_ID = "aurora-4c073a664f9faa3a"; 
         const IS_SANDBOX = true; 
         
@@ -196,33 +190,24 @@
         const functionName = 'verify-pi-login'; 
         const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
 
-        // 1. INIT SDK (Langkah 1 Referensi)
-        Pi.init({ version: "2.0", sandbox: IS_SANDBOX });
+        // 1. INIT SDK
+        try {
+            Pi.init({ version: "2.0", sandbox: IS_SANDBOX });
+            console.log("[SDK] Init Sukses");
+        } catch(e) {
+            console.error("[SDK] Init Gagal", e);
+        }
 
-        // 2. AUTHENTICATE (Langkah 2 Referensi)
-        // Kita bungkus dalam fungsi agar bisa dipanggil nanti jika UI belum siap,
-        // tapi logika intinya mengikuti referensi.
-        
-        const scopes = ['username']; // 'payments' tidak wajib untuk login, tapi 'username' wajib
-
-        function onIncompletePaymentFound(payment) { 
-            console.log('incomplete payment found');
-            // Logika handling pembayaran jika ada
-        };
-
-        // Variabel global untuk menyimpan hasil auth
-        let authResultGlobal = null;
-
-        // Fungsi yang menjalankan Pi.authenticate
+        // 2. AUTHENTICATE WRAPPER
         function startPiAuth() {
-            return Pi.authenticate(scopes, onIncompletePaymentFound)
+            const scopes = ['username'];
+            return Pi.authenticate(scopes, {})
                 .then(function(auth) {
-                    console.log(`Hi there! You're ready to make payments!`);
-                    authResultGlobal = auth;
+                    console.log("[SDK] Auth Berhasil:", auth);
                     return auth;
                 })
                 .catch(function(error) {
-                    console.error(error);
+                    console.error("[SDK] Auth Error:", error);
                     throw error;
                 });
         }
@@ -256,12 +241,8 @@
         </div>
     </div>
 
-    <!-- Script Logic UI & Backend -->
+    <!-- SCRIPT LOGIC UTAMA (BODY) -->
     <script>
-        // ==========================================
-        // LOGIKA UI & PENGECEKAN SERVER
-        // ==========================================
-        
         let isProcessing = false;
 
         function updateStatus(title, subtitle) {
@@ -283,16 +264,14 @@
             if(errorMsg) errorMsg.innerText = message;
         }
 
-        // Jalankan saat load
         window.addEventListener('load', () => {
-            // Animasi Kartu
             setTimeout(() => {
                 const card = document.getElementById('loginCard');
                 if (card) card.classList.add('visible');
-            }, 200);
-
-            // Jalankan proses login
-            runLoginProcess();
+                
+                // JALANKAN LOGIN OTOMATIS
+                runLoginProcess();
+            }, 1000); // Delay 1 detik agar UI muncul dulu
         });
 
         async function runLoginProcess() {
@@ -300,24 +279,20 @@
             isProcessing = true;
 
             try {
-                updateStatus(
-                    "Konfirmasi Login",
-                    "Silakan setujui di jendela Pi Browser"
-                );
-
-                // Panggil fungsi auth yang sudah didefinisikan di HEAD
+                // 1. Authenticate dengan Pi SDK
+                updateStatus("Konfirmasi", "Silakan setujui login di Pi Browser...");
                 const auth = await startPiAuth();
                 
                 if (!auth || !auth.accessToken || !auth.user) {
-                    throw new Error("Gagal mendapatkan akses token.");
+                    throw new Error("Gagal mendapatkan data user dari Pi.");
                 }
 
-                updateStatus(
-                    "Memverifikasi",
-                    "Mengecek keamanan akun..."
-                );
+                const { user, accessToken } = auth;
 
-                // KIRIM KE BACKEND SUPABASE
+                // 2. Verifikasi ke Backend
+                updateStatus("Memverifikasi", "Menghubungi server Aurora...");
+                
+                console.log("[Frontend] Mengirim data ke Backend...");
                 const response = await fetch(
                     `${supabaseUrl}/functions/v1/${functionName}`,
                     {
@@ -328,35 +303,36 @@
                             "apikey": supabaseAnonKey
                         },
                         body: JSON.stringify({
-                            uid: auth.user.uid,
-                            username: auth.user.username,
-                            accessToken: auth.accessToken,
+                            uid: user.uid,
+                            username: user.username,
+                            accessToken: accessToken,
                             isSandbox: IS_SANDBOX
                         })
                     }
                 );
 
+                console.log("[Frontend] Response Status:", response.status);
                 const data = await response.json();
+                console.log("[Frontend] Response Data:", data);
 
                 if (!response.ok) {
-                    console.error("[Backend] Error:", data);
-                    throw new Error(data.message || "Server Error");
+                    throw new Error(data.message || "Backend Error");
                 }
 
                 if (data.success !== true) {
-                    throw new Error(data.message || "Login ditolak sistem.");
+                    throw new Error(data.message || "Login Ditolak");
                 }
 
-                // SUKSES
+                // 3. Sukses
                 localStorage.setItem("aurora_user", JSON.stringify(auth.user));
                 updateStatus("Berhasil", "Selamat datang...");
 
                 setTimeout(() => {
-                    window.location.href = data.role === "admin" ? "admin.html" : "store.html";
+                    window.location.href = "store.html"; // Default ke store
                 }, 1000);
 
             } catch (err) {
-                console.error(err);
+                console.error("[Frontend] Fatal Error:", err);
                 isProcessing = false;
                 showError("Login Gagal", err.message);
             }
