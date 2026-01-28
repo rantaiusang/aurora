@@ -1,10 +1,10 @@
 // config.js
-const PI_APP_ID = "aurora-4c073a664f9faa3a"; // dari slug Pi App
-const IS_SANDBOX = true; // true = testnet, false = mainnet
+const PI_APP_ID = "aurora-4c073a664f9faa3a"; // SLUG / APP ID (BUKAN API KEY)
+const IS_SANDBOX = true; // true = testnet | false = mainnet
 
 function initPiSDK() {
     if (typeof Pi === "undefined") {
-        console.warn("Pi SDK tidak terdeteksi. Pastikan membuka melalui Pi Browser.");
+        console.warn("Pi SDK tidak terdeteksi. Buka via Pi Browser.");
         return false;
     }
 
@@ -17,6 +17,6 @@ function initPiSDK() {
     });
 
     Pi._isInitialized = true;
-    console.log("Pi SDK berhasil di-init. Sandbox:", IS_SANDBOX);
+    console.log("Pi SDK initialized | sandbox:", IS_SANDBOX);
     return true;
 }
