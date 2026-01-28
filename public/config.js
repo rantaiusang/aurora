@@ -1,25 +1,27 @@
-// config.js
-const PI_APP_ID = "aurora-4c073a664f9faa3a"; // SLUG / APP ID
+// config.js (Versi Perbaikan)
+
+const PI_APP_ID = "aurora-4c073a664f9faa3a"; 
 const IS_SANDBOX = true; 
 
 function initPiSDK() {
+    // Cek apakah SDK sudah ada
     if (typeof Pi === "undefined") {
-        console.warn("Pi SDK tidak terdeteksi. Buka via Pi Browser.");
-        return false;
+        console.warn("[Config] Pi SDK belum siap. Menunggu...");
+        return false; // JANGAN LANJUT jika SDK belum ada
     }
 
+    // Cek apakah sudah pernah di-init sebelumnya
     if (Pi._isInitialized) return true;
 
-    // ==========================================
-    // PERBAIKAN KRUSIAL: TAMBAHKAN appId
-    // ==========================================
+    console.log("[Config] SDK Siap. Melakukan Init...");
+    
+    // Jalankan Init
     Pi.init({
         version: "2.0",
-        appId: PI_APP_ID,   // <--- INI WAJIB ADA
+        appId: PI_APP_ID, // Pastikan appId disertakan
         sandbox: IS_SANDBOX
     });
 
     Pi._isInitialized = true;
-    console.log("Pi SDK initialized | sandbox:", IS_SANDBOX);
     return true;
 }
