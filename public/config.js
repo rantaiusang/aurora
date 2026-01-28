@@ -18,10 +18,10 @@ function initPiSDK() {
 
   try {
     Pi.init({
-      version: "2.0",
-      appId: PI_APP_ID,
-      sandbox: IS_SANDBOX
-    });
+  version: "2.0",
+  sandbox: IS_SANDBOX
+});
+
 
     window.__PI_INITIALIZED__ = true;
     console.log("[PiSDK] Initialized");
