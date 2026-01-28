@@ -1,5 +1,3 @@
-// config.js (FIX FINAL & AMAN)
-
 const PI_APP_ID = "aurora-4c073a664f9faa3a";
 const IS_SANDBOX = true;
 
@@ -11,11 +9,7 @@ function initPiSDK() {
         return false;
     }
 
-    if (PI_INITIALIZED === true) {
-        return true;
-    }
-
-    console.log("[Config] Inisialisasi Pi SDK...");
+    if (PI_INITIALIZED) return true;
 
     Pi.init({
         version: "2.0",
@@ -24,5 +18,6 @@ function initPiSDK() {
     });
 
     PI_INITIALIZED = true;
+    console.log("[Config] Pi SDK siap");
     return true;
 }
