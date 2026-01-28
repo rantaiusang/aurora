@@ -334,16 +334,14 @@
                     "Silakan setujui login di Pi Browser"
                 );
 
-                const scopes = ["username"];
-                
-                // Panggil Authenticate
-                const authResult = await Pi.authenticate(
-                    scopes,
-                    () => {
-                        // Callback onIncompletePayment (kosongkan karena ini login)
-                    }
-                );
+                                const scopes = ["username"];
 
+                // Ganti Pi.authenticate dengan fungsi timeout baru
+                const authResult = await authenticateWithTimeout(
+                    scopes,
+                    () => {}
+                );
+                
                 if (!authResult?.user || !authResult?.accessToken) {
                     throw new Error("Autentikasi Pi gagal atau dibatalkan.");
                 }
