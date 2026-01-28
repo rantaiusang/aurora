@@ -10,7 +10,7 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
     <style>
-        /* --- STYLES --- */
+        /* --- STYLES SAMA SEPERTI SEBELUMNYA --- */
         :root {
             --luxury-gold: #d4af37;
             --luxury-gold-light: #f3e5ab;
@@ -153,8 +153,8 @@
         }
         .error-box strong { color: #ffcccc; display: block; margin-bottom: 5px; }
         .btn-submit {
-            padding: 10px 24px;
-            font-size: 0.9rem;
+            padding: 12px 30px;
+            font-size: 1rem;
             background: linear-gradient(135deg, var(--luxury-gold), #b8860b);
             color: #000;
             border: none;
@@ -163,9 +163,10 @@
             transition: all 0.3s ease;
             font-weight: 600;
             box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
-            margin-top: 10px;
+            margin-top: 20px;
             text-transform: uppercase;
             letter-spacing: 1px;
+            display: none; /* Hidden by default */
         }
         .btn-submit:hover {
             transform: translateY(-2px);
@@ -200,6 +201,9 @@
                 <p id="sub-status" class="sub-title">Menyiapkan koneksi aman ke Pi Network</p>
             </div>
 
+            <!-- Tombol Manual Jika Auto Login Gagal -->
+            <button id="btn-manual-login" class="btn-submit" onclick="runLoginProcess()">Login dengan Pi</button>
+
             <div id="error-box" class="error-box">
                 <p><strong>Koneksi Gagal</strong></p>
                 <p id="error-msg">Terjadi kesalahan saat menghubungi server.</p>
@@ -213,36 +217,16 @@
     <!-- SDK Pi Network -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
 
-    <!-- Config.js -->
+    <!-- LOAD CONFIG JS (PENTING: Load sebelum login script) -->
     <script src="config.js"></script>
 
-    <!-- Script login (FINAL DELAY TACTIC VERSION) -->
+    <!-- Script Logic Login -->
     <script>
-        // ==========================================
-        // KONFIGURASI VARIABEL BACKEND
-        // ==========================================
         const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co';
         const functionName = 'verify-pi-login'; 
         const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
 
-        // Flag mencegah login berjalan dua kali
         let isProcessing = false;
-
-        // ==========================================
-        // WINDOW LOAD - DELAY 100MS TACTIC
-        // ==========================================
-        window.addEventListener('load', () => {
-            console.log("Halaman Login Dimuat.");
-
-            setTimeout(() => {
-                const card = document.getElementById('loginCard');
-                if (card) card.classList.add('visible');
-
-                // ⬇️ TUNDA SEDIKIT, BUKAN POLLING
-                setTimeout(runLoginProcess, 100);
-
-            }, 200);
-        });
 
         function updateStatus(title, subtitle) {
             const titleEl = document.getElementById('main-status');
@@ -256,6 +240,9 @@
             const spinnerWrapper = document.querySelector('.pi-spinner-wrapper');
             if(spinnerWrapper) spinnerWrapper.style.display = 'none';
             
+            const btnManual = document.getElementById('btn-manual-login');
+            if(btnManual) btnManual.style.display = 'none';
+
             const errorBox = document.getElementById('error-box');
             const errorMsg = document.getElementById('error-msg');
             
@@ -263,48 +250,102 @@
             if(errorMsg) errorMsg.innerText = message;
         }
 
+        function showManualButton() {
+            const spinnerWrapper = document.querySelector('.pi-spinner-wrapper');
+            if(spinnerWrapper) spinnerWrapper.style.display = 'none';
+            
+            const btnManual = document.getElementById('btn-manual-login');
+            if(btnManual) {
+                btnManual.style.display = 'block';
+                updateStatus("Siap", "Klik tombol di bawah untuk masuk");
+            }
+        }
+
         // ==========================================
-        // FUNGSI UTAMA LOGIN
+        // POLLING CERDAS
+        // ==========================================
+        window.addEventListener('load', () => {
+            console.log("Halaman Login Dimuat.");
+            setTimeout(() => {
+                const card = document.getElementById('loginCard');
+                if (card) card.classList.add('visible');
+            }, 200);
+
+            // Jalankan fungsi pengecekan otomatis
+            checkAndRun();
+        });
+
+        function checkAndRun() {
+            let attempts = 0;
+            const maxAttempts = 50; // Timeout sekitar 5 detik
+            const intervalId = setInterval(() => {
+                attempts++;
+                
+                // 1. Cek apakah SDK sudah load
+                if (typeof window.Pi !== "undefined") {
+                    clearInterval(intervalId);
+                    
+                    console.log("Pi SDK terdeteksi.");
+                    
+                    // 2. Panggil fungsi init dari config.js
+                    const isReady = initPiSDK();
+                    
+                    if (isReady) {
+                        // Jika init sukses, coba auto login
+                        runLoginProcess();
+                    } else {
+                        showManualButton();
+                    }
+                    return;
+                }
+
+                // Jika terlalu lama menunggu
+                if (attempts >= maxAttempts) {
+                    clearInterval(intervalId);
+                    console.error("Gagal memuat Pi SDK.");
+                    showError("Error", "Tidak dapat memuat Pi SDK. Pastikan Anda menggunakan Pi Browser.");
+                }
+            }, 100); // Cek setiap 100ms
+        }
+
+        // ==========================================
+        // PROSES LOGIN UTAMA
         // ==========================================
         async function runLoginProcess() {
             if (isProcessing) return;
             isProcessing = true;
 
+            // Sembunyikan tombol manual jika sedang proses
+            const btnManual = document.getElementById('btn-manual-login');
+            if(btnManual) btnManual.style.display = 'none';
+
+            // Tampilkan spinner
+            const spinnerWrapper = document.querySelector('.pi-spinner-wrapper');
+            if(spinnerWrapper) spinnerWrapper.style.display = 'flex';
+
             try {
-                // ===============================
-                // 1. PASTIKAN SDK PI BENAR-BENAR ADA
-                // ===============================
+                // Validasi lagi untuk jaga-jaga
                 if (typeof window.Pi === "undefined") {
-                    console.log("Debug: window.Pi adalah", window.Pi); 
-                    throw new Error("Pi SDK belum siap. Jalankan dari Pi Browser.");
+                    throw new Error("Pi SDK tidak tersedia.");
                 }
-
-                // ===============================
-                // 2. INIT SDK (SEKALI SAJA)
-                // ===============================
-                if (typeof initPiSDK === "function") {
-    const ready = initPiSDK();
-    if (!ready) throw new Error("Gagal inisialisasi Pi SDK.");
-}
-
 
                 updateStatus(
                     "Konfirmasi Login",
                     "Silakan setujui login di Pi Browser"
                 );
 
-                // ===============================
-                // 3. AUTHENTICATE
-                // ===============================
                 const scopes = ["username"];
-
+                
+                // Panggil Authenticate
                 const authResult = await Pi.authenticate(
                     scopes,
-                    () => {}
+                    () => {
+                        // Callback onIncompletePayment (kosongkan karena ini login)
+                    }
                 );
 
                 if (!authResult?.user || !authResult?.accessToken) {
-                    throw new Error("Autentikasi Pi gagal.");
+                    throw new Error("Autentikasi Pi gagal atau dibatalkan.");
                 }
 
                 const { user, accessToken } = authResult;
@@ -314,9 +355,10 @@
                     "Menghubungi server Aurora..."
                 );
 
-                // ===============================
-                // 4. KIRIM KE BACKEND
-                // ===============================
+                // KIRIM KE BACKEND
+                // ⬇️ Gunakan isSandboxMode() dari config.js
+                const isSandbox = isSandboxMode();
+
                 const response = await fetch(
                     `${supabaseUrl}/functions/v1/${functionName}`,
                     {
@@ -330,7 +372,7 @@
                             uid: user.uid,
                             username: user.username,
                             accessToken,
-                            isSandbox: true
+                            isSandbox: isSandbox // Mengambil nilai dari config.js
                         })
                     }
                 );
@@ -340,11 +382,8 @@
                     throw new Error(data.message || "Login ditolak backend.");
                 }
 
-                // ===============================
-                // 5. LOGIN SUKSES
-                // ===============================
+                // SUKSES
                 localStorage.setItem("aurora_user", JSON.stringify(user));
-
                 updateStatus("Login Berhasil", "Mengalihkan...");
 
                 setTimeout(() => {
@@ -354,8 +393,9 @@
 
             } catch (err) {
                 console.error(err);
-                showError("Gagal Masuk", err.message);
-                isProcessing = false;
+                isProcessing = false; // Reset flag agar bisa coba lagi
+                showManualButton(); // Tampilkan tombol manual jika auto gagal
+                updateStatus("Gagal Masuk", err.message);
             }
         }
     </script>
