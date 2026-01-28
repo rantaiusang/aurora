@@ -10,6 +10,7 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
     <style>
+        /* --- CSS SAMA SEPERTI SEBELUMNYA --- */
         :root {
             --luxury-gold: #d4af37;
             --luxury-gold-light: #f3e5ab;
@@ -165,7 +166,7 @@
             margin-top: 20px;
             text-transform: uppercase;
             letter-spacing: 1px;
-            display: none !important; 
+            display: none !important;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 0.8; transform: scale(1); text-shadow: 0 0 15px rgba(255,255,255,0.2); } 50% { opacity: 1; transform: scale(1.1); text-shadow: 0 0 25px rgba(212, 175, 55, 0.6); } }
@@ -177,6 +178,55 @@
             .pi-spinner-wrapper { width: 80px; height: 80px; } .pi-icon { font-size: 2.2rem; } .main-title { font-size: 1.5rem; }
         }
     </style>
+
+    <!-- 
+      ==========================================
+      BAGIAN KRUSIAL (SDK SCRIPT)
+      Sesuai Referensi: SDK ditaruh di HEAD
+      ==========================================
+    -->
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    
+    <script>
+        // KONFIGURASI
+        const PI_APP_ID = "aurora-4c073a664f9faa3a"; 
+        const IS_SANDBOX = true; 
+        
+        const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co';
+        const functionName = 'verify-pi-login'; 
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
+
+        // 1. INIT SDK (Langkah 1 Referensi)
+        Pi.init({ version: "2.0", sandbox: IS_SANDBOX });
+
+        // 2. AUTHENTICATE (Langkah 2 Referensi)
+        // Kita bungkus dalam fungsi agar bisa dipanggil nanti jika UI belum siap,
+        // tapi logika intinya mengikuti referensi.
+        
+        const scopes = ['username']; // 'payments' tidak wajib untuk login, tapi 'username' wajib
+
+        function onIncompletePaymentFound(payment) { 
+            console.log('incomplete payment found');
+            // Logika handling pembayaran jika ada
+        };
+
+        // Variabel global untuk menyimpan hasil auth
+        let authResultGlobal = null;
+
+        // Fungsi yang menjalankan Pi.authenticate
+        function startPiAuth() {
+            return Pi.authenticate(scopes, onIncompletePaymentFound)
+                .then(function(auth) {
+                    console.log(`Hi there! You're ready to make payments!`);
+                    authResultGlobal = auth;
+                    return auth;
+                })
+                .catch(function(error) {
+                    console.error(error);
+                    throw error;
+                });
+        }
+    </script>
 </head>
 <body>
     <header>
@@ -206,75 +256,14 @@
         </div>
     </div>
 
-    <!-- SDK Pi Network -->
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-
+    <!-- Script Logic UI & Backend -->
     <script>
         // ==========================================
-        // KONFIGURASI
+        // LOGIKA UI & PENGECEKAN SERVER
         // ==========================================
-        const PI_APP_ID = "aurora-4c073a664f9faa3a"; 
-        const IS_SANDBOX = true;
         
-        // Timeout diperpanjang menjadi 20 detik untuk berjaga-jaga
-        const LOGIN_TIMEOUT_MS = 20000; 
-
-        const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co';
-        const functionName = 'verify-pi-login'; 
-        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
-
         let isProcessing = false;
 
-        // ==========================================
-        // 1. INIT SDK SESUAI PANDUAN PI
-        // ==========================================
-        function initPiSDK() {
-            if (typeof window.Pi === "undefined") {
-                console.error("[Init] window.Pi belum ada.");
-                return false;
-            }
-            if (window.__PI_INITIALIZED__) {
-                console.log("[Init] Sudah diinisialisasi.");
-                return true;
-            }
-            try {
-                // INI ADALAH BAGIAN KRUSIAL DARI ARTIKEL YANG ANDA KIRIM
-                console.log(`[Init] Memulai Pi.init... (Sandbox: ${IS_SANDBOX})`);
-                Pi.init({ 
-                    version: "2.0", 
-                    sandbox: IS_SANDBOX 
-                });
-                window.__PI_INITIALIZED__ = true;
-                return true;
-            } catch (err) {
-                console.error("[Init] Gagal:", err);
-                return false;
-            }
-        }
-
-        // ==========================================
-        // 2. AUTHENTICATE DENGAN TIMEOUT
-        // ==========================================
-        async function authenticateWithTimeout(scopes, onIncompletePaymentFound) {
-            console.log("[Auth] Memanggil Pi.authenticate...");
-            
-            const authPromise = new Promise((resolve, reject) => {
-                // Menggunakan callback kosong untuk pembayaran karena ini login saja
-                Pi.authenticate(scopes, onIncompletePaymentFound).then(resolve).catch(reject);
-            });
-
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => {
-                    reject(new Error("Timeout: Server tidak merespon dalam waktu 20 detik. Periksa koneksi internet atau Backend Anda."));
-                }, LOGIN_TIMEOUT_MS);
-            });
-
-            return await Promise.race([authPromise, timeoutPromise]);
-        }
-
-        // ==========================================
-        // 3. HELPER UI
-        // ==========================================
         function updateStatus(title, subtitle) {
             const titleEl = document.getElementById('main-status');
             const subEl = document.getElementById('sub-status');
@@ -294,49 +283,17 @@
             if(errorMsg) errorMsg.innerText = message;
         }
 
-        // ==========================================
-        // 4. LOGIKA UTAMA (SMART POLLING)
-        // ==========================================
+        // Jalankan saat load
         window.addEventListener('load', () => {
-            console.log("[Load] Halaman siap.");
+            // Animasi Kartu
             setTimeout(() => {
                 const card = document.getElementById('loginCard');
                 if (card) card.classList.add('visible');
             }, 200);
 
-            checkAndRun();
+            // Jalankan proses login
+            runLoginProcess();
         });
-
-        function checkAndRun() {
-            let attempts = 0;
-            const maxAttempts = 60; // Tunggu maksimal 6 detik untuk SDK load
-            
-            const intervalId = setInterval(() => {
-                attempts++;
-                
-                // Cek apakah SDK Pi sudah tersedia di window
-                if (typeof window.Pi !== "undefined") {
-                    clearInterval(intervalId);
-                    console.log("[SDK] Terdeteksi.");
-                    
-                    const ready = initPiSDK();
-                    if (ready) {
-                        // Jika init sukses, langsung login
-                        runLoginProcess();
-                    } else {
-                        showError("Error Init", "Gagal inisialisasi SDK.");
-                    }
-                    return;
-                }
-
-                // Jika terlalu lama menunggu SDK
-                if (attempts >= maxAttempts) {
-                    clearInterval(intervalId);
-                    console.error("[SDK] Gagal load.");
-                    showError("Gagal Memuat", "Pi SDK tidak terdeteksi. Pastikan Anda membuka ini di Pi Browser.");
-                }
-            }, 100);
-        }
 
         async function runLoginProcess() {
             if (isProcessing) return;
@@ -348,30 +305,19 @@
                     "Silakan setujui di jendela Pi Browser"
                 );
 
-                // Scopes sesuai artikel: 'username'
-                const scopes = ['username'];
+                // Panggil fungsi auth yang sudah didefinisikan di HEAD
+                const auth = await startPiAuth();
                 
-                // Panggil fungsi authenticate
-                const authResult = await authenticateWithTimeout(
-                    scopes,
-                    () => {
-                        // Callback ini dijalankan jika ada incomplete payment
-                        console.log("[Auth] Incomplete payment callback triggered.");
-                    }
-                );
-
-                if (!authResult?.user || !authResult?.accessToken) {
-                    throw new Error("Gagal mendapatkan data user dari Pi.");
+                if (!auth || !auth.accessToken || !auth.user) {
+                    throw new Error("Gagal mendapatkan akses token.");
                 }
-
-                const { user, accessToken } = authResult;
 
                 updateStatus(
                     "Memverifikasi",
                     "Mengecek keamanan akun..."
                 );
 
-                // KIRIM KE BACKEND
+                // KIRIM KE BACKEND SUPABASE
                 const response = await fetch(
                     `${supabaseUrl}/functions/v1/${functionName}`,
                     {
@@ -382,9 +328,9 @@
                             "apikey": supabaseAnonKey
                         },
                         body: JSON.stringify({
-                            uid: user.uid,
-                            username: user.username,
-                            accessToken: accessToken,
+                            uid: auth.user.uid,
+                            username: auth.user.username,
+                            accessToken: auth.accessToken,
                             isSandbox: IS_SANDBOX
                         })
                     }
@@ -392,30 +338,26 @@
 
                 const data = await response.json();
 
-                // Cek respon backend secara detail
                 if (!response.ok) {
-                    console.error("[Backend] Error Status:", response.status, data);
-                    throw new Error(data.message || `Backend Error ${response.status}`);
+                    console.error("[Backend] Error:", data);
+                    throw new Error(data.message || "Server Error");
                 }
 
                 if (data.success !== true) {
-                    console.error("[Backend] Logic Error:", data);
-                    throw new Error(data.message || "Login ditolak oleh sistem.");
+                    throw new Error(data.message || "Login ditolak sistem.");
                 }
 
                 // SUKSES
-                localStorage.setItem("aurora_user", JSON.stringify(user));
-                updateStatus("Berhasil", "Selamat datang kembali...");
+                localStorage.setItem("aurora_user", JSON.stringify(auth.user));
+                updateStatus("Berhasil", "Selamat datang...");
 
                 setTimeout(() => {
                     window.location.href = data.role === "admin" ? "admin.html" : "store.html";
                 }, 1000);
 
             } catch (err) {
-                console.error("[Fatal Error]", err);
+                console.error(err);
                 isProcessing = false;
-                
-                // Tampilkan pesan error yang jelas
                 showError("Login Gagal", err.message);
             }
         }
