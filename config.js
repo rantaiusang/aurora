@@ -1,7 +1,7 @@
 // config.js
 
 // --- KONFIGURASI APLIKASI PI ---
-const PI_APP_ID = "uyaidqnvfk65mhmmrwa5krsfin72mq5xig5hwgerhlfxrk1i6kopyzjcnyyi3paa";   // Ganti dengan App ID resmi Pi
+const PI_APP_ID = "aurora-4c073a664f9faa3a";   // Ganti dengan App ID resmi Pi
 const IS_SANDBOX = true;                        // true = testnet/sandbox, false = mainnet
 
 // --- FUNGSI INISIALISASI PI SDK ---
