@@ -216,8 +216,16 @@
     <!-- Config.js -->
     <script src="config.js"></script>
 
-    <!-- Script login tetap sama -->
+    <!-- Script login (DIUBAH: Menambahkan Variabel Backend) -->
     <script>
+        // ==========================================
+        // TAMBAHKAN VARIABEL INI AGAR TIDAK ERROR
+        // ==========================================
+        const supabaseUrl = 'https://dikapquhusbwjccbqcsb.supabase.co';
+        // Gunakan nama fungsi backend yang sesuai (contoh: 'verify-pi-login')
+        const functionName = 'verify-pi-login'; 
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; 
+
         // --- PERBAIKAN 2: Polling Logic yang Lebih Bersih ---
         window.addEventListener('load', () => {
             console.log("Halaman Login Dimuat.");
@@ -262,16 +270,19 @@
 
         async function startLoginProcess() {
             try {
-                initPiSDK();
+                // Init ulang untuk memastikan config.js berjalan
+                initPiSDK(); 
 
                 updateStatus("Membaca Sistem SDK", "Gunakan Pi Browser");
 
+                // Callback wajib (meskipun login sering tidak pakai payment)
                 const onIncompletePaymentFound = (payment) => {
                     console.log("Incomplete payment ditemukan:", payment);
                 };
 
                 const scopes = ['username', 'payments'];
 
+                // Authenticate memanggil config.js secara internal melalui init
                 const authResult = await Pi.authenticate(scopes, onIncompletePaymentFound);
 
                 if (!authResult || !authResult.user) {
