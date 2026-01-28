@@ -1,35 +1,69 @@
-// config.js
-const PI_APP_ID = "aurora-4c073a664f9faa3a"; 
-const IS_SANDBOX = true; 
-const LOGIN_TIMEOUT_MS = 15000; // 15 detik timeout
+// ===============================
+// PI SDK CONFIG
+// ===============================
+const PI_APP_ID = "aurora-4c073a664f9faa3a";
+const IS_SANDBOX = true;
+const LOGIN_TIMEOUT_MS = 15000;
 
+// ===============================
+// INIT SDK
+// ===============================
 function initPiSDK() {
-  if (typeof window.Pi === "undefined") return false;
+  if (typeof window.Pi === "undefined") {
+    console.error("[PiSDK] Pi Browser tidak terdeteksi");
+    return false;
+  }
+
   if (window.__PI_INITIALIZED__) return true;
+
   try {
-    Pi.init({ version: "2.0", appId: PI_APP_ID, sandbox: IS_SANDBOX });
+    Pi.init({
+      version: "2.0",
+      appId: PI_APP_ID,
+      sandbox: IS_SANDBOX
+    });
+
     window.__PI_INITIALIZED__ = true;
+    console.log("[PiSDK] Initialized");
     return true;
+
   } catch (err) {
-    console.error("Init Error:", err);
+    console.error("[PiSDK] Init error:", err);
     return false;
   }
 }
 
+// ===============================
+// SANDBOX CHECK
+// ===============================
 function isSandboxMode() {
-    return IS_SANDBOX;
+  return IS_SANDBOX;
 }
 
-// FUNGSI YANG TADI HILANG / ERROR
+// ===============================
+// AUTH WITH TIMEOUT
+// ===============================
 async function authenticateWithTimeout(scopes, onIncompletePaymentFound) {
-    console.log("[PiSDK] Memulai authenticate...");
-    const authPromise = new Promise((resolve, reject) => {
-        Pi.authenticate(scopes, onIncompletePaymentFound).then(resolve).catch(reject);
-    });
-    const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => {
-            reject(new Error("Waktu habis (Timeout). Server lambat merespon."));
-        }, LOGIN_TIMEOUT_MS);
-    });
-    return await Promise.race([authPromise, timeoutPromise]);
+  if (!initPiSDK()) {
+    throw new Error("Pi SDK belum siap. Gunakan Pi Browser.");
+  }
+
+  console.log("[PiSDK] Memulai authenticate...");
+
+  const authPromise = Pi.authenticate(scopes, onIncompletePaymentFound);
+
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new Error("Waktu habis. Silakan coba lagi."));
+    }, LOGIN_TIMEOUT_MS);
+  });
+
+  return Promise.race([authPromise, timeoutPromise]);
 }
+
+// ===============================
+// EXPORT KE GLOBAL
+// ===============================
+window.initPiSDK = initPiSDK;
+window.authenticateWithTimeout = authenticateWithTimeout;
+window.PI_IS_SANDBOX = IS_SANDBOX;
