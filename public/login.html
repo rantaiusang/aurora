@@ -5,106 +5,305 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Login - Aurora Store</title>
     
-    <!-- Font Google -->
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-
-    <!-- Styles (Sama seperti kode Anda sebelumnya, saya ringkas di sini) -->
+    <!-- 1. Load CSS Styles -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    
     <style>
-        :root { --luxury-gold: #d4af37; --dark-bg: #0f0c15; --dark-card: rgba(22, 18, 22, 0.95); --text-gray: #a0a0a0; --text-white: #ffffff; --luxury-red: #8a1c1c; }
+        :root {
+            --luxury-gold: #d4af37;
+            --luxury-gold-dim: rgba(212, 175, 55, 0.2);
+            --dark-bg: #0f0c15;
+            --dark-card: rgba(20, 18, 22, 0.98);
+            --text-white: #ffffff;
+            --text-gray: #888888;
+            --error-red: #8a1c1c;
+            --error-red-bg: rgba(138, 28, 28, 0.15);
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background-color: var(--dark-bg); color: var(--text-white); font-family: 'Poppins', sans-serif; overflow-x: hidden; min-height: 100vh; }
-        header { background: rgba(15, 12, 21, 0.95); padding: 15px 5%; position: fixed; top: 0; width: 100%; z-index: 1000; display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 700; color: var(--text-white); text-decoration: none; letter-spacing: 1px; text-shadow: 0 0 10px 1px var(--luxury-gold-light); }
-        .login-bg { min-height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; padding-top: 80px; padding-bottom: 40px; }
-        .glow-bg { position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 70%); top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: -1; pointer-events: none; }
-        .card-container { width: 100%; max-width: 420px; background: var(--dark-card); padding: 50px 35px; border-radius: 24px; border: 1px solid rgba(212, 175, 55, 0.15); box-shadow: 0 20px 50px rgba(0,0,0,0.5); text-align: center; opacity: 0; transform: translateY(40px); transition: opacity 0.8s, transform 0.6s; }
-        .card-container.visible { opacity: 1; transform: translateY(0); }
-        .pi-spinner-wrapper { width: 80px; height: 80px; margin: 0 auto 30px; position: relative; }
-        .pi-spinner { width: 100%; height: 100%; border: 3px solid rgba(212,175,55,.1); border-top: 3px solid var(--luxury-gold); border-radius: 50%; animation: spin 1.5s linear infinite; }
-        .pi-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; color: var(--luxury-gold); }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .error-box { display: none; margin-top: 20px; padding: 15px; background: rgba(138,28,28,.15); border-radius: 12px; color: #ffb3b3; border: 1px solid rgba(138,28,28,0.3); text-align: left; font-size: 0.9rem; }
-        .btn-manual { margin-top: 20px; padding: 12px 24px; background: transparent; border: 1px solid var(--luxury-gold); color: var(--luxury-gold); border-radius: 50px; cursor: pointer; font-family: 'Poppins', sans-serif; transition: all 0.3s; display: none; }
-        .btn-manual:hover { background: var(--luxury-gold); color: var(--dark-bg); }
+        
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text-white);
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            padding: 20px;
+            text-align: center;
+            z-index: 10;
+        }
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            color: var(--text-white);
+            text-decoration: none;
+            letter-spacing: 1px;
+        }
+
+        /* Main Content */
+        .login-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* Background Glow Effect */
+        .glow-effect {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Card */
+        .card {
+            background: var(--dark-card);
+            width: 100%;
+            max-width: 400px;
+            padding: 40px 30px;
+            border-radius: 20px;
+            border: 1px solid var(--luxury-gold-dim);
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: transform 0.3s ease;
+        }
+
+        /* Spinner */
+        .spinner-wrapper {
+            margin: 0 auto 25px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid var(--luxury-gold);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        .pi-icon {
+            font-size: 1.2rem;
+            color: var(--luxury-gold);
+            margin-left: -20px; /* Overlay on spinner */
+            z-index: 2;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Typography */
+        h2 { font-size: 1.4rem; margin-bottom: 8px; font-weight: 600; }
+        p.subtitle { font-size: 0.9rem; color: var(--text-gray); margin-bottom: 25px; line-height: 1.5; }
+
+        /* Error Box */
+        .error-box {
+            display: none;
+            background: var(--error-red-bg);
+            border: 1px solid rgba(138, 28, 28, 0.4);
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 20px;
+            text-align: left;
+        }
+        .error-title { color: #ff9999; font-weight: bold; display: block; margin-bottom: 5px; font-size: 0.9rem; }
+        .error-msg { color: #ffcccc; font-size: 0.85rem; }
+
+        /* Buttons */
+        .btn-retry {
+            display: none;
+            margin-top: 20px;
+            background: var(--luxury-gold);
+            color: #000;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.95rem;
+            width: 100%;
+        }
+        .btn-retry:hover { opacity: 0.9; }
+
     </style>
 
-    <!-- 1. Load Pi SDK dari Jaringan Pi -->
+    <!-- 2. Load External Scripts -->
+    <!-- Pi Network SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
-    <!-- 2. Load File Eksternal Anda (Pastikan path file benar) -->
+    <!-- Konfigurasi Aplikasi (Wajib ada di folder yang sama) -->
     <script src="pi-config.js"></script>
-    <script src="pi-sdkinit.js"></script>
-    <script src="pi-auth.js"></script>
-    <script src="login-flow.js"></script>
-</head>
 
+</head>
 <body>
 
-<header>
-    <a href="index.html" class="logo">Aurora ⚡</a>
-</header>
+    <header>
+        <a href="index.html" class="logo">Aurora ⚡</a>
+    </header>
 
-<div class="login-bg">
-    <div class="glow-bg"></div>
+    <div class="login-container">
+        <div class="glow-effect"></div>
 
-    <div class="card-container" id="loginCard">
-        <div class="pi-spinner-wrapper">
-            <div class="pi-spinner" id="spinnerAnim"></div>
-            <div class="pi-icon">π</div>
-        </div>
+        <div class="card">
+            <div class="spinner-wrapper">
+                <div class="spinner" id="spinnerAnim"></div>
+                <div class="pi-icon">π</div>
+            </div>
 
-        <div class="loading-text">
-            <h2 id="main-status" style="margin-bottom: 10px;">Menghubungkan...</h2>
-            <p id="sub-status" style="font-size: 0.9rem; color: var(--text-gray);">Menyiapkan koneksi aman ke Pi Network</p>
-        </div>
+            <h2 id="status-title">Menghubungkan...</h2>
+            <p class="subtitle" id="status-desc">Menyiapkan koneksi aman ke Pi Network</p>
 
-        <button id="btnRetry" class="btn-manual" onclick="window.runLoginProcess()">Coba Lagi</button>
+            <div id="error-box" class="error-box">
+                <span class="error-title">Terjadi Kesalahan</span>
+                <span id="error-msg" class="error-msg">Deskripsi error akan muncul di sini.</span>
+            </div>
 
-        <div id="error-box" class="error-box">
-            <strong id="error-title" style="display:block; margin-bottom:5px;">Login Gagal</strong>
-            <p id="error-msg"></p>
+            <button id="btn-retry" class="btn-retry" onclick="window.runLoginProcess()">Coba Lagi</button>
         </div>
     </div>
-</div>
 
-<script>
-    // --- LOGIKA UI SEDERHANA ---
-    // Kita hanya menangani UI di sini, logika bisnis ada di login-flow.js
-    
-    const ui = {
-        card: document.getElementById('loginCard'),
-        mainStatus: document.getElementById('main-status'),
-        subStatus: document.getElementById('sub-status'),
-        errorBox: document.getElementById('error-box'),
-        errorMsg: document.getElementById('error-msg'),
-        spinnerAnim: document.getElementById('spinnerAnim'),
-        btnRetry: document.getElementById('btnRetry')
-    };
+    <!-- 3. Logika JavaScript (Full di HTML) -->
+    <script>
+        // Definisi Fungsi Login Utama
+        async function runLoginProcess() {
+            // Referensi Elemen UI
+            const ui = {
+                spinner: document.getElementById('spinnerAnim'),
+                piIcon: document.querySelector('.pi-icon'),
+                title: document.getElementById('status-title'),
+                desc: document.getElementById('status-desc'),
+                errorBox: document.getElementById('error-box'),
+                errorMsg: document.getElementById('error-msg'),
+                btnRetry: document.getElementById('btn-retry')
+            };
 
-    // Override fungsi console.log/alert jika ingin memvisualisasikan status dari JS eksternal
-    // (Opsional, hanya untuk memastikan teks berubah sesuai flow login-flow.js)
-    const originalStatusEl = document.getElementById("main-status");
-    // Anda bisa membiarkan login-flow.js mengubah innerText langsung karena ia menggunakan getElementById
-    
-    window.addEventListener("load", () => {
-        // Animasi masuk
-        setTimeout(() => {
-            ui.card.classList.add("visible");
-            
-            // Jalankan proses login yang sudah didefinisikan di login-flow.js
-            // Kita beri delay sedikit agar script eksternal selesai dieksekusi
-            setTimeout(() => {
-                if (window.runLoginProcess) {
-                    window.runLoginProcess();
-                } else {
-                    ui.mainStatus.innerText = "Error Sistem";
-                    ui.errorBox.style.display = "block";
-                    ui.errorMsg.innerText = "File login-flow.js tidak termuat.";
-                    ui.spinnerAnim.style.display = "none";
+            // Reset UI ke keadaan "Loading"
+            function setLoadingState(title, desc) {
+                ui.spinner.style.display = 'block';
+                ui.piIcon.style.display = 'flex'; // Pastikan icon ada
+                ui.title.innerText = title;
+                ui.desc.innerText = desc;
+                ui.errorBox.style.display = 'none';
+                ui.btnRetry.style.display = 'none';
+            }
+
+            function showError(msg) {
+                ui.spinner.style.display = 'none';
+                ui.piIcon.style.display = 'none';
+                ui.title.innerText = "Login Gagal";
+                ui.desc.innerText = "Silakan periksa koneksi Anda.";
+                ui.errorBox.style.display = 'block';
+                ui.errorMsg.innerText = msg;
+                ui.btnRetry.style.display = 'block';
+            }
+
+            // Mulai Proses
+            setLoadingState("Menghubungkan...", "Inisialisasi SDK");
+
+            try {
+                // --- CEK 1: PASTIKAN CONFIG ADA ---
+                if (typeof window.APP_CONFIG === 'undefined') {
+                    throw new Error("File konfigurasi (pi-config.js) tidak ditemukan atau gagal dimuat.");
                 }
-            }, 800);
-        }, 100);
-    });
-</script>
+
+                const config = window.APP_CONFIG;
+                console.log("Config loaded:", config);
+
+                // --- CEK 2: INISIALISASI SDK ---
+                // Menggunakan flag sandbox dari pi-config.js
+                ui.title.innerText = "Autentikasi...";
+                ui.desc.innerText = "Menghubungkan ke Pi Network";
+                
+                await Pi.init({
+                    version: "2.0",
+                    sandbox: config.IS_SANDBOX // Mengambil boolean dari file JS
+                });
+
+                console.log("Pi SDK Initialized");
+
+                // --- LANGKAH 3: AUTHENTICATE ---
+                // Membuka popup Pi Network
+                const authResult = await Pi.authenticate(['username'], {
+                    onIncompletePaymentFound: (payment) => {
+                        console.log("Incomplete payment found:", payment);
+                    }
+                });
+
+                if (!authResult || !authResult.accessToken) {
+                    throw new Error("Akses ditolak atau token kosong.");
+                }
+
+                console.log("User Authenticated:", authResult.user);
+
+                // --- LANGKAH 4: KIRIM KE BACKEND (SUPABASE) ---
+                ui.title.innerText = "Verifikasi...";
+                ui.desc.innerText = "Mengecek data di server";
+
+                const response = await fetch(config.API_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "apikey": config.SUPABASE_ANON_KEY,
+                        "Authorization": `Bearer ${config.SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({
+                        uid: authResult.user.uid,
+                        username: authResult.user.username,
+                        accessToken: authResult.accessToken,
+                        isSandbox: config.IS_SANDBOX
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || "Gagal verifikasi di server.");
+                }
+
+                // --- LANGKAH 5: SUKSES ---
+                ui.title.innerText = "Berhasil!";
+                ui.desc.innerText = "Mengalihkan...";
+                
+                // Simpan data user lokal
+                localStorage.setItem("aurora_user", JSON.stringify(authResult.user));
+
+                // Redirect setelah delay singkat
+                setTimeout(() => {
+                    window.location.href = "store.html";
+                }, 1000);
+
+            } catch (err) {
+                console.error("Error caught:", err);
+                showError(err.message);
+            }
+        }
+
+        // Jalankan proses login otomatis saat window selesai dimuat
+        window.addEventListener('load', () => {
+            // Kita beri delay sedikit (500ms) untuk memastikan script eksternal 
+            // (pi-config.js dan pi-sdk.js) sepenuhnya siap.
+            setTimeout(() => {
+                runLoginProcess();
+            }, 500);
+        });
+
+        // Expose fungsi ke window agar bisa dipanggil tombol retry
+        window.runLoginProcess = runLoginProcess;
+    </script>
 </body>
 </html>
