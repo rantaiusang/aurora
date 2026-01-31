@@ -146,14 +146,15 @@
     <!-- Pi Network SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
-    <!-- Konfigurasi Aplikasi (Wajib ada di folder yang sama) -->
-    <script src="pi-config.js"></script>
+    <!-- PERBAIKAN 1: Path ke file config di luar folder -->
+    <script src="../pi-config.js"></script>
 
 </head>
 <body>
 
+    <!-- PERBAIKAN 2: Link logo kembali ke root -->
     <header>
-        <a href="index.html" class="logo">Aurora ⚡</a>
+        <a href="../index.html" class="logo">Aurora ⚡</a>
     </header>
 
     <div class="login-container">
@@ -177,7 +178,7 @@
         </div>
     </div>
 
-    <!-- 3. Logika JavaScript (Full di HTML) -->
+    <!-- 3. Logika JavaScript -->
     <script>
         // Definisi Fungsi Login Utama
         async function runLoginProcess() {
@@ -284,7 +285,8 @@
 
                 // Redirect setelah delay singkat
                 setTimeout(() => {
-                    window.location.href = "store.html";
+                    // PERBAIKAN 3: Redirect ke file store di luar folder
+                    window.location.href = "../store.html";
                 }, 1000);
 
             } catch (err) {
