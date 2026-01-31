@@ -146,13 +146,13 @@
     <!-- Pi Network SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
-    <!-- PERBAIKAN 1: Path ke file config di luar folder -->
-    <script src="../pi-config.js"></script>
+    <!-- PERBAIKAN: Karena pi-config.js ada di folder yang sama, tidak pakai ../ -->
+    <script src="pi-config.js"></script>
 
 </head>
 <body>
 
-    <!-- PERBAIKAN 2: Link logo kembali ke root -->
+    <!-- Link logo tetap mengarah ke index di root -->
     <header>
         <a href="../index.html" class="logo">Aurora ⚡</a>
     </header>
@@ -196,7 +196,7 @@
             // Reset UI ke keadaan "Loading"
             function setLoadingState(title, desc) {
                 ui.spinner.style.display = 'block';
-                ui.piIcon.style.display = 'flex'; // Pastikan icon ada
+                ui.piIcon.style.display = 'flex';
                 ui.title.innerText = title;
                 ui.desc.innerText = desc;
                 ui.errorBox.style.display = 'none';
@@ -226,19 +226,17 @@
                 console.log("Config loaded:", config);
 
                 // --- CEK 2: INISIALISASI SDK ---
-                // Menggunakan flag sandbox dari pi-config.js
                 ui.title.innerText = "Autentikasi...";
                 ui.desc.innerText = "Menghubungkan ke Pi Network";
                 
                 await Pi.init({
                     version: "2.0",
-                    sandbox: config.IS_SANDBOX // Mengambil boolean dari file JS
+                    sandbox: config.IS_SANDBOX 
                 });
 
                 console.log("Pi SDK Initialized");
 
                 // --- LANGKAH 3: AUTHENTICATE ---
-                // Membuka popup Pi Network
                 const authResult = await Pi.authenticate(['username'], {
                     onIncompletePaymentFound: (payment) => {
                         console.log("Incomplete payment found:", payment);
@@ -285,7 +283,7 @@
 
                 // Redirect setelah delay singkat
                 setTimeout(() => {
-                    // PERBAIKAN 3: Redirect ke file store di luar folder
+                    // Redirect ke store (asumsi store.html juga di root, pakai ../)
                     window.location.href = "../store.html";
                 }, 1000);
 
@@ -297,14 +295,12 @@
 
         // Jalankan proses login otomatis saat window selesai dimuat
         window.addEventListener('load', () => {
-            // Kita beri delay sedikit (500ms) untuk memastikan script eksternal 
-            // (pi-config.js dan pi-sdk.js) sepenuhnya siap.
             setTimeout(() => {
                 runLoginProcess();
             }, 500);
         });
 
-        // Expose fungsi ke window agar bisa dipanggil tombol retry
+        // Expose fungsi ke window
         window.runLoginProcess = runLoginProcess;
     </script>
 </body>
