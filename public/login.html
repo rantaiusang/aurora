@@ -146,7 +146,7 @@
     <!-- Pi Network SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
-    <!-- PERBAIKAN: Karena pi-config.js ada di folder yang sama, tidak pakai ../ -->
+    <!-- Load Config -->
     <script src="pi-config.js"></script>
 
 </head>
@@ -253,7 +253,8 @@
                 ui.title.innerText = "Verifikasi...";
                 ui.desc.innerText = "Mengecek data di server";
 
-                const response = await fetch(config.API_URL, {
+                // ⚠️ PERBAIKAN DI SINI: Menggunakan ENDPOINTS.LOGIN sesuai config V2
+                const response = await fetch(config.ENDPOINTS.LOGIN, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
