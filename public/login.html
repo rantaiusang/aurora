@@ -242,33 +242,32 @@
                 logDebug("Config OK. Sandbox: " + config.IS_SANDBOX);
 
                 // ==========================================
-                // 🔥 PERBAIKAN KRUSIAL (STEP 3)
+                // 🔥 FINAL FIX VERSION (STEP 3)
                 // ==========================================
                 ui.title.innerText = "Autentikasi...";
                 ui.desc.innerText = "Menghubungkan ke Pi Blockchain";
                 
-                // 1. Gunakan AWAIT agar menunggu inisialisasi selesai
                 logDebug("Memulai Inisialisasi SDK...");
+
+                // PERBAIKAN: Version "2" (Tanpa .0) sesuai standar Pi SDK
                 await Pi.init({
-                    version: "2.0", // Versi string lebih stabil
-                    sandbox: config.IS_SANDBOX 
+                    version: "2",
+                    sandbox: config.IS_SANDBOX
                 });
-                logDebug("Pi Init Berhasil.");
 
-                // 2. Safety Delay (Extra Stability)
-                // Memberi waktu SDK untuk 'menenangkan diri' sebelum authenticate
-                await new Promise(resolve => setTimeout(resolve, 200));
-                logDebug("Safety delay selesai. Siap authenticate.");
+                logDebug("Init selesai, mulai authenticate...");
 
+                // ==========================================
                 // STEP 4: AUTHENTICATE
+                // ==========================================
                 ui.desc.innerText = "Meminta izin akses...";
                 
-                // Scope payments ditambahkan agar tidak error saat payment nanti
+                // Scope: username & payments
                 const authResult = await Pi.authenticate(
-                    ['username', 'payments'], 
+                    ['username', 'payments'],
                     {
-                        onIncompletePaymentFound: (payment) => {
-                            console.log("Incomplete payment found:", payment);
+                        onIncompletePaymentFound: function(payment) {
+                            console.log("Incomplete payment:", payment);
                         }
                     }
                 );
@@ -280,7 +279,7 @@
                 logDebug("Auth Success User: " + authResult.user.username);
 
                 // ==========================================
-                // STEP 5: SUKSES (Langsung redirect tanpa backend)
+                // STEP 5: SUKSES
                 // ==========================================
                 ui.title.innerText = "Berhasil Masuk";
                 ui.desc.innerText = "Mengalihkan ke Toko...";
