@@ -241,24 +241,37 @@
                 const config = window.APP_CONFIG;
                 logDebug("Config OK. Sandbox: " + config.IS_SANDBOX);
 
-                // STEP 3: INIT SDK
+                // ==========================================
+                // 🔥 PERBAIKAN KRUSIAL (STEP 3)
+                // ==========================================
                 ui.title.innerText = "Autentikasi...";
                 ui.desc.innerText = "Menghubungkan ke Pi Blockchain";
                 
-                Pi.init({
-                    version: "2",
+                // 1. Gunakan AWAIT agar menunggu inisialisasi selesai
+                logDebug("Memulai Inisialisasi SDK...");
+                await Pi.init({
+                    version: "2.0", // Versi string lebih stabil
                     sandbox: config.IS_SANDBOX 
                 });
                 logDebug("Pi Init Berhasil.");
 
+                // 2. Safety Delay (Extra Stability)
+                // Memberi waktu SDK untuk 'menenangkan diri' sebelum authenticate
+                await new Promise(resolve => setTimeout(resolve, 200));
+                logDebug("Safety delay selesai. Siap authenticate.");
+
                 // STEP 4: AUTHENTICATE
                 ui.desc.innerText = "Meminta izin akses...";
                 
-                const authResult = await Pi.authenticate(['username'], {
-                    onIncompletePaymentFound: (payment) => {
-                        console.log("Payment found:", payment);
+                // Scope payments ditambahkan agar tidak error saat payment nanti
+                const authResult = await Pi.authenticate(
+                    ['username', 'payments'], 
+                    {
+                        onIncompletePaymentFound: (payment) => {
+                            console.log("Incomplete payment found:", payment);
+                        }
                     }
-                });
+                );
 
                 if (!authResult || !authResult.accessToken) {
                     throw new Error("Gagal mendapatkan token akses dari Pi Network (User cancelled or timeout).");
@@ -267,12 +280,8 @@
                 logDebug("Auth Success User: " + authResult.user.username);
 
                 // ==========================================
-                // PERBAIKAN KRUSIAL DI SINI
+                // STEP 5: SUKSES (Langsung redirect tanpa backend)
                 // ==========================================
-                // Langsung Lanjut ke Success. Jangan tunggu Backend yang belum jadi.
-                // Kita akan sinkronisasi user di background (di halaman store).
-                // ==========================================
-                
                 ui.title.innerText = "Berhasil Masuk";
                 ui.desc.innerText = "Mengalihkan ke Toko...";
                 ui.spinner.style.display = 'none';
