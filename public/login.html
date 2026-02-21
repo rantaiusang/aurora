@@ -131,22 +131,10 @@
 
     <!-- Pi Network SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-
-    <!-- 
-       PERBAIKAN 1: 
-       Daripada memuat file eksternal yang mungkin 404, 
-       kita definisikan config langsung di sini untuk keamanan demo.
-       Di production, gunakan Environment Variables.
-    -->
-    <script>
-        window.APP_CONFIG = {
-            IS_SANDBOX: true, // Ubah ke false di Mainnet
-            // Ini seharusnya URL Edge Function Anda, bukan langsung Supabase URL
-            API_ENDPOINT: "https://your-project.supabase.co/functions/v1/handle-pi-login",
-            SUPABASE_URL: "https://your-project.supabase.co",
-            SUPABASE_ANON_KEY: "your-anon-key-here" 
-        };
-    </script>
+    
+    <!-- PENTING: Load config di sini, sebelum script utama berjalan -->
+    <!-- Pastikan path file ini benar sesuai struktur folder Anda -->
+    <script src="./pi-config.js"></script>
 
 </head>
 <body>
@@ -211,17 +199,18 @@
             setLoadingState("Menghubungkan...", "Inisialisasi sistem");
 
             try {
-                // 1. Cek Config
+                // 1. Cek Config dari pi-config.js
                 if (typeof window.APP_CONFIG === 'undefined') {
-                    throw new Error("Konfigurasi sistem hilang.");
+                    throw new Error("Gagal memuat konfigurasi (pi-config.js). Pastikan file ada dan path benar.");
                 }
+                
                 const config = window.APP_CONFIG;
+                console.log("Config loaded:", config);
 
                 // 2. Init SDK
                 ui.title.innerText = "Autentikasi...";
                 ui.desc.innerText = "Menghubungkan ke Pi Blockchain";
                 
-                // Pastikan Pi SDK sudah terload
                 if (typeof Pi === 'undefined') {
                     throw new Error("Pi Network SDK gagal dimuat. Cek koneksi internet.");
                 }
@@ -249,44 +238,48 @@
                 ui.title.innerText = "Verifikasi Server...";
                 ui.desc.innerText = "Sinkronisasi dengan database";
 
-                /*
-                   PERBAIKAN LOGIKA:
-                   Kita tidak mengirim Supabase Anon Key sebagai Authorization.
-                   Kita mengirim Pi Access Token ke backend kita, 
-                   dan backend yang akan menangani validasi ke Supabase.
-                */
+                // PERBAIKAN: Menggunakan endpoint yang benar dari config
+                const apiEndpoint = config.ENDPOINTS.LOGIN;
                 
-                const response = await fetch(config.API_ENDPOINT, {
+                const response = await fetch(apiEndpoint, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        // Di sini kita boleh kirim Anon Key untuk mengakses Edge Function publik
+                        // PERBAIKAN KEAMANAN: Untuk Supabase Edge Function, 
+                        // biasanya kita kirim Anon Key di header 'apikey' atau 'Authorization' tergantung settingan RLS.
+                        // Namun cara paling umum untuk memanggil Edge Function secara publik:
                         "Authorization": `Bearer ${config.SUPABASE_ANON_KEY}` 
                     },
                     body: JSON.stringify({
                         accessToken: authResult.accessToken,
-                        uid: authResult.user.uid
+                        uid: authResult.user.uid,
+                        username: authResult.user.username
                     })
                 });
 
-                // Simulasi respon jika Anda belum membuat backend Edge Function
-                // (Hapus blok if ini jika sudah punya backend asli)
-                if (!response.ok) {
-                     // Karena di sini kita hanya demo, kita akan pura-pura sukses 
-                     // agar Anda bisa melihat UI suksesnya.
-                     // DI PRODUCTION: HAPUS SIMULASI INI.
-                     console.warn("Backend belum siap, melanjutkan mode demo...");
-                } else {
+                // Logika penanganan respon
+                if (response.ok) {
                     const data = await response.json();
-                    if (!data.success) throw new Error(data.message);
+                    console.log("Backend response:", data);
+                    
+                    if (!data.success) {
+                        throw new Error(data.message || "Validasi backend gagal.");
+                    }
+                } else {
+                    // Jika status 404, kemungkinan URL Edge Function salah
+                    if (response.status === 404) {
+                        throw new Error(`Endpoint tidak ditemukan (404). Cek URL: ${apiEndpoint}`);
+                    }
+                    const errorText = await response.text();
+                    throw new Error(`Server Error: ${response.status} - ${errorText}`);
                 }
 
                 // 5. Sukses & Redirect
                 ui.title.innerText = "Berhasil Masuk";
                 ui.desc.innerText = "Selamat datang di Aurora Store.";
                 ui.spinner.style.display = 'none';
-                ui.piIcon.innerHTML = '✓'; // Ganti jadi centang
-                ui.piIcon.style.color = '#10b981'; // Hijau
+                ui.piIcon.innerHTML = '✓'; 
+                ui.piIcon.style.color = '#10b981'; 
                 ui.piIcon.style.fontSize = '2rem';
                 ui.piIcon.style.marginLeft = '0';
 
@@ -294,7 +287,9 @@
                 localStorage.setItem("aurora_user", JSON.stringify(authResult.user));
 
                 setTimeout(() => {
-                    // Pastikan file store.html ada
+                    // PERINGATAN: Pastikan Anda menjalankan ini di server lokal (Live Server)
+                    // atau upload ke hosting (Vercel/Netlify). 
+                    // Buka file HTML langsung (file://) seringkali memblokir redirect.
                     window.location.href = "../store.html";
                 }, 1500);
 
@@ -304,8 +299,8 @@
             }
         }
 
+        // Jalankan saat halaman dimuat
         window.addEventListener('load', () => {
-            // Sedikit delay agar animasi terlihat halus
             setTimeout(() => {
                 runLoginProcess();
             }, 800);
