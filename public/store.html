@@ -245,12 +245,10 @@
                 <p class="loading-text">Memuat riwayat pesanan...</p>
             </div>
         </div>
-       <!-- Ganti seluruh isi script bawah dengan ini -->
     
-   
     <script>
         // ==========================================
-        // 1. KONFIGURASI SUPABASE (FIX CLIENT REF)
+        // 1. KONFIGURASI SUPABASE
         // ==========================================
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
         // Gunakan Anon Key untuk akses client-side
@@ -260,7 +258,7 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // Variabel Global
-        let productsData = [];
+        let productsData = []; // Menyimpan data terbaru dari database
         let currentUser = null;
         let dbUser = null;
 
@@ -270,14 +268,11 @@
         const btnCheckoutSidebar = document.getElementById('btnCheckoutSidebar');
 
         // ==========================================
-        // 🔧 FUNGSI BERSIH HARGA (ROBUST FIX)
+        // 🔧 FUNGSI BERSIH HARGA
         // ==========================================
         function cleanPrice(priceInput) {
             if (priceInput === null || priceInput === undefined) return 0;
-            
-            // Ubah ke String, hapus semua kecuali angka, titik, dan minus
             let p = String(priceInput).replace(/[^0-9.-]+/g, "");
-            
             if (p.length === 0) return 0;
             let val = parseFloat(p);
             return isNaN(val) || val < 0 ? 0 : val;
@@ -285,9 +280,6 @@
 
         function formatPrice(price) {
             let numPrice = cleanPrice(price);
-            
-            // Logika Tampilan: Jika sangat kecil (Pi decimals), tampilkan 7 digit.
-            // Jika bulat/normal, tampilkan 2 digit.
             if (numPrice === 0) return "0.00";
             return numPrice < 0.01 ? numPrice.toFixed(7) : numPrice.toFixed(2);
         }
@@ -360,13 +352,14 @@
 
         async function fetchProducts() {
             try {
+                // PERUBAHAN 1: Nama tabel diganti menjadi 'productspi'
                 const { data, error } = await supabaseClient
-                    .from('products')
+                    .from('productspi') 
                     .select('*')
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
-                productsData = data;
+                productsData = data; // Update data global dengan data terbaru dari DB
                 return data;
             } catch (e) {
                 productGrid.innerHTML = `<div class="error-message"><p>Gagal memuat produk: ${e.message}</p></div>`;
@@ -376,7 +369,7 @@
 
         window.addEventListener('load', async () => {
             await initApp();
-            await fetchProducts();
+            await fetchProducts(); // Ambil data stok terbaru
             if(productsData && productsData.length > 0) {
                 renderProducts('all');
                 renderSidebarCart();
@@ -424,7 +417,7 @@
                 const { data: orders, error } = await supabaseClient
                     .from('orders')
                     .select('*')
-                    .eq('user_id', currentUser.uid) // Pastikan kolom di DB adalah user_id
+                    .eq('user_id', currentUser.uid)
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
@@ -482,12 +475,16 @@
             const existingItem = cart.find(item => String(item.id) === String(clickedId));
 
             if (existingItem) {
+                // Cek apakah penambahan qty melebihi stok
+                if ((existingItem.qty + 1) > currentStock) {
+                    alert("Stok tidak mencukupi untuk menambah jumlah.");
+                    return;
+                }
                 existingItem.qty++;
             } else {
                 cart.push({ 
                     ...product, 
                     qty: 1,
-                    // PERBAIKAN: Simpan harga yang sudah bersih (Number)
                     price: cleanPrice(product.price) 
                 });
             }
@@ -518,8 +515,12 @@
             }
         }
 
+        // ==========================================
+        // PERUBAHAN 2: LOGIKA STOK KERANJANG (FIX STOK 0)
+        // ==========================================
         function renderSidebarCart() {
             const cart = JSON.parse(localStorage.getItem('aurora_cart')) || [];
+            
             if (cart.length === 0) {
                 sidebarCartList.innerHTML = '<p class="empty-msg">Keranjang masih kosong.</p>';
                 btnCheckoutSidebar.disabled = true;
@@ -527,16 +528,40 @@
             }
 
             let html = '';
+            let isCartValid = true; // Flag untuk mengecek apakah keranjang valid
+
             cart.forEach(item => {
+                // Cari data produk terbaru dari array global 'productsData'
+                // Ini penting untuk mengecek stok REAL-TIME
+                const latestProduct = productsData.find(p => String(p.id) === String(item.id));
+                let currentStock = 0;
+                let isOutOfStock = false;
+
+                if (latestProduct) {
+                    currentStock = parseInt(latestProduct.stock) || 0;
+                    isOutOfStock = currentStock <= 0;
+                } else {
+                    // Jika produk tidak ditemukan di database (mungkin dihapus), anggap habis
+                    isOutOfStock = true;
+                }
+
+                // Jika ada item di keranjang yang stoknya 0, tandai keranjang tidak valid
+                if (isOutOfStock) {
+                    isCartValid = false;
+                }
+
                 let itemName = getSafeValue(item, 'name', 'product_name', 'Produk');
                 const imgSrc = getSafeValue(item, 'image_url', 'img', ''); 
                 const formattedPrice = formatPrice(item.price);
+
+                // Tampilkan peringatan jika stok habis di sidebar
+                let stockWarning = isOutOfStock ? '<span style="color:#ff6b6b; font-size:0.7rem; display:block;">(Stok Habis)</span>' : '';
 
                 html += `
                     <div class="sidebar-cart-item">
                         <img src="${imgSrc}" class="sidebar-item-img" onerror="this.src='https://via.placeholder.com/50'">
                         <div class="sidebar-item-details">
-                            <div class="sidebar-item-name">${itemName}</div>
+                            <div class="sidebar-item-name">${itemName} ${stockWarning}</div>
                             <div class="sidebar-item-meta">
                                 <span>${item.qty} x ${formattedPrice}</span>
                                 <span style="color:var(--luxury-gold)">${formatPrice(item.price * item.qty)} π</span>
@@ -545,8 +570,17 @@
                         <button class="sidebar-remove-btn" onclick="removeFromSidebar('${item.id}')">&times;</button>
                     </div>`;
             });
+
             sidebarCartList.innerHTML = html;
-            btnCheckoutSidebar.disabled = false;
+
+            // PERBAIKAN: Disable tombol checkout jika ada barang yang stoknya 0
+            if (!isCartValid) {
+                btnCheckoutSidebar.disabled = true;
+                btnCheckoutSidebar.innerText = "Stok Tidak Tersedia";
+            } else {
+                btnCheckoutSidebar.disabled = false;
+                btnCheckoutSidebar.innerText = "Checkout";
+            }
         }
 
         // --- PRODUCT RENDERING ---
@@ -619,17 +653,28 @@
             renderProducts(category);
         }
 
-        // --- CHECKOUT LOGIC (FIX TOTAL) ---
+        // --- CHECKOUT LOGIC ---
         function validateAndCheckout() {
             if (!localStorage.getItem('aurora_user')) {
                 if(confirm("Anda harus login terlebih dahulu.")) window.location.href = 'login.html';
                 return;
             }
 
+            // Validasi ulang stok sebelum redirect
             const cartItems = JSON.parse(localStorage.getItem('aurora_cart')) || [];
+            
+            // Cek lagi stok real-time dari database
+            for (let item of cartItems) {
+                const dbProduct = productsData.find(p => String(p.id) === String(item.id));
+                if (!dbProduct || parseInt(dbProduct.stock) <= 0) {
+                    alert(`Maaf, stok untuk ${item.name} telah habis. Mohon periksa keranjang Anda.`);
+                    renderSidebarCart(); // Refresh tampilan keranjang
+                    return; // Batalkan checkout
+                }
+            }
+
             if (cartItems.length === 0) return alert("Keranjang kosong.");
 
-            // Perbaikan Hitung Total
             let total = 0;
             cartItems.forEach(item => {
                 const price = cleanPrice(item.price);
