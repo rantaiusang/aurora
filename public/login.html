@@ -249,10 +249,10 @@
                 
                 logDebug("Memulai Inisialisasi SDK...");
 
-                // PERBAIKAN: Version "2" (Tanpa .0) sesuai standar Pi SDK
+              
                 await Pi.init({
                     version: "2",
-                    sandbox: config.IS_SANDBOX
+                     sandbox: true
                 });
 
                 logDebug("Init selesai, mulai authenticate...");
