@@ -266,43 +266,13 @@
 
                 logDebug("Auth Success User: " + authResult.user.username);
 
-                // STEP 5: KIRIM KE BACKEND (Simulasi)
-                ui.title.innerText = "Verifikasi Server...";
-                ui.desc.innerText = "Sinkronisasi dengan database";
-
-                const apiEndpoint = config.ENDPOINTS.LOGIN;
+                // ==========================================
+                // PERBAIKAN KRUSIAL DI SINI
+                // ==========================================
+                // Langsung Lanjut ke Success. Jangan tunggu Backend yang belum jadi.
+                // Kita akan sinkronisasi user di background (di halaman store).
+                // ==========================================
                 
-                // Kita coba fetch ke backend.
-                // Jika backend belum siap (404/500), kita akan tangani di catch block
-                // agar tidak membuat user bingung.
-                try {
-                    const response = await fetch(apiEndpoint, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${config.SUPABASE_ANON_KEY}` 
-                        },
-                        body: JSON.stringify({
-                            accessToken: authResult.accessToken,
-                            uid: authResult.user.uid,
-                            username: authResult.user.username
-                        })
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (!data.success) throw new Error(data.message);
-                    } else {
-                        // Jika 404 atau 500, kita asumsikan backend belum siap untuk demo
-                        logDebug("Backend respon error: " + response.status);
-                        // Di production, jangan lanjut jika error. Tapi untuk demo, kita lanjut.
-                    }
-                } catch (e) {
-                    logDebug("Fetch Error (Backend mungkin mati): " + e.message);
-                    // Jangan throw error di sini agar user bisa masuk ke store untuk demo
-                }
-
-                // STEP 6: SUKSES
                 ui.title.innerText = "Berhasil Masuk";
                 ui.desc.innerText = "Mengalihkan ke Toko...";
                 ui.spinner.style.display = 'none';
@@ -315,7 +285,7 @@
 
                 setTimeout(() => {
                     window.location.href = "store.html";
-                }, 1500);
+                }, 1000);
 
             } catch (err) {
                 console.error(err);
@@ -324,7 +294,16 @@
             }
         }
 
+        // Cek apakah user sudah login sebelumnya, jika iya langsung lempar ke store
         window.addEventListener('load', () => {
+            const existingUser = localStorage.getItem('aurora_user');
+            if (existingUser) {
+                console.log("User sudah login, redirect ke store...");
+                window.location.href = "store.html";
+                return;
+            }
+
+            // Jika belum, jalankan proses login
             setTimeout(() => {
                 runLoginProcess();
             }, 500);
