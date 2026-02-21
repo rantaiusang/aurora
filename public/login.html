@@ -245,8 +245,8 @@
                 ui.title.innerText = "Autentikasi...";
                 ui.desc.innerText = "Menghubungkan ke Pi Blockchain";
                 
-                await Pi.init({
-                    version: "2.0",
+                Pi.init({
+                    version: "2",
                     sandbox: config.IS_SANDBOX 
                 });
                 logDebug("Pi Init Berhasil.");
