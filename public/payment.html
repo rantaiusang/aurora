@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pembayaran - Aurora Store</title>
     
-    <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- PI SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <script src="./pi-config.js"></script> <!-- PENTING: Load Config -->
 
     <style>
         :root { --luxury-gold: #d4af37; --dark-bg: #0f0c15; --card-bg: #1a1620; --danger-color: #ff4d4d; --info-color: #3498db; }
@@ -76,29 +74,23 @@
     </div>    
 
     <script>
-        const Pi = window.Pi;
+        // Cek Config
+        if (!window.APP_CONFIG) {
+            alert("Konfigurasi hilang. Pastikan pi-config.js terload.");
+            throw new Error("Config missing");
+        }
+        const config = window.APP_CONFIG;
         
         // ==========================================
-        // FIX 3: VALIDASI SDK HARDEX (WAJIB)
-        // ==========================================
-        if (!window.Pi) {
-            alert("Pi SDK tidak terdeteksi. Wajib buka via Pi Browser.");
-            throw new Error("Pi SDK not loaded");
-        }
-
-        // ==========================================
-        // FIX 1: INIT SDK TANPA SCOPES (INI KRUSIAL)
+        // FIX 1: INIT SDK DYNAMIS (BAIK SANDBOX/MAINNET)
         // ==========================================
         Pi.init({
             version: "2.0",
-            sandbox: true
+            sandbox: config.IS_SANDBOX // Gunakan config, bukan hardcode true
         });
-        // JANGAN TAMBAHKAN SCOPES DI SINI
 
-        const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
-        const AUTH_TOKEN = localStorage.getItem('aurora_token');
-        const SUPABASE_KEY = AUTH_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; 
-        const BACKEND_URL = `${SUPABASE_URL}/functions/v1/verify-pi-payment`;
+        // Backend URL dari config
+        const BACKEND_URL = config.ENDPOINTS.PAYMENT;
 
         let total = 0;
         let cartItems = [];
@@ -145,7 +137,7 @@
             const btn = document.getElementById('payBtn');
             const originalBtnText = btn.innerText;
             btn.disabled = true;
-            btn.innerText = "Mengecek Izin Akses...";
+            btn.innerText = "Memulai Pembayaran...";
             document.getElementById('error-message').style.display = 'none';
 
             if (total <= 0) {
@@ -160,30 +152,31 @@
 
             try {
                 // ==========================================
-                // FIX 2: CALLBACK WAJIB onIncompletePaymentFound
+                // FIX 2: CALLBACK WAJIB
                 // ==========================================
-                function onIncompletePaymentFound(payment) {
-                    console.log("Pembayaran belum selesai ditemukan:", payment);
-                }
+                const onIncompletePaymentFound = (payment) => {
+                    console.log("Pembayaran pending ditemukan:", payment);
+                };
 
                 // ==========================================
-                // AUTHENTICATE DENGAN FORMAT BENAR (Scope di sini saja)
+                // FIX 3: AUTHENTICATE SAAT INI DIPERLUKAN
                 // ==========================================
+                // Meskipun sudah login di login.html, SDK Pi memerlukan 
+                // token fresh untuk transaksi pembayaran di halaman ini.
                 const auth = await Pi.authenticate(
                     ["payments", "username"], 
                     onIncompletePaymentFound
                 );
 
-                // Validasi Token (Fix 3 bagian akhir)
                 if (!auth || !auth.accessToken) {
-                    throw new Error("Gagal autentikasi: Token tidak ditemukan.");
+                    throw new Error("Gagal autentikasi ulang untuk pembayaran.");
                 }
 
                 const piUser = auth.user;
-                console.log("User Authenticated:", piUser.username);
+                console.log("User Authenticated for Payment:", piUser.username);
 
                 // Lanjut ke Payment
-                btn.innerText = "Membuka Pembayaran...";
+                btn.innerText = "Membuka Dialog Pi...";
                 
                 await Pi.createPayment(
                     {
@@ -194,9 +187,13 @@
                     {
                         onReadyForServerApproval: async function (paymentId) {
                             try {
+                                // Kirim Payment ID ke backend untuk disetujui
                                 await fetch(BACKEND_URL, {
                                     method: "POST",
-                                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_KEY}` },
+                                    headers: { 
+                                        "Content-Type": "application/json",
+                                        "Authorization": `Bearer ${config.SUPABASE_ANON_KEY}` 
+                                    },
                                     body: JSON.stringify({
                                         action: "approve",
                                         paymentId: paymentId,
@@ -205,18 +202,22 @@
                                         username: piUser.username
                                     })
                                 });
-                            } catch (e) { console.error(e); }
+                            } catch (e) { console.error("Approval Error:", e); }
                         },
 
                         onReadyForServerCompletion: async function (paymentId, txid) {
                             try {
+                                // Konfirmasi pembayaran sukses + Txid Blockchain
                                 await fetch(BACKEND_URL, {
                                     method: "POST",
-                                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_KEY}` },
+                                    headers: { 
+                                        "Content-Type": "application/json",
+                                        "Authorization": `Bearer ${config.SUPABASE_ANON_KEY}` 
+                                    },
                                     body: JSON.stringify({
                                         action: "complete",
                                         paymentId: paymentId,
-                                        txid: txid,
+                                        txid: txid, // PENTING: Ini bukti transfer di blockchain
                                         orderId: currentOrderId,
                                         uid: piUser.uid,
                                         username: piUser.username,
@@ -230,7 +231,7 @@
                                 localStorage.removeItem("aurora_cart");
                                 window.location.href = 'payment-success.html';
                             } catch (error) {
-                                showError("Gagal konfirmasi pembayaran: " + error.message);
+                                showError("Gagal konfirmasi ke server: " + error.message);
                                 btn.disabled = false;
                                 btn.innerText = "Coba Lagi";
                             }
@@ -250,13 +251,9 @@
                     }
                 );
             } catch (err) {
-                console.error("Error Total:", err);
+                console.error("Payment Flow Error:", err);
                 let msg = err.message || "Terjadi kesalahan tak terduga.";
-                
-                if (msg.includes("timeout") || msg === "Timeout") {
-                    msg = "Lama merespon. Pastikan Anda mengizinkan Pop-up di address bar browser.";
-                }
-
+                if (msg.includes("timeout")) msg = "Waktu habis. Izinkan pop-up di browser.";
                 showError(msg);
                 btn.disabled = false;
                 btn.innerText = originalBtnText;
