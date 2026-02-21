@@ -247,15 +247,17 @@
         </div>
        <!-- Ganti seluruh isi script bawah dengan ini -->
     
+   
     <script>
         // ==========================================
-        // 1. KONFIGURASI SUPABASE
+        // 1. KONFIGURASI SUPABASE (FIX CLIENT REF)
         // ==========================================
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
-        const LOCAL_TOKEN = localStorage.getItem('aurora_token');
-        const SUPABASE_KEY = LOCAL_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
+        // Gunakan Anon Key untuk akses client-side
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // PERBAIKAN: Panggil createClient langsung dari objek 'supabase' global
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // Variabel Global
         let productsData = [];
@@ -272,41 +274,26 @@
         // ==========================================
         function cleanPrice(priceInput) {
             if (priceInput === null || priceInput === undefined) return 0;
-
-            // Ubah ke String dan hapus semua KECUALI (simbol mata uang, spasi, dll)
-            let p = String(priceInput);
-            // Hanya ambil Angka (0-9), Titik (.), dan Minus (-)
-            p = p.replace(/[^0-9.-]+/g, "");
-
+            
+            // Ubah ke String, hapus semua kecuali angka, titik, dan minus
+            let p = String(priceInput).replace(/[^0-9.-]+/g, "");
+            
             if (p.length === 0) return 0;
             let val = parseFloat(p);
             return isNaN(val) || val < 0 ? 0 : val;
         }
 
         function formatPrice(price) {
-            // Gunakan cleanPrice agar tampilan sidebar akurat
             let numPrice = cleanPrice(price);
-
-            if (numPrice === 0) return "0.00";
             
-            // =========================================
-            // 📢 LOGIKA TAMPILANAN (FIX PRECISION)
-            // =========================================
-            // Input: 196       -> Display: 196.00 (2 digit)
-            // Input: 0.00000125 -> Display: 0.0000013 (7 digit, tidak jadi 0.00)
-            // Input: 0.0001458 -> Display: 0.000146 (7 digit)
-            // Input: 50         -> Display: 50.00 (2 digit)
-            if (numPrice < 0.01) {
-                // Tampilkan 7 digit desimal
-                return numPrice.toFixed(7); 
-            } else {
-                // Tampilkan 2 digit desimal
-                return numPrice.toFixed(2);
-            }
+            // Logika Tampilan: Jika sangat kecil (Pi decimals), tampilkan 7 digit.
+            // Jika bulat/normal, tampilkan 2 digit.
+            if (numPrice === 0) return "0.00";
+            return numPrice < 0.01 ? numPrice.toFixed(7) : numPrice.toFixed(2);
         }
 
         // ==========================================
-        // 2. FUNGSI SYNC USER KE SUPABASE
+        // 2. SYNC USER KE SUPABASE
         // ==========================================
         async function syncUserToSupabase(piUser) {
             try {
@@ -323,11 +310,9 @@
                 }
 
                 if (existingUser) {
-                    console.log("User ditemukan di DB:", existingUser);
                     dbUser = existingUser;
                     return existingUser;
                 } else {
-                    console.log("User baru, mendaftarkan...");
                     const { data: newUser, error: insertError } = await supabaseClient
                         .from('users')
                         .insert([{
@@ -340,11 +325,7 @@
                         .select()
                         .single();
 
-                    if (insertError) {
-                        console.error("Gagal daftar user:", insertError);
-                        return null;
-                    }
-                    console.log("User baru terdaftar:", newUser);
+                    if (insertError) throw insertError;
                     dbUser = newUser;
                     return newUser;
                 }
@@ -355,7 +336,7 @@
         }
 
         // ==========================================
-        // 3. INISIALISASI (HANYA LOCAL STORAGE)
+        // 3. INISIALISASI
         // ==========================================
         async function initApp() {
             const localUserStr = localStorage.getItem('aurora_user');
@@ -363,10 +344,9 @@
             if (localUserStr) {
                 currentUser = JSON.parse(localUserStr);
                 updateUserUI(currentUser);
-                // Sync ke background
-                await syncUserToSupabase(currentUser);
+                // Sinkronisasi di background
+                syncUserToSupabase(currentUser);
             } else {
-                // Jika tidak ada di localstorage, redirect login
                 alert("Sesi tidak ditemukan. Silakan login.");
                 window.location.href = 'login.html';
             }
@@ -385,24 +365,11 @@
                     .select('*')
                     .order('created_at', { ascending: false });
 
-                if (error) {
-                    productGrid.innerHTML = `
-                        <div class="error-message">
-                            <p><strong>Gagal memuat produk.</strong></p>
-                            <p style="font-size:0.9rem; margin-top:10px;">${error.message || "Cek koneksi internet atau perizinan database."}</p>
-                            <button onclick="window.location.reload()" style="margin-top:15px; padding:10px 20px; background:var(--luxury-gold); border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Coba Lagi</button>
-                        </div>`;
-                    return [];
-                } else {
-                    productsData = data;
-                    return data;
-                }
+                if (error) throw error;
+                productsData = data;
+                return data;
             } catch (e) {
-                productGrid.innerHTML = `
-                    <div class="error-message">
-                        <p><strong>Terjadi kesalahan sistem.</strong></p>
-                        <button onclick="window.location.reload()" style="margin-top:15px; padding:10px 20px; background:var(--luxury-gold); border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Refresh Halaman</button>
-                    </div>`;
+                productGrid.innerHTML = `<div class="error-message"><p>Gagal memuat produk: ${e.message}</p></div>`;
                 return [];
             }
         }
@@ -410,100 +377,72 @@
         window.addEventListener('load', async () => {
             await initApp();
             await fetchProducts();
-            // Cek lagi jika data produk valid
             if(productsData && productsData.length > 0) {
                 renderProducts('all');
                 renderSidebarCart();
             }
         });
 
+        // Helper
         function getSafeValue(obj, key1, key2, fallback) {
             if (obj && obj[key1]) return obj[key1];
             if (obj && obj[key2]) return obj[key2];
             return fallback || '';
         }
 
+        // --- MODALS & UI LOGIC ---
         function openProfileModal() {
             const contentDiv = document.getElementById('profileContent');
             const modal = document.getElementById('profileModal');
-            
-            if (!currentUser) { alert("Anda belum login."); return; }
-
+            if (!currentUser) return alert("Anda belum login.");
             modal.classList.add('show');
 
             if (dbUser) {
-                const points = dbUser.points || 0;
-                const totalSpent = formatPrice(dbUser.total_spent || 0);
-                const totalOrders = dbUser.total_orders || 0;
-
                 contentDiv.innerHTML = `
                     <div class="profile-detail-row"><span class="profile-label">Username</span><span class="profile-value">${dbUser.username || "-"}</span></div>
-                    <div class="profile-detail-row"><span class="profile-label">UID</span><span class="profile-value">${dbUser.pi_uid || "-"}</span></div>
-                    <div class="profile-detail-row"><span class="profile-label">Status</span><span class="profile-value" style="color: #4CAF50;">Aktif</span></div>
-                    <div class="profile-detail-row"><span class="profile-label">Total Belanja</span><span class="profile-value">${totalSpent} π</span></div>
-                    <div class="profile-detail-row"><span class="profile-label">Total Order</span><span class="profile-value">${totalOrders}x</span></div>
-                    <div class="profile-detail-row"><span class="profile-label">Poin Loyalitas</span><span class="profile-value points">${points} Pts</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">Total Belanja</span><span class="profile-value">${formatPrice(dbUser.total_spent || 0)} π</span></div>
+                    <div class="profile-detail-row"><span class="profile-label">Poin Loyalitas</span><span class="profile-value points">${dbUser.points || 0} Pts</span></div>
                 `;
             } else {
-                const username = currentUser.username || "Pioneer";
-                const piUid = currentUser.uid || "-"; 
-                contentDiv.innerHTML = `
-                    <div class="profile-detail-row"><span class="profile-label">Username</span><span class="profile-value">${username}</span></div>
-                    <div class="profile-detail-row"><span class="profile-label">UID</span><span class="profile-value">${piUid}</span></div>
-                    <div class="profile-detail-row"><span class="profile-label">Status</span><span class="profile-value" style="color: #4CAF50;">Aktif</span></div>
-                    <div class="profile-detail-row" style="justify-content:center; color:#888; font-style:italic;">Memuat statistik belanja...</div>
-                `;
-                if(!dbUser) {
-                    setTimeout(async () => {
-                        await syncUserToSupabase(currentUser);
-                        if(dbUser) openProfileModal(); 
-                    }, 500);
-                }
+                contentDiv.innerHTML = `<div class="profile-detail-row" style="justify-content:center;">Memuat data...</div>`;
+                setTimeout(async () => {
+                    await syncUserToSupabase(currentUser);
+                    if(dbUser) openProfileModal(); 
+                }, 500);
             }
         }
 
         async function openHistoryModal() {
             const contentDiv = document.getElementById('historyContent');
             const modal = document.getElementById('historyModal');
-            
-            contentDiv.innerHTML = '<p class="loading-text">Memuat riwayat pesanan...</p>';
+            contentDiv.innerHTML = '<p class="loading-text">Memuat riwayat...</p>';
             modal.classList.add('show');
 
-            if (!currentUser) {
-                contentDiv.innerHTML = '<p style="text-align:center; color:#ff6b6b;">Anda belum login.</p>';
-                return;
-            }
-
-            const userUid = currentUser.uid;
+            if (!currentUser) return;
 
             try {
                 const { data: orders, error } = await supabaseClient
                     .from('orders')
                     .select('*')
-                    .eq('user_id', userUid) 
+                    .eq('user_id', currentUser.uid) // Pastikan kolom di DB adalah user_id
                     .order('created_at', { ascending: false });
 
-                if (error) {
-                    console.error("Error ambil orders:", error);
-                    contentDiv.innerHTML = '<p style="text-align:center; color:#ff6b6b;">Gagal memuat riwayat.</p>';
-                    return;
-                }
+                if (error) throw error;
 
                 if (!orders || orders.length === 0) {
-                    contentDiv.innerHTML = '<p style="text-align:center; color:#888;">Belum ada riwayat pesanan.</p>';
+                    contentDiv.innerHTML = '<p class="empty-msg">Belum ada riwayat pesanan.</p>';
                     return;
                 }
 
                 let html = '';
                 orders.forEach(order => {
                     const statusClass = getStatusClass(order.status || 'pending');
-                    const formattedDate = new Date(order.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'});
-                    
+                    const date = new Date(order.created_at).toLocaleDateString('id-ID');
                     html += `
                         <div class="order-card">
                             <div class="order-header">
                                 <div class="order-id">#${order.order_id || order.id}</div>
-                                <div class="order-date">${formattedDate}</div>
+                                <div class="order-date">${date}</div>
                             </div>
                             <div class="order-info-row">
                                 <span class="order-info-label">Total:</span>
@@ -511,46 +450,33 @@
                             </div>
                             <div class="order-info-row">
                                 <span class="order-info-label">Status:</span>
-                                <span class="order-status-badge ${statusClass}">${order.status || 'Pending'}</span>
+                                <span class="order-status-badge ${statusClass}">${order.status}</span>
                             </div>
-                            ${order.tracking_number ? `
-                            <div class="order-info-row">
-                                <span class="order-info-label">Resi:</span>
-                                <span>${order.tracking_number}</span>
-                            </div>` : ''}
-                            ${order.items ? `
-                            <div class="order-items-box">
-                                <strong>Item:</strong><br>
-                                ${typeof order.items === 'object' ? JSON.stringify(order.items) : order.items}
-                            </div>` : ''}
-                        </div>
-                    `;
+                        </div>`;
                 });
-
                 contentDiv.innerHTML = html;
-
             } catch (e) {
-                console.error("Script Crash:", e);
-                contentDiv.innerHTML = '<p style="text-align:center; color:#ff6b6b;">Terjadi kesalahan sistem.</p>';
+                contentDiv.innerHTML = `<p class="error-message">Gagal memuat riwayat.</p>`;
             }
         }
 
         function getStatusClass(status) {
             const s = status.toLowerCase();
             if (s.includes('paid') || s.includes('lunas')) return 'status-paid';
-            if (s.includes('ship') || s.includes('dikirim')) return 'status-shipping';
-            if (s.includes('compl') || s.includes('selesai')) return 'status-completed';
+            if (s.includes('ship')) return 'status-shipping';
+            if (s.includes('compl')) return 'status-completed';
             return 'status-pending';
         }
 
         function closeModal(modalId) { document.getElementById(modalId).classList.remove('show'); }
 
+        // --- CART LOGIC ---
         function addToCart(clickedId) {
             const product = productsData.find(p => String(p.id) === String(clickedId));
-            if (!product) { alert("Produk tidak ditemukan."); return; }
+            if (!product) return alert("Produk tidak ditemukan.");
             
             const currentStock = parseInt(product.stock) || 0;
-            if (currentStock <= 0) { alert("Stok habis."); return; }
+            if (currentStock <= 0) return alert("Stok habis.");
 
             let cart = JSON.parse(localStorage.getItem('aurora_cart')) || [];
             const existingItem = cart.find(item => String(item.id) === String(clickedId));
@@ -558,11 +484,10 @@
             if (existingItem) {
                 existingItem.qty++;
             } else {
-                // ✅ PERBAIKAN: Bersihkan harga saat masuk keranjang
                 cart.push({ 
                     ...product, 
                     qty: 1,
-                    // Timpa harga mentah dengan harga bersih (Number)
+                    // PERBAIKAN: Simpan harga yang sudah bersih (Number)
                     price: cleanPrice(product.price) 
                 });
             }
@@ -570,6 +495,7 @@
             localStorage.setItem('aurora_cart', JSON.stringify(cart));
             renderSidebarCart();
 
+            // Efek visual tombol
             const btn = event.target;
             const originalText = btn.innerHTML;
             btn.innerHTML = "✓ Masuk";
@@ -594,7 +520,6 @@
 
         function renderSidebarCart() {
             const cart = JSON.parse(localStorage.getItem('aurora_cart')) || [];
-
             if (cart.length === 0) {
                 sidebarCartList.innerHTML = '<p class="empty-msg">Keranjang masih kosong.</p>';
                 btnCheckoutSidebar.disabled = true;
@@ -603,14 +528,13 @@
 
             let html = '';
             cart.forEach(item => {
-                let itemName = getSafeValue(item, 'name', 'product_name', 'Produk Tanpa Nama');
-                if (!itemName) itemName = getSafeValue(item, 'title', '', 'Produk Tanpa Nama');
+                let itemName = getSafeValue(item, 'name', 'product_name', 'Produk');
                 const imgSrc = getSafeValue(item, 'image_url', 'img', ''); 
                 const formattedPrice = formatPrice(item.price);
 
                 html += `
                     <div class="sidebar-cart-item">
-                        <img src="${imgSrc}" alt="${itemName}" class="sidebar-item-img" onerror="this.src='https://via.placeholder.com/50?text=No+Img'">
+                        <img src="${imgSrc}" class="sidebar-item-img" onerror="this.src='https://via.placeholder.com/50'">
                         <div class="sidebar-item-details">
                             <div class="sidebar-item-name">${itemName}</div>
                             <div class="sidebar-item-meta">
@@ -618,14 +542,14 @@
                                 <span style="color:var(--luxury-gold)">${formatPrice(item.price * item.qty)} π</span>
                             </div>
                         </div>
-                        <button class="sidebar-remove-btn" onclick="removeFromSidebar('${item.id}')" title="Hapus">&times;</button>
+                        <button class="sidebar-remove-btn" onclick="removeFromSidebar('${item.id}')">&times;</button>
                     </div>`;
             });
-
             sidebarCartList.innerHTML = html;
             btnCheckoutSidebar.disabled = false;
         }
 
+        // --- PRODUCT RENDERING ---
         function renderProducts(filter) {
             productGrid.innerHTML = ''; 
             
@@ -644,7 +568,7 @@
                 });
 
             if (!filteredData || filteredData.length === 0) {
-                productGrid.innerHTML = '<p style="text-align:center; width:100%; grid-column: 1/-1; color: #888;">Tidak ada produk di kategori ini.</p>';
+                productGrid.innerHTML = '<p style="text-align:center; width:100%; color:#888;">Tidak ada produk.</p>';
                 return;
             }
 
@@ -655,36 +579,32 @@
                 card.style.opacity = '0'; 
                 card.style.animation = `slideUpFade 0.6s ease forwards ${0.7 + delay}s`;
 
-                let displayName = getSafeValue(product, 'name', '', '');
-                if (!displayName) displayName = getSafeValue(product, 'product_name', '', '');
-                if (!displayName) displayName = getSafeValue(product, 'title', '', '');
-                if (!displayName) displayName = "Tanpa Nama";
+                let displayName = getSafeValue(product, 'name', 'product_name', 'Tanpa Nama');
+                if(!displayName) displayName = getSafeValue(product, 'title', '', 'Tanpa Nama');
 
                 let displayCategory = product[categoryKey] || "Uncategorized";
                 const stockVal = parseInt(product.stock);
                 const isOutOfStock = isNaN(stockVal) || stockVal <= 0;
-                const stockText = isOutOfStock ? "Stok Habis" : `Stok: ${stockVal}`;
-                const stockClass = isOutOfStock ? "product-stock out-of-stock" : "product-stock";
                 const btnDisabled = isOutOfStock ? "disabled" : "";
                 const btnText = isOutOfStock ? "Habis" : "Beli Sekarang";
-                
-                // Gunakan cleanPrice agar tampilan harga kartu produk
                 const displayPrice = formatPrice(product.price);
-                const imgSrc = getSafeValue(product, 'image_url', 'img', 'https://via.placeholder.com/250?text=No+Image');
-                const descText = getSafeValue(product, 'description', 'desc', 'Tidak ada deskripsi.');
+                const imgSrc = getSafeValue(product, 'image_url', 'img', 'https://via.placeholder.com/250');
+                const descText = getSafeValue(product, 'description', 'desc', '-');
                 const productId = String(product.id);
 
                 card.innerHTML = `
                     <div class="category-badge">${displayCategory}</div>
                     <div class="product-img-wrapper">
-                        <img src="${imgSrc}" alt="${displayName}" class="product-img" onerror="this.src='https://via.placeholder.com/250?text=Image+Error'">
+                        <img src="${imgSrc}" class="product-img" onerror="this.src='https://via.placeholder.com/250'">
                     </div>
                     <div class="product-info">
                         <div>
                             <h3 class="product-name">${displayName}</h3>
                             <p class="product-desc" title="${descText}">${descText}</p>
                             <span class="product-price">${displayPrice} π</span>
-                            <div class="${stockClass}">${stockText}</div>
+                            <div class="${isOutOfStock ? 'product-stock out-of-stock' : 'product-stock'}">
+                                ${isOutOfStock ? 'Stok Habis' : 'Stok: ' + stockVal}
+                            </div>
                         </div>
                         <button class="btn-buy" onclick="addToCart('${productId}')" ${btnDisabled}>${btnText}</button>
                     </div>`;
@@ -699,93 +619,51 @@
             renderProducts(category);
         }
 
-        // ==========================================
-        // 4. VALIDASI & CHECKOUT (FIX FINAL)
-        // ==========================================
+        // --- CHECKOUT LOGIC (FIX TOTAL) ---
         function validateAndCheckout() {
-            const userData = localStorage.getItem('aurora_user');
-            if (!userData) {
-                if (confirm("Anda harus login terlebih dahulu. Pindah ke halaman login?")) {
-                    window.location.href = 'login.html';
-                }
+            if (!localStorage.getItem('aurora_user')) {
+                if(confirm("Anda harus login terlebih dahulu.")) window.location.href = 'login.html';
                 return;
             }
 
-            // Ambil keranjang
             const cartItems = JSON.parse(localStorage.getItem('aurora_cart')) || [];
+            if (cartItems.length === 0) return alert("Keranjang kosong.");
 
-            // Cek kosong
-            if (cartItems.length === 0) {
-                alert("Keranjang Anda kosong.");
-                return;
-            }
-
-            // --- LOGIKA HITUNG TOTAL YANG DIMINTA ---
+            // Perbaikan Hitung Total
             let total = 0;
-            let hasInvalidItem = false;
-
             cartItems.forEach(item => {
-                // ✅ PERBAIKAN: Gunakan cleanPrice untuk menghindari NaN/0 pada harga kecil
-                const price = cleanPrice(item.price); 
-                const qty = parseInt(item.qty) || 1; // Fallback qty ke 1 jika null
-
-                // Cek validitas data
-                if (isNaN(price) || price <= 0) {
-                    hasInvalidItem = true;
-                    console.warn("Item bermasalah (Harga Invalid):", item);
-                } else {
-                    total += price * qty;
-                }
+                const price = cleanPrice(item.price);
+                const qty = parseInt(item.qty) || 1;
+                if (price > 0) total += price * qty;
             });
-            // ----------------------------------------
 
-            // Validasi Total
-            if (total <= 0) {
-                alert("Total harga tidak valid atau ada barang dengan harga 0. Silakan periksa keranjang.");
-                return;
-            }
+            if (total <= 0) return alert("Total harga tidak valid.");
 
-            if (hasInvalidItem) {
-                alert("Beberapa barang dalam keranjang memiliki data harga yang tidak valid. Mohon ulangi atau hubungi admin.");
-                return;
-            }
-
-            // =========================================
-            // ✅ PERBAIKAN WAJIB: SIMPAN KE LOCAL STORAGE
-            // =========================================
-            // SIMPAN DATA CHECKOUT
             localStorage.setItem('aurora_checkout', JSON.stringify({
                 items: cartItems,
                 total: total,
                 currency: 'PI'
             }));
 
-            console.log("Checkout dikirim:", { items: cartItems, total });
-
-            // REDIRECT
             window.location.href = 'payment.html';
         }
 
         function toggleDropdown() { dropdownMenu.classList.toggle('show'); }
 
         function handleLogout() {
-            if (confirm("Yakin ingin keluar?")) {
+            if(confirm("Yakin ingin keluar?")) {
                 localStorage.removeItem('aurora_user');
                 localStorage.removeItem('aurora_token');
-                localStorage.removeItem('is_admin');
+                localStorage.removeItem('aurora_cart');
                 window.location.href = 'index.html'; 
             }
         }
 
         window.onclick = function(event) {
             if (!event.target.closest('.user-menu-container')) {
-                if (dropdownMenu.classList.contains('show')) {
-                    dropdownMenu.classList.remove('show');
-                }
+                dropdownMenu.classList.remove('show');
             }
         }
     </script>
-    
-    
 </body>
 </html>
