@@ -50,8 +50,23 @@
         .back-link:hover { color: var(--luxury-gold); }
         
         .store-nav { display: flex; gap: 30px; align-items: center; }
-        .store-nav a { color: #ccc; text-decoration: none; font-size: 0.95rem; transition: color 0.3s; cursor: pointer; }
-        .store-nav a:hover, .store-nav a.active { color: var(--luxury-gold); }
+        
+        /* Tombol Login Guest */
+        .btn-login-guest {
+            padding: 8px 20px;
+            background: transparent;
+            border: 1px solid var(--luxury-gold);
+            color: var(--luxury-gold);
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+        .btn-login-guest:hover {
+            background: var(--luxury-gold);
+            color: #000;
+        }
 
         /* User Menu */
         .user-menu-container { position: relative; }
@@ -223,19 +238,8 @@
             <span>&larr;</span>Back
         </a>
         
-        <div class="store-nav">
-            <div class="user-menu-container">
-                <div class="user-btn" onclick="toggleDropdown()">
-                    <div class="user-avatar" id="userAvatar">?</div>
-                    <span id="userName" style="color: #fff; font-size: 0.9rem;">Loading...</span>
-                    <span style="color: #666;">▼</span>
-                </div>
-                <div class="dropdown-menu" id="dropdownMenu">
-                    <div class="dropdown-item" onclick="openProfileModal()">Profil Saya</div>
-                    <div class="dropdown-item" onclick="openHistoryModal()">Riwayat Pesanan</div>
-                    <div class="dropdown-item logout" onclick="handleLogout()">Logout</div>
-                </div>
-            </div>
+        <div class="store-nav" id="navContainer">
+            <!-- KONTEN DINAMIS: Login Button atau User Menu akan dirender di sini via JS -->
         </div> 
     </header>
 
@@ -315,7 +319,7 @@
 
         // Variabel Global
         let productsData = []; 
-        let currentUser = null;
+        let currentUser = null; // Bisa null (Guest) atau object (User)
         let dbUser = null;
         
         // State Filter & Search
@@ -323,7 +327,7 @@
         let currentSearch = '';
 
         const productGrid = document.getElementById('productGrid');
-        const dropdownMenu = document.getElementById('dropdownMenu');
+        const navContainer = document.getElementById('navContainer'); // Container dinamis
         const sidebarCartList = document.getElementById('sidebarCartList');
         const floatCart = document.getElementById('floating-cart');
         const countSpan = document.getElementById('cart-count-float');
@@ -346,25 +350,50 @@
         }
 
         // ==========================================
-        // 2. SYNC USER KE SUPABASE
+        // 2. UPDATE UI HEADER (LOGIN / GUEST)
+        // ==========================================
+        function renderHeader() {
+            if (currentUser) {
+                // Jika SUDAH LOGIN: Tampilkan Avatar & Dropdown
+                navContainer.innerHTML = `
+                    <div class="user-menu-container">
+                        <div class="user-btn" onclick="toggleDropdown()">
+                            <div class="user-avatar">${currentUser.username.charAt(0).toUpperCase()}</div>
+                            <span style="color: #fff; font-size: 0.9rem;">${currentUser.username}</span>
+                            <span style="color: #666;">▼</span>
+                        </div>
+                        <div class="dropdown-menu" id="dropdownMenu">
+                            <div class="dropdown-item" onclick="openProfileModal()">Profil Saya</div>
+                            <div class="dropdown-item" onclick="openHistoryModal()">Riwayat Pesanan</div>
+                            <div class="dropdown-item logout" onclick="handleLogout()">Logout</div>
+                        </div>
+                    </div>
+                `;
+                // Sync data user ke background jika perlu
+                syncUserToSupabase(currentUser);
+            } else {
+                // Jika BELUM LOGIN: Tampilkan Tombol Login
+                navContainer.innerHTML = `
+                    <a href="login.html" class="btn-login-guest">Login</a>
+                `;
+            }
+        }
+
+        // ==========================================
+        // 3. SYNC USER KE SUPABASE (Opsional/Background)
         // ==========================================
         async function syncUserToSupabase(piUser) {
             try {
-                console.log("Sinkronisasi user ke database dimulai...");
                 const { data: existingUser, error } = await supabaseClient
                     .from('users')
                     .select('*')
                     .eq('pi_uid', piUser.uid)
                     .single();
 
-                if (error && error.code !== 'PGRST116') {
-                    console.error("Error cek user:", error);
-                    return null;
-                }
+                if (error && error.code !== 'PGRST116') return; // Abaikan error jika tidak ketemu
 
                 if (existingUser) {
                     dbUser = existingUser;
-                    return existingUser;
                 } else {
                     const { data: newUser, error: insertError } = await supabaseClient
                         .from('users')
@@ -377,37 +406,30 @@
                         }])
                         .select()
                         .single();
-
-                    if (insertError) throw insertError;
-                    dbUser = newUser;
-                    return newUser;
+                    if (!insertError) dbUser = newUser;
                 }
             } catch (e) {
                 console.error("Sync user error:", e);
-                return null;
             }
         }
 
         // ==========================================
-        // 3. INISIALISASI
+        // 4. INISIALISASI (PUBLIC ACCESS)
         // ==========================================
         async function initApp() {
             const localUserStr = localStorage.getItem('aurora_user');
             
+            // Cek apakah ada sesi login, tapi JANGAN paksa redirect jika tidak ada
             if (localUserStr) {
-                currentUser = JSON.parse(localUserStr);
-                updateUserUI(currentUser);
-                syncUserToSupabase(currentUser);
-            } else {
-                alert("Sesi tidak ditemukan. Silakan login.");
-                window.location.href = 'login.html';
+                try {
+                    currentUser = JSON.parse(localUserStr);
+                } catch (e) {
+                    localStorage.removeItem('aurora_user'); // Corrupt data
+                }
             }
-        }
-
-        function updateUserUI(user) {
-            const username = user.username || "Pioneer";
-            document.getElementById('userName').innerText = username;
-            document.getElementById('userAvatar').innerText = username.charAt(0).toUpperCase();
+            
+            // Render Header sesuai status login
+            renderHeader();
         }
 
         async function fetchProducts() {
@@ -436,12 +458,12 @@
         }
 
         window.addEventListener('load', async () => {
-            await initApp();
-            await fetchProducts(); 
+            await initApp(); // Cek user (Guest/Login)
+            await fetchProducts(); // Load produk (Public)
             if(productsData && productsData.length > 0) {
-                renderProducts(); // Render awal
+                renderProducts(); 
             }
-            renderSidebarCart(); 
+            renderSidebarCart(); // Load keranjang (Guest bisa simpan di localstorage)
         });
 
         // Helper
@@ -453,9 +475,9 @@
 
         // --- MODALS & UI LOGIC ---
         function openProfileModal() {
+            if (!currentUser) return; // Tambahan keamanan
             const contentDiv = document.getElementById('profileContent');
             const modal = document.getElementById('profileModal');
-            if (!currentUser) return alert("Anda belum login.");
             modal.classList.add('show');
 
             if (dbUser) {
@@ -474,12 +496,11 @@
         }
 
         async function openHistoryModal() {
+            if (!currentUser) return; // Tambahan keamanan
             const contentDiv = document.getElementById('historyContent');
             const modal = document.getElementById('historyModal');
             contentDiv.innerHTML = '<p class="loading-text">Memuat riwayat...</p>';
             modal.classList.add('show');
-
-            if (!currentUser) return;
 
             try {
                 const { data: orders, error } = await supabaseClient
@@ -534,25 +555,21 @@
         // ==========================================
         // SEARCH & FILTER LOGIC
         // ==========================================
-        
-        // Handler input search
         function handleSearch(keyword) {
             currentSearch = keyword.toLowerCase();
             renderProducts();
         }
 
-        // Handler klik tombol kategori
         function filterCategory(category, btnElement) {
             currentCategory = category;
             
-            // Update UI tombol active
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
             if(btnElement) btnElement.classList.add('active');
             
             renderProducts();
         }
 
-        // --- PRODUCT RENDERING (DIPERBARUI) ---
+        // --- PRODUCT RENDERING ---
         function renderProducts() {
             productGrid.innerHTML = ''; 
             
@@ -563,7 +580,6 @@
                 else if (sample.type) categoryKey = 'type';
             }
 
-            // LOGIKA FILTER GABUNGAN (KATEGORI + SEARCH)
             const filteredData = productsData.filter(p => {
                 // 1. Filter Kategori
                 let isCategoryMatch = false;
@@ -574,12 +590,11 @@
                     if (pCat === currentCategory.toLowerCase()) isCategoryMatch = true;
                 }
 
-                // 2. Filter Search (Nama)
+                // 2. Filter Search
                 let isSearchMatch = true;
                 if (currentSearch && currentSearch.length > 0) {
                     const name = getSafeValue(p, 'name', 'product_name', '').toLowerCase();
                     const desc = getSafeValue(p, 'description', 'desc', '').toLowerCase();
-                    // Cek apakah keyword ada di NAMA atau DESKRIPSI
                     if (!name.includes(currentSearch) && !desc.includes(currentSearch)) {
                         isSearchMatch = false;
                     }
@@ -589,7 +604,7 @@
             });
 
             if (!filteredData || filteredData.length === 0) {
-                productGrid.innerHTML = '<p style="text-align:center; width:100%; color:#888; padding: 20px;">Tidak ada produk yang cocok dengan pencarian.</p>';
+                productGrid.innerHTML = '<p style="text-align:center; width:100%; color:#888; padding: 20px;">Tidak ada produk yang cocok.</p>';
                 return;
             }
 
@@ -598,7 +613,7 @@
                 const card = document.createElement('div');
                 card.className = 'product-card';
                 card.style.opacity = 0; 
-                card.style.animation = `slideUpFade 0.6s ease forwards ${0.3 + delay}s`; // Sedikit lebih cepat animasi saat search
+                card.style.animation = `slideUpFade 0.6s ease forwards ${0.3 + delay}s`;
 
                 let displayName = getSafeValue(product, 'name', 'product_name', 'Tanpa Nama');
                 if(!displayName) displayName = getSafeValue(product, 'title', '', 'Tanpa Nama');
@@ -650,7 +665,7 @@
             }
         }
 
-        // --- CART LOGIC ---
+        // --- CART LOGIC (Guest bisa masukin keranjang) ---
         function addToCart(clickedId) {
             const product = productsData.find(p => String(p.id) === String(clickedId));
             if (!product) return alert("Produk tidak ditemukan.");
@@ -663,7 +678,7 @@
 
             if (existingItem) {
                 if ((existingItem.qty + 1) > currentStock) {
-                    alert("Stok tidak mencukupi untuk menambah jumlah.");
+                    alert("Stok tidak mencukupi.");
                     return;
                 }
                 existingItem.qty++;
@@ -678,7 +693,7 @@
             localStorage.setItem('aurora_cart', JSON.stringify(cart));
             renderSidebarCart();
 
-            // Efek visual tombol
+            // Efek visual
             const btn = event.target;
             const originalText = btn.innerHTML;
             btn.innerHTML = "✓ Masuk";
@@ -754,20 +769,26 @@
         }
 
         // ==========================================
-        // CHECKOUT LOGIC
+        // CHECKOUT LOGIC (WAJIB LOGIN DISINI)
         // ==========================================
         function proceedToCheckout() {
+            // 1. Cek Apakah User Login?
             if (!localStorage.getItem('aurora_user')) {
-                if(confirm("Anda harus login terlebih dahulu.")) window.location.href = 'login.html';
+                // Jika belum, tampilkan konfirmasi
+                const confirmLogin = confirm("Anda harus login untuk menyelesaikan pembayaran. Ingin lanjut ke halaman login?");
+                if (confirmLogin) {
+                    window.location.href = 'login.html';
+                }
                 return;
             }
 
+            // 2. Jika sudah login, lanjut validasi keranjang
             const cartItems = JSON.parse(localStorage.getItem('aurora_cart')) || [];
             
             for (let item of cartItems) {
                 const dbProduct = productsData.find(p => String(p.id) === String(item.id));
                 if (!dbProduct || parseInt(dbProduct.stock) <= 0) {
-                    alert(`Maaf, stok untuk ${item.name} telah habis. Mohon periksa keranjang Anda.`);
+                    alert(`Maaf, stok untuk ${item.name} telah habis.`);
                     renderSidebarCart(); 
                     return; 
                 }
@@ -793,20 +814,27 @@
             window.location.href = 'payment.html';
         }
 
-        function toggleDropdown() { dropdownMenu.classList.toggle('show'); }
+        function toggleDropdown() { 
+            const menu = document.getElementById('dropdownMenu');
+            if(menu) menu.classList.toggle('show'); 
+        }
 
         function handleLogout() {
             if(confirm("Yakin ingin keluar?")) {
                 localStorage.removeItem('aurora_user');
                 localStorage.removeItem('aurora_token');
-                localStorage.removeItem('aurora_cart');
-                window.location.href = 'index.html'; 
+                // Jangan hapus keranjang agar user tetap punya item jika nanti login lagi (opsional)
+                // localStorage.removeItem('aurora_cart'); 
+                
+                // Reload halaman untuk update UI ke Guest
+                window.location.reload(); 
             }
         }
 
         window.onclick = function(event) {
             if (!event.target.closest('.user-menu-container')) {
-                dropdownMenu.classList.remove('show');
+                const menu = document.getElementById('dropdownMenu');
+                if(menu) menu.classList.remove('show');
             }
         }
     </script>
