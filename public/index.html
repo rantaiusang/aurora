@@ -538,12 +538,12 @@
         <p>&copy; 2026 Aurora Store. All rights reserved.</p>
     </footer>
 
-        <!-- SCRIPT ANIMASI SCROLL & LOGIN GUARD -->
+        
+        <!-- SCRIPT ANIMASI SCROLL & SESSION HANDLER -->
     <script>
-        // --- 1. CEK LOGIN (PENTING!) ---
-        // Kita jalankan ini SEKARANG juga sebelum halaman ditampilkan sepenuhnya
-        (function checkLoginSession() {
-            // Kita baca key 'pi_user' yang disimpan oleh file login.html Anda sebelumnya
+        // --- 1. FUNGSI CEK SESI & UPDATE TOMBOL (PENTING!) ---
+        // Kita jalankan ini otomatis saat halaman dimuat
+        (function updateHeaderBasedOnSession() {
             const userSession = localStorage.getItem('pi_user');
             const btnLogin = document.querySelector('.btn-header');
 
@@ -553,42 +553,54 @@
                     const user = JSON.parse(userSession);
                     console.log("User aktif:", user.username);
 
-                    // Ubah Tombol "Login" menjadi Profil / Logout
+                    // Ubah Tombol Header jadi Username
                     if (btnLogin) {
-                        btnLogin.innerText = user.username; // Ganti teks jadi Username
-                        btnLogin.href = "#"; // Bisa diarahkan ke profile.html nanti
+                        btnLogin.innerText = user.username;
+                        btnLogin.href = "#"; // Link kosong
+                        
+                        // Ubah Style jadi Outline Gold
                         btnLogin.style.background = "transparent";
                         btnLogin.style.border = "1px solid var(--luxury-gold)";
                         btnLogin.style.color = "var(--luxury-gold)";
-                        
-                        // Tambahkan event listener untuk Logout (Opsional)
+
+                        // --- LOGIKA LOGOUT (TIDAK DIREDIRECT KE LOGIN) ---
                         btnLogin.onclick = function(e) {
-                            e.preventDefault();
-                            if(confirm("Apakah Anda ingin logout?")) {
+                            e.preventDefault(); // Mencegah link naik ke atas
+                            
+                            if(confirm("Apakah Anda yakin ingin keluar?")) {
+                                // 1. Hapus data sesi
                                 localStorage.removeItem('pi_user');
-                                window.location.reload();
+                                
+                                // 2. Refresh halaman agar tombol kembali jadi "Login"
+                                // PERHATIAN: Kita TIDAK menggunakan window.location.href = "login.html"
+                                window.location.reload(); 
                             }
                         };
                     }
-                    // Biarkan halaman tetap terbuka (tidak di-redirect)
+
                 } catch (e) {
-                    console.error("Data session rusak, redirect ke login...");
-                    window.location.href = "login.html?retry=true";
+                    console.error("Data session rusak, mereset...", e);
+                    localStorage.removeItem('pi_user'); // Hapus data rusak
+                    // Tidak perlu redirect, biarkan user tetap di landing page
                 }
             } else {
-                // Jika TIDAK ADA data user (Belum Login)
-                console.warn("User belum login. Mengarahkan ke halaman login...");
+                // Jika TIDAK ADA data (Belum Login)
+                // Halaman TETAP DITAMPILKAN (Landing Page Publik)
                 
-                // Opsional: Jika Anda ingin halaman ini BISA dilihat publik (Landing Page),
-                // maka HAPUS baris window.location.href di bawah ini.
-                // Tapi jika ingin halaman ini HANYA untuk member yang sudah login, biarkan baris ini aktif.
-                
-                // Saya asumsikan ini halaman utama member, jadi kita lempar ke login jika belum punya sesi.
-                window.location.href = "login.html?retry=true"; 
+                if (btnLogin) {
+                    // Pastikan tombol kembali ke style awal (Login)
+                    btnLogin.innerText = "Login";
+                    btnLogin.href = "login.html"; // Arahkan ke halaman login jika diklik
+                    
+                    // Reset Style ke Default (Gold Solid)
+                    btnLogin.style.background = "var(--luxury-gold)";
+                    btnLogin.style.border = "none";
+                    btnLogin.style.color = "#000";
+                }
             }
         })();
 
-        // --- 2. FUNGSI ANIMASI SCROLL (Kode lama Anda) ---
+        // --- 2. FUNGSI ANIMASI SCROLL ---
         window.onload = function() {
             window.scrollTo(0, 0);
             initScrollAnimations();
@@ -605,7 +617,6 @@
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         entry.target.classList.add('visible');
-                        // observer.unobserve(entry.target); 
                     }
                 });
             }, observerOptions);
@@ -614,11 +625,13 @@
             fadeElements.forEach(el => observer.observe(el));
         }
 
-        // --- 3. TOMBOL LOGIN MOBILE & CACHE HANDLING (Kode lama Anda) ---
+        // --- 3. CACHE HANDLING MOBILE ---
         window.addEventListener('pageshow', function(event) {
             if (event.persisted) {
                 window.scrollTo(0, 0);
                 initScrollAnimations();
+                // Jalankan ulang cek sesi saat navigasi balik (back/forward)
+                updateHeaderBasedOnSession();
             }
         });
     </script>
