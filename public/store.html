@@ -343,10 +343,19 @@
             return isNaN(val) || val < 0 ? 0 : val;
         }
 
-        function formatPrice(price) {
+                function formatPrice(price) {
             let numPrice = cleanPrice(price);
-            if (numPrice === 0) return "0.00";
-            return numPrice < 0.01 ? numPrice.toFixed(7) : numPrice.toFixed(2);
+            
+            // Cek jika harga 0, tampilkan tanpa desimal
+            if (numPrice === 0) return "0";
+            
+            // Jika angka sangat kecil (Pi network), pakai 7 desimal
+            if (numPrice < 0.01) return numPrice.toFixed(7);
+            
+            // LOGIKA PERBAIKAN:
+            // Jika angka bulat (contoh: 450), tampilkan "450" (tanpa .00)
+            // Jika angka pecahan (contoh: 450.5), tampilkan "450.50"
+            return Number.isInteger(numPrice) ? numPrice.toString() : numPrice.toFixed(2);
         }
 
         // ==========================================
