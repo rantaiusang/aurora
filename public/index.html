@@ -538,15 +538,62 @@
         <p>&copy; 2026 Aurora Store. All rights reserved.</p>
     </footer>
 
-    <!-- SCRIPT ANIMASI SCROLL -->
+        <!-- SCRIPT ANIMASI SCROLL & LOGIN GUARD -->
     <script>
-        // 1. Pastikan scroll reset saat load
+        // --- 1. CEK LOGIN (PENTING!) ---
+        // Kita jalankan ini SEKARANG juga sebelum halaman ditampilkan sepenuhnya
+        (function checkLoginSession() {
+            // Kita baca key 'pi_user' yang disimpan oleh file login.html Anda sebelumnya
+            const userSession = localStorage.getItem('pi_user');
+            const btnLogin = document.querySelector('.btn-header');
+
+            if (userSession) {
+                // Jika ADA data user (Sudah Login)
+                try {
+                    const user = JSON.parse(userSession);
+                    console.log("User aktif:", user.username);
+
+                    // Ubah Tombol "Login" menjadi Profil / Logout
+                    if (btnLogin) {
+                        btnLogin.innerText = user.username; // Ganti teks jadi Username
+                        btnLogin.href = "#"; // Bisa diarahkan ke profile.html nanti
+                        btnLogin.style.background = "transparent";
+                        btnLogin.style.border = "1px solid var(--luxury-gold)";
+                        btnLogin.style.color = "var(--luxury-gold)";
+                        
+                        // Tambahkan event listener untuk Logout (Opsional)
+                        btnLogin.onclick = function(e) {
+                            e.preventDefault();
+                            if(confirm("Apakah Anda ingin logout?")) {
+                                localStorage.removeItem('pi_user');
+                                window.location.reload();
+                            }
+                        };
+                    }
+                    // Biarkan halaman tetap terbuka (tidak di-redirect)
+                } catch (e) {
+                    console.error("Data session rusak, redirect ke login...");
+                    window.location.href = "login.html?retry=true";
+                }
+            } else {
+                // Jika TIDAK ADA data user (Belum Login)
+                console.warn("User belum login. Mengarahkan ke halaman login...");
+                
+                // Opsional: Jika Anda ingin halaman ini BISA dilihat publik (Landing Page),
+                // maka HAPUS baris window.location.href di bawah ini.
+                // Tapi jika ingin halaman ini HANYA untuk member yang sudah login, biarkan baris ini aktif.
+                
+                // Saya asumsikan ini halaman utama member, jadi kita lempar ke login jika belum punya sesi.
+                window.location.href = "login.html?retry=true"; 
+            }
+        })();
+
+        // --- 2. FUNGSI ANIMASI SCROLL (Kode lama Anda) ---
         window.onload = function() {
             window.scrollTo(0, 0);
             initScrollAnimations();
         };
 
-        // 2. Fungsi Intersection Observer untuk animasi Fade In saat scroll
         function initScrollAnimations() {
             const observerOptions = {
                 root: null, 
@@ -558,7 +605,6 @@
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         entry.target.classList.add('visible');
-                        // Opsional: Hentikan observasi setelah muncul sekali
                         // observer.unobserve(entry.target); 
                     }
                 });
@@ -568,7 +614,7 @@
             fadeElements.forEach(el => observer.observe(el));
         }
 
-        // Tambahan untuk tombol login mobile & handling cache browser
+        // --- 3. TOMBOL LOGIN MOBILE & CACHE HANDLING (Kode lama Anda) ---
         window.addEventListener('pageshow', function(event) {
             if (event.persisted) {
                 window.scrollTo(0, 0);
