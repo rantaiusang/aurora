@@ -152,14 +152,29 @@
         .sidebar-remove-btn { background: none; border: none; color: #666; font-size: 1.2rem; cursor: pointer; line-height: 1; }
         .sidebar-remove-btn:hover { color: #ff6b6b; }
         .cart-footer { margin-top: auto; flex-shrink: 0; }
-        .btn-checkout { width: 100%; padding: 20px; background: linear-gradient(135deg, var(--luxury-gold), #b8860b); color: #000; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; display: flex; justify-content: center; align-items: center; gap: 10px; }
-        .btn-checkout span { font-size: 0.8rem; text-transform: none; font-weight: 400; color: rgba(0,0,0,0.6); }
-        .btn-checkout:hover { background: #ffed4a; transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215, 0, 0.3); }
-        .btn-checkout:disabled { background: #2a2a2a; color: #666; cursor: not-allowed; transform: none; box-shadow: none; border: 1px solid #333; }
+        /* Tombol di Sidebar disembunyikan atau dijadikan info saja, karena Checkout pindah ke Floating */
+        .sidebar-info-text { font-size: 0.8rem; color: #888; text-align: center; margin-top: 10px; font-style: italic; }
+        
         .empty-msg { text-align: center; color: #666; font-size: 0.9rem; margin-top: 20px; font-style: italic; }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity:1; } }
         @keyframes slideUpFade { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* FLOATING CART STYLE */
+        #floating-cart { 
+            display: none; /* Hidden by default */
+            align-items: center; 
+            gap: 10px;
+        }
+        
+        /* Animation for Floating Cart appearance */
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        #floating-cart.show-anim {
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
 
         @media (max-width: 1024px) {
             .main-layout { flex-direction: column-reverse; }
@@ -213,7 +228,7 @@
             </div>
         </div>
 
-        <!-- KANAN: RINGKASAN KERANJANG -->
+        <!-- KANAN: RINGKASAN KERANJANG (SIDEBAR) -->
         <div class="cart-section">
             <div class="cart-sidebar page-entry delay-3">
                 <div class="sidebar-title">Keranjang</div>
@@ -221,9 +236,8 @@
                     <p class="empty-msg">Keranjang masih kosong.</p>
                 </div>
                 <div class="cart-footer">
-                    <button class="btn-checkout" id="btnCheckoutSidebar" onclick="validateAndCheckout()" disabled>
-                        Checkout
-                    </button>
+                    <!-- Hapus tombol Checkout dari sini, ganti dengan info -->
+                    <p class="sidebar-info-text">Gunakan tombol melayang di pojok kanan bawah untuk Checkout.</p>
                 </div>
             </div>
         </div>
@@ -249,27 +263,31 @@
         </div>
     </div>
 
+    <!-- ========================================== -->
+    <!-- TOMBOl KERANJANG MELAYANG (FLOATING CART) -->
+    <!-- ========================================== -->
+    <div id="floating-cart" onclick="proceedToCheckout()" style="position: fixed; bottom: 30px; right: 30px; background: var(--luxury-gold); color: #000; padding: 15px 25px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); cursor: pointer; z-index: 999; font-weight: bold; border: 2px solid rgba(255,255,255,0.2); transition: transform 0.2s;">
+        🛒 <span id="cart-count-float">0</span> Item - Check Out (π)
+    </div>
+
     <script>
         // ==========================================
         // 1. KONFIGURASI SUPABASE
         // ==========================================
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
-        
-        // JIKA PRODUK TIDAK TAMPIL, GANTI KEY INI DENGAN 'SERVICE_ROLE' KEY DARI DASHBOARD SUPABASE ANDA
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
-        
-        // PERBAIKAN: Panggil createClient langsung dari objek 'supabase' global
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // Variabel Global
-        let productsData = []; // Menyimpan data terbaru dari database
+        let productsData = []; 
         let currentUser = null;
         let dbUser = null;
 
         const productGrid = document.getElementById('productGrid');
         const dropdownMenu = document.getElementById('dropdownMenu');
         const sidebarCartList = document.getElementById('sidebarCartList');
-        const btnCheckoutSidebar = document.getElementById('btnCheckoutSidebar');
+        const floatCart = document.getElementById('floating-cart');
+        const countSpan = document.getElementById('cart-count-float');
 
         // ==========================================
         // 🔧 FUNGSI BERSIH HARGA
@@ -340,7 +358,6 @@
             if (localUserStr) {
                 currentUser = JSON.parse(localUserStr);
                 updateUserUI(currentUser);
-                // Sinkronisasi di background
                 syncUserToSupabase(currentUser);
             } else {
                 alert("Sesi tidak ditemukan. Silakan login.");
@@ -356,7 +373,6 @@
 
         async function fetchProducts() {
             try {
-                // PASTIKAN NAMA TABEL DI SINI SAMA DENGAN DI DASHBOARD SUPABASE
                 const { data, error } = await supabaseClient
                     .from('productspi') 
                     .select('*')
@@ -364,12 +380,9 @@
 
                 if (error) throw error;
                 
-                // Debugging: Cek data yang diterima
                 console.log("Data Produk Diterima:", data);
-
-                productsData = data || []; // Handle null/undefined
+                productsData = data || []; 
                 
-                // Cek jika data kosong tapi tidak error
                 if (productsData.length === 0) {
                      productGrid.innerHTML = `<div class="empty-msg" style="grid-column: 1/-1;">Tidak ada produk di database.</div>`;
                 }
@@ -377,7 +390,6 @@
                 return productsData;
             } catch (e) {
                 console.error("Error Fetch:", e);
-                // Tampilkan error di alert agar developer tahu
                 alert("Gagal memuat produk: " + e.message + "\n\nCek: 1. Nama Tabel 'productspi' 2. RLS (Matikan RLS di Supabase) 3. Koneksi Internet");
                 productGrid.innerHTML = `<div class="error-message"><p>Error: ${e.message}</p></div>`;
                 return [];
@@ -386,11 +398,11 @@
 
         window.addEventListener('load', async () => {
             await initApp();
-            await fetchProducts(); // Ambil data stok terbaru
+            await fetchProducts(); 
             if(productsData && productsData.length > 0) {
                 renderProducts('all');
             }
-            renderSidebarCart();
+            renderSidebarCart(); // Init Cart UI (including Floating Cart)
         });
 
         // Helper
@@ -480,6 +492,23 @@
 
         function closeModal(modalId) { document.getElementById(modalId).classList.remove('show'); }
 
+        // ==========================================
+        // FLOATING CART LOGIC
+        // ==========================================
+        function updateFloatingCart(count) {
+            if (count > 0) {
+                floatCart.style.display = 'flex';
+                // Tambahkan kelas animasi jika pertama kali muncul
+                if (!floatCart.classList.contains('show-anim')) {
+                    floatCart.classList.add('show-anim');
+                }
+                countSpan.innerText = count;
+            } else {
+                floatCart.style.display = 'none';
+                floatCart.classList.remove('show-anim');
+            }
+        }
+
         // --- CART LOGIC ---
         function addToCart(clickedId) {
             const product = productsData.find(p => String(p.id) === String(clickedId));
@@ -492,7 +521,6 @@
             const existingItem = cart.find(item => String(item.id) === String(clickedId));
 
             if (existingItem) {
-                // Cek apakah penambahan qty melebihi stok
                 if ((existingItem.qty + 1) > currentStock) {
                     alert("Stok tidak mencukupi untuk menambah jumlah.");
                     return;
@@ -532,24 +560,22 @@
             }
         }
 
-        // ==========================================
-        // PERUBAHAN 2: LOGIKA STOK KERANJANG (FIX STOK 0)
-        // ==========================================
         function renderSidebarCart() {
             const cart = JSON.parse(localStorage.getItem('aurora_cart')) || [];
             
             if (cart.length === 0) {
                 sidebarCartList.innerHTML = '<p class="empty-msg">Keranjang masih kosong.</p>';
-                btnCheckoutSidebar.disabled = true;
+                updateFloatingCart(0); // Hide Floating Cart
                 return;
             }
 
             let html = '';
-            let isCartValid = true; // Flag untuk mengecek apakah keranjang valid
+            let isCartValid = true; 
+            let totalItems = 0; // Hitung total item untuk floating cart
 
             cart.forEach(item => {
-                // Cari data produk terbaru dari array global 'productsData'
-                // Ini penting untuk mengecek stok REAL-TIME
+                totalItems += item.qty; // Akumulasi qty
+
                 const latestProduct = productsData.find(p => String(p.id) === String(item.id));
                 let currentStock = 0;
                 let isOutOfStock = false;
@@ -558,21 +584,15 @@
                     currentStock = parseInt(latestProduct.stock) || 0;
                     isOutOfStock = currentStock <= 0;
                 } else {
-                    // Jika produk tidak ditemukan di database (mungkin dihapus), anggap habis
                     isOutOfStock = true;
                 }
 
-                // Jika ada item di keranjang yang stoknya 0, tandai keranjang tidak valid
-                if (isOutOfStock) {
-                    isCartValid = false;
-                }
+                if (isOutOfStock) isCartValid = false;
 
                 let itemName = getSafeValue(item, 'name', 'product_name', 'Produk');
                 const imgSrc = getSafeValue(item, 'image_url', 'img', ''); 
                 const formattedPrice = formatPrice(item.price);
-
-                // Tampilkan peringatan jika stok habis di sidebar
-                let stockWarning = isOutOfStock ? '<span style="color:#ff6b6b; font-size:0.7rem; display:block;">(Stok Habis)</span>' : '';
+                let stockWarning = isOutOfStock ? '<span style="color:#ff4d4d; font-size:0.7rem; display:block;">(Stok Habis)</span>' : '';
 
                 html += `
                     <div class="sidebar-cart-item">
@@ -590,14 +610,8 @@
 
             sidebarCartList.innerHTML = html;
 
-            // PERBAIKAN: Disable tombol checkout jika ada barang yang stoknya 0
-            if (!isCartValid) {
-                btnCheckoutSidebar.disabled = true;
-                btnCheckoutSidebar.innerText = "Stok Tidak Tersedia";
-            } else {
-                btnCheckoutSidebar.disabled = false;
-                btnCheckoutSidebar.innerText = "Checkout";
-            }
+            // Update Floating Cart UI
+            updateFloatingCart(totalItems);
         }
 
         // --- PRODUCT RENDERING ---
@@ -670,8 +684,10 @@
             renderProducts(category);
         }
 
-        // --- CHECKOUT LOGIC ---
-        function validateAndCheckout() {
+        // ==========================================
+        // CHECKOUT LOGIC (MENGARAHKAN KE PAYMENT)
+        // ==========================================
+        function proceedToCheckout() {
             if (!localStorage.getItem('aurora_user')) {
                 if(confirm("Anda harus login terlebih dahulu.")) window.location.href = 'login.html';
                 return;
@@ -680,13 +696,12 @@
             // Validasi ulang stok sebelum redirect
             const cartItems = JSON.parse(localStorage.getItem('aurora_cart')) || [];
             
-            // Cek lagi stok real-time dari database
             for (let item of cartItems) {
                 const dbProduct = productsData.find(p => String(p.id) === String(item.id));
                 if (!dbProduct || parseInt(dbProduct.stock) <= 0) {
                     alert(`Maaf, stok untuk ${item.name} telah habis. Mohon periksa keranjang Anda.`);
-                    renderSidebarCart(); // Refresh tampilan keranjang
-                    return; // Batalkan checkout
+                    renderSidebarCart(); 
+                    return; 
                 }
             }
 
@@ -701,6 +716,7 @@
 
             if (total <= 0) return alert("Total harga tidak valid.");
 
+            // SIMPAN DATA KHUSUS CHECKOUT
             localStorage.setItem('aurora_checkout', JSON.stringify({
                 items: cartItems,
                 total: total,
