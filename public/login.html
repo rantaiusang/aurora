@@ -223,150 +223,87 @@
 
     <!-- SCRIPT UTAMA (SESUAI PERBAIKAN) -->
     <script>
-        // --- 1. CONFIG FALLBACK ---
-        // Kita cek apakah pi-config.js terload. Jika tidak, gunakan default Sandbox.
-        if (typeof window.APP_CONFIG === 'undefined') {
-            console.warn("pi-config.js tidak ditemukan. Menggunakan default Sandbox Mode.");
-            window.APP_CONFIG = { IS_SANDBOX: true };
+    // 1. Helper untuk menampilkan log di layar
+    function logDebug(msg, isError = false) {
+        console.log(msg);
+        const debugBox = document.getElementById('debug-log');
+        if(debugBox) {
+            debugBox.style.display = 'block';
+            const p = document.createElement('p');
+            if(isError) p.style.color = '#ef4444';
+            p.innerHTML = `> ${msg}`;
+            debugBox.appendChild(p);
+            debugBox.scrollTop = debugBox.scrollHeight;
         }
+    }
 
-        // --- 2. HELPER FUNCTIONS ---
-        function logDebug(msg, isError = false) {
-            console.log(msg);
-            const debugBox = document.getElementById('debug-log');
-            if(debugBox) {
-                debugBox.style.display = 'block';
-                const p = document.createElement('p');
-                if(isError) p.className = 'error-log';
-                p.innerHTML = `> ${msg}`;
-                debugBox.appendChild(p);
-                debugBox.scrollTop = debugBox.scrollHeight;
+    // 2. Fungsi Utama Login
+    async function runLoginProcess() {
+        const ui = {
+            title: document.getElementById('status-title'),
+            desc: document.getElementById('status-desc'),
+            spinner: document.getElementById('spinnerAnim'),
+            errorBox: document.getElementById('error-box'),
+            errorMsg: document.getElementById('error-msg'),
+            btnRetry: document.getElementById('btn-retry')
+        };
+
+        try {
+            logDebug("Cek Environment...");
+            if (typeof Pi === 'undefined') {
+                throw new Error("Pi SDK tidak terdeteksi. Pastikan buka di Pi Browser.");
             }
-        }
 
-        // --- 3. LOGIC UTAMA ---
-        async function runLoginProcess() {
-            const ui = {
-                title: document.getElementById('status-title'),
-                desc: document.getElementById('status-desc'),
-                spinner: document.getElementById('spinnerAnim'),
-                errorBox: document.getElementById('error-box'),
-                errorMsg: document.getElementById('error-msg'),
-                btnRetry: document.getElementById('btn-retry'),
-                btnSimulate: document.getElementById('btn-simulate'),
-                piIcon: document.getElementById('piIcon')
+            // Inisialisasi SDK
+            logDebug("Memulai Pi.init() dengan version '2.0'...");
+            // Sandbox harus TRUE jika tes di sandbox, FALSE jika sudah mainnet
+            const isSandbox = (typeof window.APP_CONFIG !== 'undefined') ? window.APP_CONFIG.sandbox : true;
+            await Pi.init({ version: "2.0", sandbox: isSandbox }); 
+            logDebug("Pi.init() Sukses.");
+
+            // Meminta izin akses (Autentikasi)
+            ui.title.innerText = "Autentikasi...";
+            ui.desc.innerText = "Mohon izinkan akses akun Pi Anda di jendela yang muncul.";
+            logDebug("Meminta izin akses profil (username, payments)...");
+
+            const scopes = ['username', 'payments'];
+
+            // Callback wajib: Menangani pembayaran yang belum selesai
+            const onIncompletePaymentFound = (payment) => {
+                logDebug("Info: Ada pembayaran tertunda ID: " + payment.identifier);
             };
 
-            // Reset UI
-            ui.spinner.style.display = 'block';
-            ui.piIcon.style.display = 'block';
-            ui.title.innerText = "Menghubungkan...";
-            ui.desc.innerText = "Menyiapkan koneksi aman ke Pi Network";
-            ui.errorBox.style.display = 'none';
-            ui.btnRetry.style.display = 'none';
-            ui.btnSimulate.style.display = 'none';
+            // EKSEKUSI PROSES LOGIN (Memunculkan Popup Pi)
+            const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
+            
+            logDebug("Autentikasi Berhasil!");
+            logDebug("User: " + auth.user.username);
 
-            try {
-                // 1. Cek Environment
-                logDebug("Cek Environment...");
-                if (typeof Pi === 'undefined') {
-                    throw new Error("SDK_NOT_FOUND");
-                }
+            // Tampilan Sukses
+            ui.title.innerText = "Berhasil!";
+            ui.desc.innerText = "Selamat datang, " + auth.user.username;
+            ui.spinner.style.borderTopColor = "#10b981"; // Berubah hijau
+            
+            // Simpan data ke memori browser
+            localStorage.setItem('pi_user', JSON.stringify(auth.user));
 
-                // 2. Init SDK
-                logDebug("Memulai Pi.init() dengan version '2.0'...");
-                await Pi.init({ 
-                    version: "2.0", // String version wajib
-                    sandbox: true // Force true sesuai saran perbaikan untuk stabil
-                });
-                logDebug("Pi.init() Sukses.");
-
-                // 3. Authenticate
-                ui.title.innerText = "Autentikasi...";
-                ui.desc.innerText = "Mohon izinkan akses akun Pi Anda...";
-                logDebug("Meminta izin akses profil (username, payments)...");
-
-                const scopes = ['username', 'payments'];
-
-                // Callback WAJIB agar tidak stuck
-                const onIncompletePaymentFound = (payment) => {
-                    logDebug("Incomplete payment ditemukan: " + payment.identifier);
-                    // Anda bisa menambahkan logika backend di sini nanti
-                    // contoh: completePayment(payment.identifier, txid);
-                };
-
-                // EKSEKUSI LOGIN
-                const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
-                
-                // Jika berhasil sampai sini:
-                logDebug("Autentikasi Berhasil: " + auth.user.username);
-                
-                ui.title.innerText = "Berhasil!";
-                ui.desc.innerText = "Selamat datang, " + auth.user.username;
-                ui.spinner.style.borderTopColor = "var(--success-green)"; // Ubah warna jadi hijau
-                ui.piIcon.style.display = 'none'; // Sembunyikan icon π
-                
-                // Simpan data user ke storage
-                localStorage.setItem('aurora_user', JSON.stringify(auth.user));
-                localStorage.setItem('aurora_token', auth.accessToken);
-
-                // Redirect ke dashboard (store.html atau index.html)
-                setTimeout(() => {
-                    window.location.href = "store.html";
-                }, 1500);
-
-            } catch (err) {
-                logDebug("ERROR: " + err.message, true);
-                ui.title.innerText = "Login Gagal";
-                ui.spinner.style.display = 'none';
-                ui.piIcon.style.display = 'none';
-
-                // Handle khusus jika bukan di Pi Browser
-                if (err.message === "SDK_NOT_FOUND") {
-                    ui.desc.innerText = "Environment tidak didukung.";
-                    ui.errorBox.style.display = 'block';
-                    ui.errorMsg.innerText = "Pi SDK hanya berjalan di dalam Pi Browser. Gunakan tombol di bawah untuk simulasi UI.";
-                    ui.btnSimulate.style.display = 'block';
-                    
-                    // Event listener simulasi
-                    ui.btnSimulate.onclick = function() {
-                        ui.btnSimulate.style.display = 'none';
-                        ui.errorBox.style.display = 'none';
-                        ui.title.innerText = "Mode Simulasi";
-                        ui.desc.innerText = "Login berhasil (Demo Mode)";
-                        
-                        setTimeout(() => {
-                             // Simpan data dummy
-                            localStorage.setItem('aurora_user', JSON.stringify({ username: "Pioneer_Demo" }));
-                            window.location.href = "store.html";
-                        }, 1500);
-                    };
-                } else {
-                    // Error umum
-                    ui.desc.innerText = "Gagal menyambungkan ke Pi Network.";
-                    ui.errorBox.style.display = 'block';
-                    ui.errorMsg.innerText = err.message;
-                    ui.btnRetry.style.display = 'block';
-                }
-            }
-        }
-
-        // --- 4. INITIALIZATION ---
-        window.addEventListener('load', () => {
-            // Cek jika user sudah login sebelumnya
-            const existingUser = localStorage.getItem('aurora_user');
-            if (existingUser) {
-                console.log("User sudah login, redirect...");
-                window.location.href = "store.html"; // Redirect langsung
-                return;
-            }
-
-            // Jalankan proses login
-            // Kita gunakan setTimeout sedikit agar animasi loading terlihat smooth
+            // Pindah ke halaman index setelah sukses
             setTimeout(() => {
-                runLoginProcess();
-            }, 500);
-        });
-    </script>
+                window.location.href = "index.html";
+            }, 1500);
+
+        } catch (err) {
+            logDebug(err.message, true);
+            ui.title.innerText = "Login Gagal";
+            ui.desc.innerText = "Terjadi kendala saat menyambungkan.";
+            ui.errorBox.style.display = 'block';
+            ui.errorMsg.innerText = err.message;
+            ui.btnRetry.style.display = 'block';
+        }
+    }
+
+    // Jalankan otomatis saat halaman selesai dimuat
+    window.onload = runLoginProcess;
+</script>
 </body>
 </html>
