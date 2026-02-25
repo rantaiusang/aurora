@@ -12,9 +12,9 @@
         :root {
             --luxury-gold: #d4af37;
             --luxury-gold-dim: rgba(212, 175, 55, 0.15);
-            --luxury-gold-glow: rgba(212, 175, 55, 0.4);
+            --luxury-gold-hover: #b5952f;
             --dark-bg: #0f0c15;
-            --dark-card: rgba(20, 18, 22, 0.98);
+            --dark-card: rgba(25, 23, 28, 0.98);
             --text-white: #ffffff;
             --text-gray: #9ca3af;
             --error-red: #ef4444;
@@ -32,10 +32,9 @@
             display: flex;
             flex-direction: column;
             overflow-x: hidden;
-            /* Background Pattern */
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(212, 175, 55, 0.03) 0%, transparent 20%),
-                radial-gradient(circle at 90% 80%, rgba(212, 175, 55, 0.03) 0%, transparent 20%);
+            /* Pola background halus */
+            background-image: radial-gradient(circle at 10% 20%, rgba(212, 175, 55, 0.03) 0%, transparent 20%),
+                              radial-gradient(circle at 90% 80%, rgba(212, 175, 55, 0.03) 0%, transparent 20%);
         }
 
         /* Header */
@@ -62,7 +61,7 @@
             position: relative;
         }
 
-        /* Glow Effect */
+        /* Glow Effect di belakang card */
         .glow-effect {
             position: absolute;
             width: 350px;
@@ -92,7 +91,7 @@
             text-align: center;
             box-shadow: 0 20px 50px rgba(0,0,0,0.6);
             backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
         }
@@ -106,7 +105,7 @@
             border-top: 3px solid var(--luxury-gold);
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            transition: border-color 0.3s;
+            transition: border-top-color 0.3s ease;
         }
         .pi-icon {
             font-family: 'Playfair Display', serif;
@@ -167,7 +166,7 @@
             padding: 12px;
             background: #000;
             border: 1px solid #333;
-            color: #4ade80;
+            color: #4ade80; /* Hijau terminal */
             font-family: 'Consolas', 'Monaco', monospace;
             font-size: 0.75rem;
             text-align: left;
@@ -183,7 +182,7 @@
     <!-- 1. Load Pi SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
-    <!-- 2. Load Config (Opsional: Jika tidak ada, kita pakai fallback di script) -->
+    <!-- 2. Load Config (Opsional) -->
     <script src="pi-config.js"></script>
 </head>
 <body>
@@ -211,7 +210,7 @@
                 <span id="error-msg" class="error-msg">Deskripsi error akan muncul di sini.</span>
             </div>
             
-            <!-- Debug Log Visual -->
+            <!-- Debug Log -->
             <div id="debug-log" class="debug-log"></div>
 
             <!-- Action Buttons -->
@@ -222,9 +221,10 @@
         </div>
     </div>
 
+    <!-- SCRIPT UTAMA (SESUAI PERBAIKAN) -->
     <script>
         // --- 1. CONFIG FALLBACK ---
-        // Mencegah crash jika pi-config.js tidak ada
+        // Kita cek apakah pi-config.js terload. Jika tidak, gunakan default Sandbox.
         if (typeof window.APP_CONFIG === 'undefined') {
             console.warn("pi-config.js tidak ditemukan. Menggunakan default Sandbox Mode.");
             window.APP_CONFIG = { IS_SANDBOX: true };
@@ -244,20 +244,20 @@
             }
         }
 
-        // --- 3. LOGIC UTAMA (Sesuai Perbaikan Anda) ---
+        // --- 3. LOGIC UTAMA ---
         async function runLoginProcess() {
             const ui = {
                 title: document.getElementById('status-title'),
                 desc: document.getElementById('status-desc'),
+                spinner: document.getElementById('spinnerAnim'),
                 errorBox: document.getElementById('error-box'),
                 errorMsg: document.getElementById('error-msg'),
                 btnRetry: document.getElementById('btn-retry'),
-                spinner: document.getElementById('spinnerAnim'),
-                piIcon: document.getElementById('piIcon'),
-                btnSimulate: document.getElementById('btn-simulate')
+                btnSimulate: document.getElementById('btn-simulate'),
+                piIcon: document.getElementById('piIcon')
             };
 
-            // Reset UI ke awal
+            // Reset UI
             ui.spinner.style.display = 'block';
             ui.piIcon.style.display = 'block';
             ui.title.innerText = "Menghubungkan...";
@@ -267,55 +267,56 @@
             ui.btnSimulate.style.display = 'none';
 
             try {
+                // 1. Cek Environment
                 logDebug("Cek Environment...");
                 if (typeof Pi === 'undefined') {
                     throw new Error("SDK_NOT_FOUND");
                 }
 
-                // 1. INIT
+                // 2. Init SDK
                 logDebug("Memulai Pi.init() dengan version '2.0'...");
                 await Pi.init({ 
-                    version: "2.0", // String version
-                    sandbox: window.APP_CONFIG.IS_SANDBOX 
+                    version: "2.0", // String version wajib
+                    sandbox: true // Force true sesuai saran perbaikan untuk stabil
                 });
                 logDebug("Pi.init() Sukses.");
 
-                // 2. AUTHENTICATE
+                // 3. Authenticate
                 ui.title.innerText = "Autentikasi...";
                 ui.desc.innerText = "Mohon izinkan akses akun Pi Anda...";
                 logDebug("Meminta izin akses profil (username, payments)...");
 
                 const scopes = ['username', 'payments'];
-                
-                // Callback jika ada pembayaran incomplete
+
+                // Callback WAJIB agar tidak stuck
                 const onIncompletePaymentFound = (payment) => {
-                    logDebug("Menemukan pembayaran tertunda: " + payment.identifier);
-                    // Logika handle incomplete payment bisa ditambahkan disini
+                    logDebug("Incomplete payment ditemukan: " + payment.identifier);
+                    // Anda bisa menambahkan logika backend di sini nanti
+                    // contoh: completePayment(payment.identifier, txid);
                 };
 
                 // EKSEKUSI LOGIN
                 const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
                 
-                logDebug("Autentikasi Berhasil!");
-                logDebug("Halo, " + auth.user.username);
-
-                // 3. SELESAI
-                ui.title.innerText = "Berhasil!";
-                ui.desc.innerText = "Selamat datang kembali, " + auth.user.username;
-                ui.spinner.style.borderColor = "var(--success-green)"; // Ubah warna spinner jadi hijau
-                ui.piIcon.style.display = 'none'; // Sembunyikan icon Pi
+                // Jika berhasil sampai sini:
+                logDebug("Autentikasi Berhasil: " + auth.user.username);
                 
-                // Simpan data user
+                ui.title.innerText = "Berhasil!";
+                ui.desc.innerText = "Selamat datang, " + auth.user.username;
+                ui.spinner.style.borderTopColor = "var(--success-green)"; // Ubah warna jadi hijau
+                ui.piIcon.style.display = 'none'; // Sembunyikan icon π
+                
+                // Simpan data user ke storage
                 localStorage.setItem('aurora_user', JSON.stringify(auth.user));
-                localStorage.setItem('aurora_accessToken', auth.accessToken);
+                localStorage.setItem('aurora_token', auth.accessToken);
 
-                // Redirect ke index/store setelah delay
+                // Redirect ke dashboard (store.html atau index.html)
                 setTimeout(() => {
-                    window.location.href = "store.html"; // Pastikan file ini ada
+                    window.location.href = "store.html";
                 }, 1500);
 
             } catch (err) {
-                logDebug(err.message, true);
+                logDebug("ERROR: " + err.message, true);
                 ui.title.innerText = "Login Gagal";
                 ui.spinner.style.display = 'none';
                 ui.piIcon.style.display = 'none';
@@ -342,7 +343,7 @@
                     };
                 } else {
                     // Error umum
-                    ui.desc.innerText = "Terjadi kesalahan koneksi.";
+                    ui.desc.innerText = "Gagal menyambungkan ke Pi Network.";
                     ui.errorBox.style.display = 'block';
                     ui.errorMsg.innerText = err.message;
                     ui.btnRetry.style.display = 'block';
@@ -356,14 +357,15 @@
             const existingUser = localStorage.getItem('aurora_user');
             if (existingUser) {
                 console.log("User sudah login, redirect...");
-                window.location.href = "store.html";
+                window.location.href = "store.html"; // Redirect langsung
                 return;
             }
 
             // Jalankan proses login
+            // Kita gunakan setTimeout sedikit agar animasi loading terlihat smooth
             setTimeout(() => {
                 runLoginProcess();
-            }, 500); // Delay sedikit agar UI smooth
+            }, 500);
         });
     </script>
 </body>
