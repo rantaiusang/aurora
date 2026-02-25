@@ -223,55 +223,86 @@
 
     <!-- SCRIPT UTAMA (SESUAI PERBAIKAN) -->
     <script>
+    // 1. Helper untuk menampilkan log di layar
     function logDebug(msg, isError = false) {
+        console.log(msg);
         const debugBox = document.getElementById('debug-log');
         if(debugBox) {
             debugBox.style.display = 'block';
-            debugBox.innerHTML += `<p style="color:${isError?'#ef4444':'#4ade80'}">> ${msg}</p>`;
+            const p = document.createElement('p');
+            if(isError) p.style.color = '#ef4444';
+            p.innerHTML = `> ${msg}`;
+            debugBox.appendChild(p);
+            debugBox.scrollTop = debugBox.scrollHeight;
         }
     }
 
+    // 2. Fungsi Utama Login
     async function runLoginProcess() {
-        // A. CEK APAKAH SUDAH LOGIN? (Cegah Loop)
-        const savedUser = localStorage.getItem('pi_user');
-        if (savedUser) {
-            logDebug("Sesi ditemukan, mengalihkan...");
-            window.location.replace("index.html");
-            return;
-        }
+        const ui = {
+            title: document.getElementById('status-title'),
+            desc: document.getElementById('status-desc'),
+            spinner: document.getElementById('spinnerAnim'),
+            errorBox: document.getElementById('error-box'),
+            errorMsg: document.getElementById('error-msg'),
+            btnRetry: document.getElementById('btn-retry')
+        };
 
         try {
-            if (typeof Pi === 'undefined') throw new Error("Buka di Pi Browser");
+            logDebug("Cek Environment...");
+            if (typeof Pi === 'undefined') {
+                throw new Error("Pi SDK tidak terdeteksi. Pastikan buka di Pi Browser.");
+            }
 
-            // B. INIT SDK
-            await Pi.init({ version: "2.0", sandbox: true });
-            
-            // C. AUTHENTICATE
+            // Inisialisasi SDK
+            logDebug("Memulai Pi.init() dengan version '2.0'...");
+            // Sandbox harus TRUE jika tes di sandbox, FALSE jika sudah mainnet
+            const isSandbox = (typeof window.APP_CONFIG !== 'undefined') ? window.APP_CONFIG.sandbox : true;
+            await Pi.init({ version: "2.0", sandbox: isSandbox }); 
+            logDebug("Pi.init() Sukses.");
+
+            // Meminta izin akses (Autentikasi)
+            ui.title.innerText = "Autentikasi...";
+            ui.desc.innerText = "Mohon izinkan akses akun Pi Anda di jendela yang muncul.";
+            logDebug("Meminta izin akses profil (username, payments)...");
+
             const scopes = ['username', 'payments'];
-            const onIncompletePaymentFound = (p) => {}; 
 
-            logDebug("Menunggu persetujuan user...");
+            // Callback wajib: Menangani pembayaran yang belum selesai
+            const onIncompletePaymentFound = (payment) => {
+                logDebug("Info: Ada pembayaran tertunda ID: " + payment.identifier);
+            };
+
+            // EKSEKUSI PROSES LOGIN (Memunculkan Popup Pi)
             const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
+            
+            logDebug("Autentikasi Berhasil!");
+            logDebug("User: " + auth.user.username);
 
-            // D. SIMPAN DATA DENGAN BENAR
+            // Tampilan Sukses
+            ui.title.innerText = "Berhasil!";
+            ui.desc.innerText = "Selamat datang, " + auth.user.username;
+            ui.spinner.style.borderTopColor = "#10b981"; // Berubah hijau
+            
+            // Simpan data ke memori browser
             localStorage.setItem('pi_user', JSON.stringify(auth.user));
-            localStorage.setItem('pi_auth', JSON.stringify(auth));
-            
-            logDebug("Login Sukses! Mengalihkan...");
-            
-            // E. REDIRECT PERMANEN
+
+            // Pindah ke halaman index setelah sukses
             setTimeout(() => {
-                window.location.replace("index.html");
-            }, 1000);
+                window.location.href = "index.html";
+            }, 1500);
 
         } catch (err) {
             logDebug(err.message, true);
-            document.getElementById('error-box').style.display = 'block';
-            document.getElementById('error-msg').innerText = err.message;
-            document.getElementById('btn-retry').style.display = 'block';
+            ui.title.innerText = "Login Gagal";
+            ui.desc.innerText = "Terjadi kendala saat menyambungkan.";
+            ui.errorBox.style.display = 'block';
+            ui.errorMsg.innerText = err.message;
+            ui.btnRetry.style.display = 'block';
         }
     }
 
+    // Jalankan otomatis saat halaman selesai dimuat
     window.onload = runLoginProcess;
 </script>
 </body>
