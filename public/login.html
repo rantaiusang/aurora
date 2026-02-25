@@ -11,10 +11,10 @@
     <style>
         :root {
             --luxury-gold: #d4af37;
-            --luxury-gold-dim: rgba(212, 175, 55, 0.2);
-            --luxury-gold-hover: #b5952f;
+            --luxury-gold-dim: rgba(212, 175, 55, 0.15);
+            --luxury-gold-glow: rgba(212, 175, 55, 0.4);
             --dark-bg: #0f0c15;
-            --dark-card: rgba(25, 23, 28, 0.98);
+            --dark-card: rgba(20, 18, 22, 0.98);
             --text-white: #ffffff;
             --text-gray: #9ca3af;
             --error-red: #ef4444;
@@ -32,9 +32,10 @@
             display: flex;
             flex-direction: column;
             overflow-x: hidden;
-            /* Pola background halus */
-            background-image: radial-gradient(circle at 10% 20%, rgba(212, 175, 55, 0.03) 0%, transparent 20%),
-                              radial-gradient(circle at 90% 80%, rgba(212, 175, 55, 0.03) 0%, transparent 20%);
+            /* Background Pattern */
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(212, 175, 55, 0.03) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(212, 175, 55, 0.03) 0%, transparent 20%);
         }
 
         /* Header */
@@ -61,7 +62,7 @@
             position: relative;
         }
 
-        /* Glow Effect di belakang card */
+        /* Glow Effect */
         .glow-effect {
             position: absolute;
             width: 350px;
@@ -91,7 +92,7 @@
             text-align: center;
             box-shadow: 0 20px 50px rgba(0,0,0,0.6);
             backdrop-filter: blur(10px);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
         }
@@ -105,9 +106,10 @@
             border-top: 3px solid var(--luxury-gold);
             border-radius: 50%;
             animation: spin 1s linear infinite;
+            transition: border-color 0.3s;
         }
         .pi-icon {
-            font-family: 'Playfair Display', serif; /* Font serif agar simbol pi terlihat elegan */
+            font-family: 'Playfair Display', serif;
             font-size: 1.5rem;
             color: var(--luxury-gold);
             position: absolute;
@@ -115,16 +117,7 @@
             font-weight: bold;
         }
 
-        /* Ikon Sukses */
-        .success-icon {
-            font-size: 2.5rem;
-            color: var(--success-green);
-            display: none;
-            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
         /* Text Elements */
         h2 { font-size: 1.5rem; margin-bottom: 10px; font-weight: 600; letter-spacing: 0.5px; }
@@ -174,7 +167,7 @@
             padding: 12px;
             background: #000;
             border: 1px solid #333;
-            color: #4ade80; /* Hijau terminal */
+            color: #4ade80;
             font-family: 'Consolas', 'Monaco', monospace;
             font-size: 0.75rem;
             text-align: left;
@@ -185,47 +178,15 @@
         }
         .debug-log p { margin-bottom: 4px; border-bottom: 1px solid #111; padding-bottom: 2px;}
         .debug-log p.error-log { color: #ef4444; }
-
-        /* Toast Notification */
-        #toast-container {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-        }
-        .toast {
-            background: rgba(30, 30, 30, 0.95);
-            border: 1px solid var(--luxury-gold);
-            color: var(--luxury-gold);
-            padding: 12px 24px;
-            border-radius: 50px;
-            margin-bottom: 10px;
-            font-size: 0.9rem;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            opacity: 0;
-            transform: translateY(-20px);
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .toast.show { opacity: 1; transform: translateY(0); }
-        .toast-icon { font-size: 1.2rem; }
-
     </style>
 
     <!-- 1. Load Pi SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
-    <!-- 2. Load Config (Jika file ini tidak ada, kita punya fallback di JS bawah) -->
+    <!-- 2. Load Config (Opsional: Jika tidak ada, kita pakai fallback di script) -->
     <script src="pi-config.js"></script>
-
 </head>
 <body>
-
-    <!-- Toast Container -->
-    <div id="toast-container"></div>
 
     <header>
         <a href="index.html" class="logo">Aurora ⚡</a>
@@ -239,7 +200,6 @@
             <div class="spinner-wrapper">
                 <div class="spinner" id="spinnerAnim"></div>
                 <div class="pi-icon" id="piIcon">π</div>
-                <div class="success-icon" id="successIcon">✓</div>
             </div>
 
             <h2 id="status-title">Menghubungkan...</h2>
@@ -251,10 +211,10 @@
                 <span id="error-msg" class="error-msg">Deskripsi error akan muncul di sini.</span>
             </div>
             
-            <!-- Debug Log -->
+            <!-- Debug Log Visual -->
             <div id="debug-log" class="debug-log"></div>
 
-            <!-- Action Buttons (Hidden by default) -->
+            <!-- Action Buttons -->
             <button id="btn-retry" class="btn-action" onclick="window.location.reload()">Coba Lagi</button>
             <button id="btn-simulate" class="btn-action" style="background: transparent; border: 1px solid var(--text-gray); color: var(--text-gray);">
                 ⚠️ Buka di Browser Biasa (Simulasi)
@@ -264,231 +224,147 @@
 
     <script>
         // --- 1. CONFIG FALLBACK ---
-        // Kita cek apakah pi-config.js terload. Jika tidak, gunakan default Sandbox.
-        // Ini mencegah error 'APP_CONFIG is undefined' saat testing file HTML ini sendirian.
+        // Mencegah crash jika pi-config.js tidak ada
         if (typeof window.APP_CONFIG === 'undefined') {
             console.warn("pi-config.js tidak ditemukan. Menggunakan default Sandbox Mode.");
-            window.APP_CONFIG = {
-                IS_SANDBOX: true,
-                sandbox: true // Tambahan key kadang dipakai
-            };
+            window.APP_CONFIG = { IS_SANDBOX: true };
         }
 
         // --- 2. HELPER FUNCTIONS ---
-        
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            
-            let icon = 'ℹ️';
-            if (type === 'error') icon = '⛔';
-            if (type === 'success') icon = '✨';
-
-            toast.innerHTML = `<span class="toast-icon">${icon}</span> <span>${message}</span>`;
-            
-            container.appendChild(toast);
-            
-            // Trigger reflow
-            void toast.offsetWidth; 
-            toast.classList.add('show');
-
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
         function logDebug(msg, isError = false) {
             console.log(msg);
             const debugBox = document.getElementById('debug-log');
             if(debugBox) {
                 debugBox.style.display = 'block';
                 const p = document.createElement('p');
-                p.innerText = `> ${msg}`;
-                if(isError) p.classList.add('error-log');
+                if(isError) p.className = 'error-log';
+                p.innerHTML = `> ${msg}`;
                 debugBox.appendChild(p);
                 debugBox.scrollTop = debugBox.scrollHeight;
             }
         }
 
-        // --- 3. LOGIC UTAMA ---
-
+        // --- 3. LOGIC UTAMA (Sesuai Perbaikan Anda) ---
         async function runLoginProcess() {
             const ui = {
-                spinner: document.getElementById('spinnerAnim'),
-                piIcon: document.getElementById('piIcon'),
-                successIcon: document.getElementById('successIcon'),
                 title: document.getElementById('status-title'),
                 desc: document.getElementById('status-desc'),
                 errorBox: document.getElementById('error-box'),
                 errorMsg: document.getElementById('error-msg'),
                 btnRetry: document.getElementById('btn-retry'),
+                spinner: document.getElementById('spinnerAnim'),
+                piIcon: document.getElementById('piIcon'),
                 btnSimulate: document.getElementById('btn-simulate')
             };
 
-            function setLoadingState(title, desc) {
-                ui.spinner.style.display = 'block';
-                ui.piIcon.style.display = 'block';
-                ui.successIcon.style.display = 'none';
-                ui.title.innerText = title;
-                ui.desc.innerText = desc;
-                ui.errorBox.style.display = 'none';
-                ui.btnRetry.style.display = 'none';
-                ui.btnSimulate.style.display = 'none';
-            }
-
-            function showError(msg) {
-                ui.spinner.style.display = 'none';
-                ui.piIcon.style.display = 'none';
-                ui.successIcon.style.display = 'none';
-                ui.title.innerText = "Koneksi Gagal";
-                ui.desc.innerText = "Gagal menghubungkan ke Pi Network.";
-                ui.errorBox.style.display = 'block';
-                ui.errorMsg.innerText = msg;
-                ui.btnRetry.style.display = 'block';
-            }
-
-            function showSimulationOption(msg) {
-                // Khusus error karena bukan di Pi Browser
-                ui.spinner.style.display = 'none';
-                ui.piIcon.style.display = 'none';
-                ui.title.innerText = "Environment Terdeteksi";
-                ui.desc.innerText = "Anda tidak menggunakan Pi Browser.";
-                ui.errorBox.style.display = 'block';
-                ui.errorMsg.innerText = msg;
-                ui.btnSimulate.style.display = 'block'; // Tombol simulasi muncul
-            }
-
-            setLoadingState("Menghubungkan...", "Inisialisasi sistem Pi Network");
+            // Reset UI ke awal
+            ui.spinner.style.display = 'block';
+            ui.piIcon.style.display = 'block';
+            ui.title.innerText = "Menghubungkan...";
+            ui.desc.innerText = "Menyiapkan koneksi aman ke Pi Network";
+            ui.errorBox.style.display = 'none';
+            ui.btnRetry.style.display = 'none';
+            ui.btnSimulate.style.display = 'none';
 
             try {
-                // 1. Cek apakah kita di browser yang support Pi (Pi Browser)
                 logDebug("Cek Environment...");
                 if (typeof Pi === 'undefined') {
-                    const errMsg = "SDK Pi Network tidak ditemukan. \nPastikan Anda membuka halaman ini melalui aplikasi Pi Browser.";
                     throw new Error("SDK_NOT_FOUND");
                 }
 
-                // 2. Init SDK dengan PERBAIKAN VERSION STRING
+                // 1. INIT
                 logDebug("Memulai Pi.init() dengan version '2.0'...");
-                
                 await Pi.init({ 
-                    version: "2.0", // <-- PERBAIKAN: Harus String
-                    sandbox: window.APP_CONFIG.IS_SANDBOX
+                    version: "2.0", // String version
+                    sandbox: window.APP_CONFIG.IS_SANDBOX 
                 });
-                
                 logDebug("Pi.init() Sukses.");
 
-                // 3. Authenticate
+                // 2. AUTHENTICATE
                 ui.title.innerText = "Autentikasi...";
                 ui.desc.innerText = "Mohon izinkan akses akun Pi Anda...";
+                logDebug("Meminta izin akses profil (username, payments)...");
+
+                const scopes = ['username', 'payments'];
                 
-                const authResult = await Pi.authenticate(
-                    ['username', 'payments'],
-                    {
-                        onIncompletePaymentFound: function(payment) {
-                            logDebug("Incomplete payment found: " + payment.identifier);
-                        }
-                    }
-                );
+                // Callback jika ada pembayaran incomplete
+                const onIncompletePaymentFound = (payment) => {
+                    logDebug("Menemukan pembayaran tertunda: " + payment.identifier);
+                    // Logika handle incomplete payment bisa ditambahkan disini
+                };
 
-                if (!authResult || !authResult.accessToken) {
-                    throw new Error("Akses ditolak atau dibatalkan oleh pengguna.");
-                }
-
-                logDebug("Auth Sukses! User: " + authResult.user.username);
-
-                // 4. Tampilan Sukses
-                ui.title.innerText = "Berhasil Masuk";
-                ui.desc.innerText = `Selamat datang, ${authResult.user.username}!`;
+                // EKSEKUSI LOGIN
+                const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
                 
-                ui.spinner.style.display = 'none';
-                ui.piIcon.style.display = 'none';
-                ui.successIcon.style.display = 'block';
+                logDebug("Autentikasi Berhasil!");
+                logDebug("Halo, " + auth.user.username);
 
-                showToast("Login Berhasil!", "success");
+                // 3. SELESAI
+                ui.title.innerText = "Berhasil!";
+                ui.desc.innerText = "Selamat datang kembali, " + auth.user.username;
+                ui.spinner.style.borderColor = "var(--success-green)"; // Ubah warna spinner jadi hijau
+                ui.piIcon.style.display = 'none'; // Sembunyikan icon Pi
+                
+                // Simpan data user
+                localStorage.setItem('aurora_user', JSON.stringify(auth.user));
+                localStorage.setItem('aurora_accessToken', auth.accessToken);
 
-                // Simpan & Redirect
-                localStorage.setItem("aurora_user", JSON.stringify(authResult.user));
-                localStorage.setItem("aurora_token", authResult.accessToken);
-
+                // Redirect ke index/store setelah delay
                 setTimeout(() => {
-                    window.location.href = "store.html";
+                    window.location.href = "store.html"; // Pastikan file ini ada
                 }, 1500);
 
             } catch (err) {
-                console.error(err);
-                
-                // Handle error khusus jika SDK tidak ada (bukan di Pi Browser)
+                logDebug(err.message, true);
+                ui.title.innerText = "Login Gagal";
+                ui.spinner.style.display = 'none';
+                ui.piIcon.style.display = 'none';
+
+                // Handle khusus jika bukan di Pi Browser
                 if (err.message === "SDK_NOT_FOUND") {
-                    logDebug("ERROR: Bukan di Pi Browser");
-                    showSimulationOption("Pi SDK hanya berjalan di dalam Pi Browser. Jika Anda developer dan ingin testing UI, gunakan tombol simulasi di bawah.");
+                    ui.desc.innerText = "Environment tidak didukung.";
+                    ui.errorBox.style.display = 'block';
+                    ui.errorMsg.innerText = "Pi SDK hanya berjalan di dalam Pi Browser. Gunakan tombol di bawah untuk simulasi UI.";
+                    ui.btnSimulate.style.display = 'block';
                     
-                    // Event Listener tombol simulasi untuk testing di Chrome
+                    // Event listener simulasi
                     ui.btnSimulate.onclick = function() {
-                        simulateLoginSuccess();
+                        ui.btnSimulate.style.display = 'none';
+                        ui.errorBox.style.display = 'none';
+                        ui.title.innerText = "Mode Simulasi";
+                        ui.desc.innerText = "Login berhasil (Demo Mode)";
+                        
+                        setTimeout(() => {
+                             // Simpan data dummy
+                            localStorage.setItem('aurora_user', JSON.stringify({ username: "Pioneer_Demo" }));
+                            window.location.href = "store.html";
+                        }, 1500);
                     };
                 } else {
-                    // Error umum lainnya
-                    logDebug("ERROR: " + err.message, true);
-                    showError(err.message);
+                    // Error umum
+                    ui.desc.innerText = "Terjadi kesalahan koneksi.";
+                    ui.errorBox.style.display = 'block';
+                    ui.errorMsg.innerText = err.message;
+                    ui.btnRetry.style.display = 'block';
                 }
             }
         }
 
-        // --- 4. SIMULASI (Hanya untuk testing di browser biasa) ---
-        function simulateLoginSuccess() {
-            const ui = {
-                spinner: document.getElementById('spinnerAnim'),
-                piIcon: document.getElementById('piIcon'),
-                successIcon: document.getElementById('successIcon'),
-                title: document.getElementById('status-title'),
-                desc: document.getElementById('status-desc'),
-                errorBox: document.getElementById('error-box'),
-                btnSimulate: document.getElementById('btn-simulate')
-            };
-
-            ui.btnSimulate.style.display = 'none';
-            ui.errorBox.style.display = 'none';
-            ui.title.innerText = "Mode Simulasi";
-            ui.desc.innerText = "Memalsukan data login untuk testing...";
-            
-            setTimeout(() => {
-                ui.title.innerText = "Berhasil Masuk (Demo)";
-                ui.desc.innerText = "Ini adalah akun simulasi.";
-                ui.spinner.style.display = 'none';
-                ui.piIcon.style.display = 'none';
-                ui.successIcon.style.display = 'block';
-
-                // Data dummy
-                const dummyUser = { username: "Pioneer_Demo", uid: "12345678" };
-                localStorage.setItem("aurora_user", JSON.stringify(dummyUser));
-                localStorage.setItem("aurora_token", "demo_token_xyz");
-
-                showToast("Login Simulasi Berhasil!", "success");
-
-                setTimeout(() => {
-                    window.location.href = "store.html";
-                }, 1500);
-            }, 1500);
-        }
-
-        // --- 5. INITIALIZATION ---
+        // --- 4. INITIALIZATION ---
         window.addEventListener('load', () => {
-            const existingUser = localStorage.getItem("aurora_user");
+            // Cek jika user sudah login sebelumnya
+            const existingUser = localStorage.getItem('aurora_user');
             if (existingUser) {
-                console.log("User sudah login, redirect ke store...");
+                console.log("User sudah login, redirect...");
                 window.location.href = "store.html";
                 return;
             }
 
-            // Delay sedikit agar animasi UI terlihat mulus
+            // Jalankan proses login
             setTimeout(() => {
                 runLoginProcess();
-            }, 800);
+            }, 500); // Delay sedikit agar UI smooth
         });
-
     </script>
 </body>
 </html>
