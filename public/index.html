@@ -85,6 +85,7 @@
             align-items: center;
             justify-content: center;
             min-width: 100px; /* Lebar minimum agar tidak terlalu kecil */
+            cursor: pointer;
         }
 
         .btn-header:hover {
@@ -465,7 +466,8 @@
     <header>
         <a href="#" class="logo">Aurora ⚡</a>
         <nav class="nav-links">
-            <a href="login.html" class="btn-header">Login</a>
+            <!-- Class btn-header adalah target script kita -->
+            <a href="login.html" class="btn-header" id="headerBtn">Login</a>
         </nav>
     </header>
 
@@ -537,15 +539,15 @@
             
         <p>&copy; 2026 Aurora Store. All rights reserved.</p>
     </footer>
-
-        
-        <!-- SCRIPT ANIMASI SCROLL & SESSION HANDLER -->
+    
+    <!-- SCRIPT ANIMASI SCROLL & SESSION HANDLER -->
     <script>
-        // --- 1. FUNGSI CEK SESI & UPDATE TOMBOL (PENTING!) ---
+        // --- 1. FUNGSI CEK SESI & UPDATE TOMBOL (FIX: aurora_user) ---
         // Kita jalankan ini otomatis saat halaman dimuat
         (function updateHeaderBasedOnSession() {
-            const userSession = localStorage.getItem('pi_user');
-            const btnLogin = document.querySelector('.btn-header');
+            // PERBAIKAN: Kita baca 'aurora_user' agar sama dengan login.html dan store.html
+            const userSession = localStorage.getItem('aurora_user');
+            const btnLogin = document.getElementById('headerBtn');
 
             if (userSession) {
                 // Jika ADA data user (Sudah Login)
@@ -569,10 +571,9 @@
                             
                             if(confirm("Apakah Anda yakin ingin keluar?")) {
                                 // 1. Hapus data sesi
-                                localStorage.removeItem('pi_user');
+                                localStorage.removeItem('aurora_user');
                                 
                                 // 2. Refresh halaman agar tombol kembali jadi "Login"
-                                // PERHATIAN: Kita TIDAK menggunakan window.location.href = "login.html"
                                 window.location.reload(); 
                             }
                         };
@@ -580,7 +581,7 @@
 
                 } catch (e) {
                     console.error("Data session rusak, mereset...", e);
-                    localStorage.removeItem('pi_user'); // Hapus data rusak
+                    localStorage.removeItem('aurora_user'); // Hapus data rusak
                     // Tidak perlu redirect, biarkan user tetap di landing page
                 }
             } else {
@@ -631,7 +632,8 @@
                 window.scrollTo(0, 0);
                 initScrollAnimations();
                 // Jalankan ulang cek sesi saat navigasi balik (back/forward)
-                updateHeaderBasedOnSession();
+                // PERBAIKAN: Panggil fungsi yang ada di atas
+                updateHeaderBasedOnSession(); 
             }
         });
     </script>
