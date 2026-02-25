@@ -110,12 +110,46 @@
         .delay-2 { animation-delay: 0.4s; }
         .delay-3 { animation-delay: 0.6s; }
 
-        .store-header { text-align: center; margin-bottom: 50px; }
+        .store-header { text-align: center; margin-bottom: 30px; }
         .store-header h1 { font-family: 'Playfair Display', serif; font-size: 3rem; color: var(--luxury-gold); margin-bottom: 10px; font-weight: 700; letter-spacing: -1px; }
         .store-header p { color: #888; font-style: italic; line-height: 1.5rem; }
 
-        .filter-bar { display: flex; justify-content: center; gap: 15px; margin-bottom: 50px; flex-wrap: wrap; }
-        .filter-btn { padding: 10px 25px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255, 0.05); color: #aaa; border-radius: 30px; cursor: pointer; transition: all 0.3s; font-size: 0.9rem; }
+        /* --- SEARCH BAR STYLE --- */
+        .search-container {
+            max-width: 500px;
+            margin: 0 auto 40px auto;
+            position: relative;
+        }
+        .search-input {
+            width: 100%;
+            padding: 12px 20px;
+            padding-left: 45px; /* Space for icon */
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 30px;
+            color: #fff;
+            font-family: 'Poppins', sans-serif;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: all 0.3s;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: var(--luxury-gold);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.1);
+        }
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--luxury-gold);
+            pointer-events: none;
+        }
+
+        .filter-bar { display: flex; justify-content: center; gap: 15px; margin-bottom: 40px; flex-wrap: wrap; }
+        .filter-btn { padding: 8px 20px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255, 0.05); color: #aaa; border-radius: 30px; cursor: pointer; transition: all 0.3s; font-size: 0.85rem; }
         .filter-btn.active, .filter-btn:hover { background: var(--luxury-gold); color: #000; border-color: var(--luxury-gold); font-weight: 600; }
 
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 25px; }
@@ -152,7 +186,6 @@
         .sidebar-remove-btn { background: none; border: none; color: #666; font-size: 1.2rem; cursor: pointer; line-height: 1; }
         .sidebar-remove-btn:hover { color: #ff6b6b; }
         .cart-footer { margin-top: auto; flex-shrink: 0; }
-        /* Tombol di Sidebar disembunyikan atau dijadikan info saja, karena Checkout pindah ke Floating */
         .sidebar-info-text { font-size: 0.8rem; color: #888; text-align: center; margin-top: 10px; font-style: italic; }
         
         .empty-msg { text-align: center; color: #666; font-size: 0.9rem; margin-top: 20px; font-style: italic; }
@@ -162,12 +195,11 @@
 
         /* FLOATING CART STYLE */
         #floating-cart { 
-            display: none; /* Hidden by default */
+            display: none; 
             align-items: center; 
             gap: 10px;
         }
         
-        /* Animation for Floating Cart appearance */
         @keyframes popIn {
             0% { transform: scale(0.8); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
@@ -204,7 +236,7 @@
                     <div class="dropdown-item logout" onclick="handleLogout()">Logout</div>
                 </div>
             </div>
-        </div> <!-- PERBAIKAN: Tag nav diganti div -->
+        </div> 
     </header>
 
     <div class="main-layout">
@@ -216,11 +248,17 @@
                 <p>Aroma yang mendefinisikan karakter Anda.</p>
             </div>
 
+            <!-- SEARCH BAR BARU -->
+            <div class="search-container page-entry delay-2">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" class="search-input" placeholder="Cari parfum (contoh: Rose, Gold, Vanilla)..." oninput="handleSearch(this.value)">
+            </div>
+
             <div class="filter-bar page-entry delay-2">
-                <button class="filter-btn active" onclick="filterProducts('all', this)">Semua</button>
-                <button class="filter-btn" onclick="filterProducts('women', this)">Women</button>
-                <button class="filter-btn" onclick="filterProducts('men', this)">Men</button>
-                <button class="filter-btn" onclick="filterProducts('unisex', this)">Unisex</button>
+                <button class="filter-btn active" onclick="filterCategory('all', this)">Semua</button>
+                <button class="filter-btn" onclick="filterCategory('women', this)">Women</button>
+                <button class="filter-btn" onclick="filterCategory('men', this)">Men</button>
+                <button class="filter-btn" onclick="filterCategory('unisex', this)">Unisex</button>
             </div>
 
             <div class="product-grid" id="productGrid">
@@ -236,7 +274,6 @@
                     <p class="empty-msg">Keranjang masih kosong.</p>
                 </div>
                 <div class="cart-footer">
-                    <!-- Hapus tombol Checkout dari sini, ganti dengan info -->
                     <p class="sidebar-info-text">Gunakan tombol melayang di pojok kanan bawah untuk Checkout.</p>
                 </div>
             </div>
@@ -263,9 +300,7 @@
         </div>
     </div>
 
-    <!-- ========================================== -->
     <!-- TOMBOl KERANJANG MELAYANG (FLOATING CART) -->
-    <!-- ========================================== -->
     <div id="floating-cart" onclick="proceedToCheckout()" style="position: fixed; bottom: 30px; right: 30px; background: var(--luxury-gold); color: #000; padding: 15px 25px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); cursor: pointer; z-index: 999; font-weight: bold; border: 2px solid rgba(255,255,255,0.2); transition: transform 0.2s;">
         🛒 <span id="cart-count-float">0</span> Item - Check Out (π)
     </div>
@@ -282,6 +317,10 @@
         let productsData = []; 
         let currentUser = null;
         let dbUser = null;
+        
+        // State Filter & Search
+        let currentCategory = 'all';
+        let currentSearch = '';
 
         const productGrid = document.getElementById('productGrid');
         const dropdownMenu = document.getElementById('dropdownMenu');
@@ -400,9 +439,9 @@
             await initApp();
             await fetchProducts(); 
             if(productsData && productsData.length > 0) {
-                renderProducts('all');
+                renderProducts(); // Render awal
             }
-            renderSidebarCart(); // Init Cart UI (including Floating Cart)
+            renderSidebarCart(); 
         });
 
         // Helper
@@ -493,12 +532,114 @@
         function closeModal(modalId) { document.getElementById(modalId).classList.remove('show'); }
 
         // ==========================================
+        // SEARCH & FILTER LOGIC
+        // ==========================================
+        
+        // Handler input search
+        function handleSearch(keyword) {
+            currentSearch = keyword.toLowerCase();
+            renderProducts();
+        }
+
+        // Handler klik tombol kategori
+        function filterCategory(category, btnElement) {
+            currentCategory = category;
+            
+            // Update UI tombol active
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            if(btnElement) btnElement.classList.add('active');
+            
+            renderProducts();
+        }
+
+        // --- PRODUCT RENDERING (DIPERBARUI) ---
+        function renderProducts() {
+            productGrid.innerHTML = ''; 
+            
+            let categoryKey = 'category';
+            if (productsData.length > 0) {
+                const sample = productsData[0];
+                if (sample.kategori) categoryKey = 'kategori';
+                else if (sample.type) categoryKey = 'type';
+            }
+
+            // LOGIKA FILTER GABUNGAN (KATEGORI + SEARCH)
+            const filteredData = productsData.filter(p => {
+                // 1. Filter Kategori
+                let isCategoryMatch = false;
+                if (currentCategory === 'all') {
+                    isCategoryMatch = true;
+                } else {
+                    const pCat = p[categoryKey] ? p[categoryKey].toLowerCase() : '';
+                    if (pCat === currentCategory.toLowerCase()) isCategoryMatch = true;
+                }
+
+                // 2. Filter Search (Nama)
+                let isSearchMatch = true;
+                if (currentSearch && currentSearch.length > 0) {
+                    const name = getSafeValue(p, 'name', 'product_name', '').toLowerCase();
+                    const desc = getSafeValue(p, 'description', 'desc', '').toLowerCase();
+                    // Cek apakah keyword ada di NAMA atau DESKRIPSI
+                    if (!name.includes(currentSearch) && !desc.includes(currentSearch)) {
+                        isSearchMatch = false;
+                    }
+                }
+
+                return isCategoryMatch && isSearchMatch;
+            });
+
+            if (!filteredData || filteredData.length === 0) {
+                productGrid.innerHTML = '<p style="text-align:center; width:100%; color:#888; padding: 20px;">Tidak ada produk yang cocok dengan pencarian.</p>';
+                return;
+            }
+
+            let delay = 0;
+            filteredData.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                card.style.opacity = 0; 
+                card.style.animation = `slideUpFade 0.6s ease forwards ${0.3 + delay}s`; // Sedikit lebih cepat animasi saat search
+
+                let displayName = getSafeValue(product, 'name', 'product_name', 'Tanpa Nama');
+                if(!displayName) displayName = getSafeValue(product, 'title', '', 'Tanpa Nama');
+
+                let displayCategory = product[categoryKey] || "Uncategorized";
+                const stockVal = parseInt(product.stock);
+                const isOutOfStock = isNaN(stockVal) || stockVal <= 0;
+                const btnDisabled = isOutOfStock ? "disabled" : "";
+                const btnText = isOutOfStock ? "Habis" : "Beli Sekarang";
+                const displayPrice = formatPrice(product.price);
+                const imgSrc = getSafeValue(product, 'image_url', 'img', 'https://via.placeholder.com/250');
+                const descText = getSafeValue(product, 'description', 'desc', '-');
+                const productId = String(product.id);
+
+                card.innerHTML = `
+                    <div class="category-badge">${displayCategory}</div>
+                    <div class="product-img-wrapper">
+                        <img src="${imgSrc}" class="product-img" onerror="this.src='https://via.placeholder.com/250'">
+                    </div>
+                    <div class="product-info">
+                        <div>
+                            <h3 class="product-name">${displayName}</h3>
+                            <p class="product-desc" title="${descText}">${descText}</p>
+                            <span class="product-price">${displayPrice} π</span>
+                            <div class="${isOutOfStock ? 'product-stock out-of-stock' : 'product-stock'}">
+                                ${isOutOfStock ? 'Stok Habis' : 'Stok: ' + stockVal}
+                            </div>
+                        </div>
+                        <button class="btn-buy" onclick="addToCart('${productId}')" ${btnDisabled}>${btnText}</button>
+                    </div>`;
+                productGrid.appendChild(card);
+                delay += 0.05; 
+            });
+        }
+
+        // ==========================================
         // FLOATING CART LOGIC
         // ==========================================
         function updateFloatingCart(count) {
             if (count > 0) {
                 floatCart.style.display = 'flex';
-                // Tambahkan kelas animasi jika pertama kali muncul
                 if (!floatCart.classList.contains('show-anim')) {
                     floatCart.classList.add('show-anim');
                 }
@@ -565,16 +706,16 @@
             
             if (cart.length === 0) {
                 sidebarCartList.innerHTML = '<p class="empty-msg">Keranjang masih kosong.</p>';
-                updateFloatingCart(0); // Hide Floating Cart
+                updateFloatingCart(0);
                 return;
             }
 
             let html = '';
             let isCartValid = true; 
-            let totalItems = 0; // Hitung total item untuk floating cart
+            let totalItems = 0;
 
             cart.forEach(item => {
-                totalItems += item.qty; // Akumulasi qty
+                totalItems += item.qty;
 
                 const latestProduct = productsData.find(p => String(p.id) === String(item.id));
                 let currentStock = 0;
@@ -609,83 +750,11 @@
             });
 
             sidebarCartList.innerHTML = html;
-
-            // Update Floating Cart UI
             updateFloatingCart(totalItems);
         }
 
-        // --- PRODUCT RENDERING ---
-        function renderProducts(filter) {
-            productGrid.innerHTML = ''; 
-            
-            let categoryKey = 'category';
-            if (productsData.length > 0) {
-                const sample = productsData[0];
-                if (sample.kategori) categoryKey = 'kategori';
-                else if (sample.type) categoryKey = 'type';
-            }
-
-            const filteredData = filter === 'all' 
-                ? productsData 
-                : productsData.filter(p => {
-                    const pCat = p[categoryKey] ? p[categoryKey].toLowerCase() : '';
-                    return pCat === filter.toLowerCase();
-                });
-
-            if (!filteredData || filteredData.length === 0) {
-                productGrid.innerHTML = '<p style="text-align:center; width:100%; color:#888;">Tidak ada produk.</p>';
-                return;
-            }
-
-            let delay = 0;
-            filteredData.forEach(product => {
-                const card = document.createElement('div');
-                card.className = 'product-card';
-                card.style.opacity = 0; 
-                card.style.animation = `slideUpFade 0.6s ease forwards ${0.7 + delay}s`;
-
-                let displayName = getSafeValue(product, 'name', 'product_name', 'Tanpa Nama');
-                if(!displayName) displayName = getSafeValue(product, 'title', '', 'Tanpa Nama');
-
-                let displayCategory = product[categoryKey] || "Uncategorized";
-                const stockVal = parseInt(product.stock);
-                const isOutOfStock = isNaN(stockVal) || stockVal <= 0;
-                const btnDisabled = isOutOfStock ? "disabled" : "";
-                const btnText = isOutOfStock ? "Habis" : "Beli Sekarang";
-                const displayPrice = formatPrice(product.price);
-                const imgSrc = getSafeValue(product, 'image_url', 'img', 'https://via.placeholder.com/250');
-                const descText = getSafeValue(product, 'description', 'desc', '-');
-                const productId = String(product.id);
-
-                card.innerHTML = `
-                    <div class="category-badge">${displayCategory}</div>
-                    <div class="product-img-wrapper">
-                        <img src="${imgSrc}" class="product-img" onerror="this.src='https://via.placeholder.com/250'">
-                    </div>
-                    <div class="product-info">
-                        <div>
-                            <h3 class="product-name">${displayName}</h3>
-                            <p class="product-desc" title="${descText}">${descText}</p>
-                            <span class="product-price">${displayPrice} π</span>
-                            <div class="${isOutOfStock ? 'product-stock out-of-stock' : 'product-stock'}">
-                                ${isOutOfStock ? 'Stok Habis' : 'Stok: ' + stockVal}
-                            </div>
-                        </div>
-                        <button class="btn-buy" onclick="addToCart('${productId}')" ${btnDisabled}>${btnText}</button>
-                    </div>`;
-                productGrid.appendChild(card);
-                delay += 0.05; 
-            });
-        }
-
-        function filterProducts(category, btnElement) {
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            btnElement.classList.add('active');
-            renderProducts(category);
-        }
-
         // ==========================================
-        // CHECKOUT LOGIC (MENGARAHKAN KE PAYMENT)
+        // CHECKOUT LOGIC
         // ==========================================
         function proceedToCheckout() {
             if (!localStorage.getItem('aurora_user')) {
@@ -693,7 +762,6 @@
                 return;
             }
 
-            // Validasi ulang stok sebelum redirect
             const cartItems = JSON.parse(localStorage.getItem('aurora_cart')) || [];
             
             for (let item of cartItems) {
@@ -716,7 +784,6 @@
 
             if (total <= 0) return alert("Total harga tidak valid.");
 
-            // SIMPAN DATA KHUSUS CHECKOUT
             localStorage.setItem('aurora_checkout', JSON.stringify({
                 items: cartItems,
                 total: total,
