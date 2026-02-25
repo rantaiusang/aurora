@@ -50,23 +50,6 @@
         .back-link:hover { color: var(--luxury-gold); }
         
         .store-nav { display: flex; gap: 30px; align-items: center; }
-        
-        /* Tombol Login Guest */
-        .btn-login-guest {
-            padding: 8px 20px;
-            background: transparent;
-            border: 1px solid var(--luxury-gold);
-            color: var(--luxury-gold);
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s;
-            text-decoration: none;
-        }
-        .btn-login-guest:hover {
-            background: var(--luxury-gold);
-            color: #000;
-        }
 
         /* User Menu */
         .user-menu-container { position: relative; }
@@ -79,6 +62,7 @@
         .dropdown-item { padding: 12px 20px; color: #ccc; text-decoration: none; font-size: 0.9rem; transition: 0.2s; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .dropdown-item:last-child { border-bottom: none; }
         .dropdown-item:hover { background: var(--luxury-gold); color: #000; }
+        .dropdown-item.login-action { color: var(--luxury-gold); font-weight: 600; }
         .dropdown-item.logout { color: #ff6b6b; font-weight: 600; }
         .dropdown-item.logout:hover { background: #ff6b6b; color: #fff; }
 
@@ -238,8 +222,10 @@
             <span>&larr;</span>Back
         </a>
         
+        <!-- Konten Header Akan Di-Render oleh JS (Selalu Tampil Profile Avatar) -->
         <div class="store-nav" id="navContainer">
-            <!-- KONTEN DINAMIS: Login Button atau User Menu akan dirender di sini via JS -->
+            <!-- Placeholder loading -->
+            <span style="color:#666;">Loading...</span>
         </div> 
     </header>
 
@@ -252,7 +238,7 @@
                 <p>Aroma yang mendefinisikan karakter Anda.</p>
             </div>
 
-            <!-- SEARCH BAR BARU -->
+            <!-- SEARCH BAR -->
             <div class="search-container page-entry delay-2">
                 <span class="search-icon">🔍</span>
                 <input type="text" id="searchInput" class="search-input" placeholder="Cari parfum (contoh: Rose, Gold, Vanilla)..." oninput="handleSearch(this.value)">
@@ -319,7 +305,7 @@
 
         // Variabel Global
         let productsData = []; 
-        let currentUser = null; // Bisa null (Guest) atau object (User)
+        let currentUser = null; // null = Guest, Object = User
         let dbUser = null;
         
         // State Filter & Search
@@ -327,7 +313,7 @@
         let currentSearch = '';
 
         const productGrid = document.getElementById('productGrid');
-        const navContainer = document.getElementById('navContainer'); // Container dinamis
+        const navContainer = document.getElementById('navContainer'); 
         const sidebarCartList = document.getElementById('sidebarCartList');
         const floatCart = document.getElementById('floating-cart');
         const countSpan = document.getElementById('cart-count-float');
@@ -357,39 +343,55 @@
             // Jika angka pecahan (contoh: 450.5), tampilkan "450.50"
             return Number.isInteger(numPrice) ? numPrice.toString() : numPrice.toFixed(2);
         }
-
         // ==========================================
-        // 2. UPDATE UI HEADER (LOGIN / GUEST)
+        // 2. RENDER HEADER DINAMIS (GUEST / USER)
         // ==========================================
         function renderHeader() {
+            let displayName = "Guest";
+            let avatarLetter = "G";
+            let menuItems = '';
+
             if (currentUser) {
-                // Jika SUDAH LOGIN: Tampilkan Avatar & Dropdown
-                navContainer.innerHTML = `
-                    <div class="user-menu-container">
-                        <div class="user-btn" onclick="toggleDropdown()">
-                            <div class="user-avatar">${currentUser.username.charAt(0).toUpperCase()}</div>
-                            <span style="color: #fff; font-size: 0.9rem;">${currentUser.username}</span>
-                            <span style="color: #666;">▼</span>
-                        </div>
-                        <div class="dropdown-menu" id="dropdownMenu">
-                            <div class="dropdown-item" onclick="openProfileModal()">Profil Saya</div>
-                            <div class="dropdown-item" onclick="openHistoryModal()">Riwayat Pesanan</div>
-                            <div class="dropdown-item logout" onclick="handleLogout()">Logout</div>
-                        </div>
-                    </div>
+                // Jika SUDAH LOGIN
+                displayName = currentUser.username || "User";
+                avatarLetter = displayName.charAt(0).toUpperCase();
+                
+                // Menu untuk User
+                menuItems = `
+                    <div class="dropdown-item" onclick="openProfileModal()">Profil Saya</div>
+                    <div class="dropdown-item" onclick="openHistoryModal()">Riwayat Pesanan</div>
+                    <div class="dropdown-item logout" onclick="handleLogout()">Logout</div>
                 `;
-                // Sync data user ke background jika perlu
-                syncUserToSupabase(currentUser);
             } else {
-                // Jika BELUM LOGIN: Tampilkan Tombol Login
-                navContainer.innerHTML = `
-                    <a href="login.html" class="btn-login-guest">Login</a>
+                // Jika BELUM LOGIN (Guest)
+                // Menu hanya berisi tombol Login
+                menuItems = `
+                    <div class="dropdown-item login-action" onclick="window.location.href='login.html'">Login Sekarang</div>
                 `;
+            }
+
+            // Render HTML Container (Tampilan fisik selalu sama)
+            navContainer.innerHTML = `
+                <div class="user-menu-container">
+                    <div class="user-btn" onclick="toggleDropdown()">
+                        <div class="user-avatar">${avatarLetter}</div>
+                        <span style="color: #fff; font-size: 0.9rem;">${displayName}</span>
+                        <span style="color: #666;">▼</span>
+                    </div>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        ${menuItems}
+                    </div>
+                </div>
+            `;
+
+            // Jika User, sync ke background
+            if (currentUser) {
+                syncUserToSupabase(currentUser);
             }
         }
 
         // ==========================================
-        // 3. SYNC USER KE SUPABASE (Opsional/Background)
+        // 3. SYNC USER KE SUPABASE
         // ==========================================
         async function syncUserToSupabase(piUser) {
             try {
@@ -399,7 +401,7 @@
                     .eq('pi_uid', piUser.uid)
                     .single();
 
-                if (error && error.code !== 'PGRST116') return; // Abaikan error jika tidak ketemu
+                if (error && error.code !== 'PGRST116') return; 
 
                 if (existingUser) {
                     dbUser = existingUser;
@@ -428,16 +430,15 @@
         async function initApp() {
             const localUserStr = localStorage.getItem('aurora_user');
             
-            // Cek apakah ada sesi login, tapi JANGAN paksa redirect jika tidak ada
             if (localUserStr) {
                 try {
                     currentUser = JSON.parse(localUserStr);
                 } catch (e) {
-                    localStorage.removeItem('aurora_user'); // Corrupt data
+                    localStorage.removeItem('aurora_user'); 
                 }
             }
             
-            // Render Header sesuai status login
+            // Render Header (Akan otomatis deteksi Guest atau User)
             renderHeader();
         }
 
@@ -467,12 +468,12 @@
         }
 
         window.addEventListener('load', async () => {
-            await initApp(); // Cek user (Guest/Login)
-            await fetchProducts(); // Load produk (Public)
+            await initApp(); 
+            await fetchProducts(); 
             if(productsData && productsData.length > 0) {
                 renderProducts(); 
             }
-            renderSidebarCart(); // Load keranjang (Guest bisa simpan di localstorage)
+            renderSidebarCart(); 
         });
 
         // Helper
@@ -484,7 +485,7 @@
 
         // --- MODALS & UI LOGIC ---
         function openProfileModal() {
-            if (!currentUser) return; // Tambahan keamanan
+            if (!currentUser) return; 
             const contentDiv = document.getElementById('profileContent');
             const modal = document.getElementById('profileModal');
             modal.classList.add('show');
@@ -505,7 +506,7 @@
         }
 
         async function openHistoryModal() {
-            if (!currentUser) return; // Tambahan keamanan
+            if (!currentUser) return; 
             const contentDiv = document.getElementById('historyContent');
             const modal = document.getElementById('historyModal');
             contentDiv.innerHTML = '<p class="loading-text">Memuat riwayat...</p>';
@@ -590,7 +591,6 @@
             }
 
             const filteredData = productsData.filter(p => {
-                // 1. Filter Kategori
                 let isCategoryMatch = false;
                 if (currentCategory === 'all') {
                     isCategoryMatch = true;
@@ -599,7 +599,6 @@
                     if (pCat === currentCategory.toLowerCase()) isCategoryMatch = true;
                 }
 
-                // 2. Filter Search
                 let isSearchMatch = true;
                 if (currentSearch && currentSearch.length > 0) {
                     const name = getSafeValue(p, 'name', 'product_name', '').toLowerCase();
@@ -781,17 +780,15 @@
         // CHECKOUT LOGIC (WAJIB LOGIN DISINI)
         // ==========================================
         function proceedToCheckout() {
-            // 1. Cek Apakah User Login?
             if (!localStorage.getItem('aurora_user')) {
-                // Jika belum, tampilkan konfirmasi
-                const confirmLogin = confirm("Anda harus login untuk menyelesaikan pembayaran. Ingin lanjut ke halaman login?");
+                // Jika Guest, tampilkan popup konfirmasi
+                const confirmLogin = confirm("Anda harus login terlebih dahulu untuk melanjutkan pembayaran. Ingin login sekarang?");
                 if (confirmLogin) {
                     window.location.href = 'login.html';
                 }
                 return;
             }
 
-            // 2. Jika sudah login, lanjut validasi keranjang
             const cartItems = JSON.parse(localStorage.getItem('aurora_cart')) || [];
             
             for (let item of cartItems) {
@@ -832,10 +829,7 @@
             if(confirm("Yakin ingin keluar?")) {
                 localStorage.removeItem('aurora_user');
                 localStorage.removeItem('aurora_token');
-                // Jangan hapus keranjang agar user tetap punya item jika nanti login lagi (opsional)
-                // localStorage.removeItem('aurora_cart'); 
-                
-                // Reload halaman untuk update UI ke Guest
+                // Reload halaman agar UI kembali ke Guest
                 window.location.reload(); 
             }
         }
