@@ -12,7 +12,6 @@
         :root {
             --luxury-gold: #d4af37;
             --luxury-gold-dim: rgba(212, 175, 55, 0.15);
-            --luxury-gold-hover: #b5952f;
             --dark-bg: #0f0c15;
             --dark-card: rgba(25, 23, 28, 0.98);
             --text-white: #ffffff;
@@ -32,12 +31,11 @@
             display: flex;
             flex-direction: column;
             overflow-x: hidden;
-            /* Pola background halus */
             background-image: radial-gradient(circle at 10% 20%, rgba(212, 175, 55, 0.03) 0%, transparent 20%),
                               radial-gradient(circle at 90% 80%, rgba(212, 175, 55, 0.03) 0%, transparent 20%);
         }
 
-        /* Header */
+        /* Header & UI Elements ... (Sama seperti sebelumnya) */
         header { padding: 24px 20px; text-align: center; z-index: 10; }
         .logo {
             font-family: 'Playfair Display', serif;
@@ -50,139 +48,45 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-
-        /* Main Content */
-        .login-container {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            position: relative;
-        }
-
-        /* Glow Effect di belakang card */
+        .login-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; position: relative; }
         .glow-effect {
-            position: absolute;
-            width: 350px;
-            height: 350px;
+            position: absolute; width: 350px; height: 350px;
             background: radial-gradient(circle, var(--luxury-gold-dim) 0%, transparent 70%);
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: -1;
-            pointer-events: none;
+            top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: -1; pointer-events: none;
             animation: pulseGlow 4s infinite ease-in-out;
         }
-
-        @keyframes pulseGlow {
-            0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
-            50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); }
-        }
-
-        /* Card */
+        @keyframes pulseGlow { 0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); } 50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); } }
+        
         .card {
-            background: var(--dark-card);
-            width: 100%;
-            max-width: 400px;
-            padding: 45px 30px;
-            border-radius: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            text-align: center;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
-            backdrop-filter: blur(10px);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
+            background: var(--dark-card); width: 100%; max-width: 400px; padding: 45px 30px;
+            border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.08); text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6); backdrop-filter: blur(10px);
         }
-
-        /* Spinner */
         .spinner-wrapper { margin: 0 auto 30px; height: 70px; display: flex; align-items: center; justify-content: center; position: relative; }
         .spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(212, 175, 55, 0.1);
-            border-top: 3px solid var(--luxury-gold);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            transition: border-top-color 0.3s ease;
+            width: 50px; height: 50px; border: 3px solid rgba(212, 175, 55, 0.1);
+            border-top: 3px solid var(--luxury-gold); border-radius: 50%; animation: spin 1s linear infinite;
         }
-        .pi-icon {
-            font-family: 'Playfair Display', serif;
-            font-size: 1.5rem;
-            color: var(--luxury-gold);
-            position: absolute;
-            z-index: 2;
-            font-weight: bold;
-        }
-
+        .pi-icon { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: var(--luxury-gold); position: absolute; font-weight: bold; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Text Elements */
         h2 { font-size: 1.5rem; margin-bottom: 10px; font-weight: 600; letter-spacing: 0.5px; }
         p.subtitle { font-size: 0.9rem; color: var(--text-gray); margin-bottom: 30px; line-height: 1.6; min-height: 45px;}
 
-        /* Error Box */
-        .error-box {
-            display: none;
-            background: var(--error-bg);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            text-align: left;
-            font-size: 0.85rem;
-            animation: slideDown 0.3s ease;
-        }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
+        .error-box { display: none; background: var(--error-bg); border: 1px solid rgba(239, 68, 68, 0.3); padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: left; font-size: 0.85rem; }
         .error-title { color: #fca5a5; font-weight: 600; display: block; margin-bottom: 5px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
         .error-msg { color: #e5e7eb; word-break: break-word; }
 
-        /* Buttons */
         .btn-action {
-            display: none;
-            margin-top: 15px;
-            background: var(--luxury-gold);
-            color: #000;
-            border: none;
-            padding: 14px 30px;
-            border-radius: 50px;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 0.95rem;
-            width: 100%;
-            transition: transform 0.2s, background 0.2s;
-            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
-            font-family: 'Poppins', sans-serif;
+            display: none; margin-top: 15px; background: var(--luxury-gold); color: #000; border: none;
+            padding: 14px 30px; border-radius: 50px; font-weight: 600; cursor: pointer; width: 100%;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3); font-family: 'Poppins', sans-serif;
         }
-        .btn-action:hover { background: var(--luxury-gold-hover); transform: translateY(-2px); }
-        .btn-action:active { transform: translateY(0); }
-
-        /* Console Log Visual */
-        .debug-log {
-            display: none; /* Hidden by default */
-            margin-top: 20px;
-            padding: 12px;
-            background: #000;
-            border: 1px solid #333;
-            color: #4ade80; /* Hijau terminal */
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 0.75rem;
-            text-align: left;
-            max-height: 120px;
-            overflow-y: auto;
-            border-radius: 8px;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
-        }
-        .debug-log p { margin-bottom: 4px; border-bottom: 1px solid #111; padding-bottom: 2px;}
-        .debug-log p.error-log { color: #ef4444; }
+        .debug-log { display: none; margin-top: 20px; padding: 12px; background: #000; border: 1px solid #333; color: #4ade80; font-family: monospace; font-size: 0.75rem; text-align: left; max-height: 120px; overflow-y: auto; }
+        .debug-log p { margin-bottom: 4px; border-bottom: 1px solid #111; }
     </style>
 
-    <!-- 1. Load Pi SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    
-    <!-- 2. Load Config (Opsional) -->
     <script src="pi-config.js"></script>
 </head>
 <body>
@@ -193,117 +97,107 @@
 
     <div class="login-container">
         <div class="glow-effect"></div>
-
         <div class="card">
-            <!-- Status Area -->
             <div class="spinner-wrapper">
                 <div class="spinner" id="spinnerAnim"></div>
-                <div class="pi-icon" id="piIcon">π</div>
+                <div class="pi-icon">π</div>
             </div>
 
             <h2 id="status-title">Menghubungkan...</h2>
             <p class="subtitle" id="status-desc">Menyiapkan koneksi aman ke Pi Network</p>
 
-            <!-- Error Box -->
             <div id="error-box" class="error-box">
                 <span class="error-title">Kesalahan Sistem</span>
                 <span id="error-msg" class="error-msg">Deskripsi error akan muncul di sini.</span>
             </div>
             
-            <!-- Debug Log -->
             <div id="debug-log" class="debug-log"></div>
-
-            <!-- Action Buttons -->
             <button id="btn-retry" class="btn-action" onclick="window.location.reload()">Coba Lagi</button>
-            <button id="btn-simulate" class="btn-action" style="background: transparent; border: 1px solid var(--text-gray); color: var(--text-gray);">
-                ⚠️ Buka di Browser Biasa (Simulasi)
-            </button>
         </div>
     </div>
 
-    <!-- SCRIPT UTAMA (SESUAI PERBAIKAN) -->
     <script>
-    // 1. Helper untuk menampilkan log di layar
-    function logDebug(msg, isError = false) {
-        console.log(msg);
-        const debugBox = document.getElementById('debug-log');
-        if(debugBox) {
-            debugBox.style.display = 'block';
-            const p = document.createElement('p');
-            if(isError) p.style.color = '#ef4444';
-            p.innerHTML = `> ${msg}`;
-            debugBox.appendChild(p);
-            debugBox.scrollTop = debugBox.scrollHeight;
-        }
-    }
-
-    // 2. Fungsi Utama Login
-    async function runLoginProcess() {
-        const ui = {
-            title: document.getElementById('status-title'),
-            desc: document.getElementById('status-desc'),
-            spinner: document.getElementById('spinnerAnim'),
-            errorBox: document.getElementById('error-box'),
-            errorMsg: document.getElementById('error-msg'),
-            btnRetry: document.getElementById('btn-retry')
-        };
-
-        try {
-            logDebug("Cek Environment...");
-            if (typeof Pi === 'undefined') {
-                throw new Error("Pi SDK tidak terdeteksi. Pastikan buka di Pi Browser.");
+        function logDebug(msg, isError = false) {
+            console.log(msg);
+            const debugBox = document.getElementById('debug-log');
+            if(debugBox) {
+                debugBox.style.display = 'block';
+                const p = document.createElement('p');
+                if(isError) p.style.color = '#ef4444';
+                p.innerHTML = `> ${msg}`;
+                debugBox.appendChild(p);
+                debugBox.scrollTop = debugBox.scrollHeight;
             }
+        }
 
-            // Inisialisasi SDK
-            logDebug("Memulai Pi.init() dengan version '2.0'...");
-            // Sandbox harus TRUE jika tes di sandbox, FALSE jika sudah mainnet
-            const isSandbox = (typeof window.APP_CONFIG !== 'undefined') ? window.APP_CONFIG.sandbox : true;
-            await Pi.init({ version: "2.0", sandbox: isSandbox }); 
-            logDebug("Pi.init() Sukses.");
-
-            // Meminta izin akses (Autentikasi)
-            ui.title.innerText = "Autentikasi...";
-            ui.desc.innerText = "Mohon izinkan akses akun Pi Anda di jendela yang muncul.";
-            logDebug("Meminta izin akses profil (username, payments)...");
-
-            const scopes = ['username', 'payments'];
-
-            // Callback wajib: Menangani pembayaran yang belum selesai
-            const onIncompletePaymentFound = (payment) => {
-                logDebug("Info: Ada pembayaran tertunda ID: " + payment.identifier);
+        async function runLoginProcess() {
+            const ui = {
+                title: document.getElementById('status-title'),
+                desc: document.getElementById('status-desc'),
+                spinner: document.getElementById('spinnerAnim'),
+                errorBox: document.getElementById('error-box'),
+                errorMsg: document.getElementById('error-msg'),
+                btnRetry: document.getElementById('btn-retry')
             };
 
-            // EKSEKUSI PROSES LOGIN (Memunculkan Popup Pi)
-            const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
-            
-            logDebug("Autentikasi Berhasil!");
-            logDebug("User: " + auth.user.username);
+            // --- PERBAIKAN LOGIKA: DETEKSI LOOP ---
+            // Jika kita datang dari index.html, berarti ada masalah validasi.
+            // Kita hapus semua cache agar user bisa login ulang dengan bersih.
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('retry') === 'true') {
+                console.warn("Terdeteksi Loop Login. Menghapus cache lama...");
+                localStorage.clear(); // Hapus pi_user, aurora_user, dll
+                // Hapus parameter dari URL agar tidak terus-terusan clear
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
 
-            // Tampilan Sukses
-            ui.title.innerText = "Berhasil!";
-            ui.desc.innerText = "Selamat datang, " + auth.user.username;
-            ui.spinner.style.borderTopColor = "#10b981"; // Berubah hijau
-            
-            // Simpan data ke memori browser
-            localStorage.setItem('pi_user', JSON.stringify(auth.user));
+            try {
+                logDebug("Cek Environment...");
+                if (typeof Pi === 'undefined') {
+                    throw new Error("Pi SDK tidak terdeteksi. Pastikan buka di Pi Browser.");
+                }
 
-            // Pindah ke halaman index setelah sukses
-            setTimeout(() => {
-                window.location.href = "index.html";
-            }, 1500);
+                // Init
+                logDebug("Memulai Pi.init()...");
+                const isSandbox = (typeof window.APP_CONFIG !== 'undefined') ? window.APP_CONFIG.sandbox : true;
+                await Pi.init({ version: "2.0", sandbox: isSandbox }); 
+                logDebug("Pi.init() Sukses.");
 
-        } catch (err) {
-            logDebug(err.message, true);
-            ui.title.innerText = "Login Gagal";
-            ui.desc.innerText = "Terjadi kendala saat menyambungkan.";
-            ui.errorBox.style.display = 'block';
-            ui.errorMsg.innerText = err.message;
-            ui.btnRetry.style.display = 'block';
+                // Authenticate
+                ui.title.innerText = "Autentikasi...";
+                ui.desc.innerText = "Mohon izinkan akses akun Pi Anda...";
+                
+                const scopes = ['username', 'payments'];
+                const onIncompletePaymentFound = (payment) => {
+                    logDebug("Incomplete payment: " + payment.identifier);
+                };
+
+                const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
+                
+                logDebug("Auth Sukses! User: " + auth.user.username);
+                
+                ui.title.innerText = "Berhasil!";
+                ui.desc.innerText = "Selamat datang, " + auth.user.username;
+                ui.spinner.style.borderTopColor = "#10b981";
+                
+                // --- SIMPAN DATA (GUNAKAN KEY YANG PASTI SAMA) ---
+                localStorage.setItem('pi_user', JSON.stringify(auth.user));
+                
+                setTimeout(() => {
+                    window.location.href = "index.html";
+                }, 1500);
+
+            } catch (err) {
+                logDebug(err.message, true);
+                ui.title.innerText = "Login Gagal";
+                ui.desc.innerText = "Terjadi kendala saat menyambungkan.";
+                ui.errorBox.style.display = 'block';
+                ui.errorMsg.innerText = err.message;
+                ui.btnRetry.style.display = 'block';
+            }
         }
-    }
 
-    // Jalankan otomatis saat halaman selesai dimuat
-    window.onload = runLoginProcess;
-</script>
+        window.onload = runLoginProcess;
+    </script>
 </body>
 </html>
