@@ -189,7 +189,7 @@
                     <div class="dropdown-item logout" onclick="handleLogout()">Logout</div>
                 </div>
             </div>
-        </nav>
+        </div> <!-- PERBAIKAN: Tag nav diganti div -->
     </header>
 
     <div class="main-layout">
@@ -227,7 +227,7 @@
                 </div>
             </div>
         </div>
-    </div> <!-- PERBAIKAN: Tag main-layout ditutup di sini -->
+    </div>
 
     <!-- MODAL PROFIL -->
     <div class="modal-overlay" id="profileModal">
@@ -247,14 +247,15 @@
                 <p class="loading-text">Memuat riwayat pesanan...</p>
             </div>
         </div>
-    </div> <!-- PERBAIKAN: Tag historyModal ditutup di sini -->
+    </div>
 
     <script>
         // ==========================================
         // 1. KONFIGURASI SUPABASE
         // ==========================================
         const SUPABASE_URL = 'https://dikapquhusbwjccbqcsb.supabase.co';
-        // Gunakan Anon Key untuk akses client-side
+        
+        // JIKA PRODUK TIDAK TAMPIL, GANTI KEY INI DENGAN 'SERVICE_ROLE' KEY DARI DASHBOARD SUPABASE ANDA
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA';
         
         // PERBAIKAN: Panggil createClient langsung dari objek 'supabase' global
@@ -355,17 +356,30 @@
 
         async function fetchProducts() {
             try {
-                // PERUBAHAN 1: Nama tabel diganti menjadi 'productspi'
+                // PASTIKAN NAMA TABEL DI SINI SAMA DENGAN DI DASHBOARD SUPABASE
                 const { data, error } = await supabaseClient
                     .from('productspi') 
                     .select('*')
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
-                productsData = data; // Update data global dengan data terbaru dari DB
-                return data;
+                
+                // Debugging: Cek data yang diterima
+                console.log("Data Produk Diterima:", data);
+
+                productsData = data || []; // Handle null/undefined
+                
+                // Cek jika data kosong tapi tidak error
+                if (productsData.length === 0) {
+                     productGrid.innerHTML = `<div class="empty-msg" style="grid-column: 1/-1;">Tidak ada produk di database.</div>`;
+                }
+                
+                return productsData;
             } catch (e) {
-                productGrid.innerHTML = `<div class="error-message"><p>Gagal memuat produk: ${e.message}</p></div>`;
+                console.error("Error Fetch:", e);
+                // Tampilkan error di alert agar developer tahu
+                alert("Gagal memuat produk: " + e.message + "\n\nCek: 1. Nama Tabel 'productspi' 2. RLS (Matikan RLS di Supabase) 3. Koneksi Internet");
+                productGrid.innerHTML = `<div class="error-message"><p>Error: ${e.message}</p></div>`;
                 return [];
             }
         }
@@ -375,8 +389,8 @@
             await fetchProducts(); // Ambil data stok terbaru
             if(productsData && productsData.length > 0) {
                 renderProducts('all');
-                renderSidebarCart();
             }
+            renderSidebarCart();
         });
 
         // Helper
@@ -613,7 +627,7 @@
             filteredData.forEach(product => {
                 const card = document.createElement('div');
                 card.className = 'product-card';
-                card.style.opacity = '0'; 
+                card.style.opacity = 0; 
                 card.style.animation = `slideUpFade 0.6s ease forwards ${0.7 + delay}s`;
 
                 let displayName = getSafeValue(product, 'name', 'product_name', 'Tanpa Nama');
