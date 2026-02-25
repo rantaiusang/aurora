@@ -6,34 +6,182 @@
     <title>Pembayaran - Aurora Store</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Pi SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    <script src="./pi-config.js"></script> <!-- PENTING: Load Config -->
+    <!-- Config File (Pastikan file ini ada dan berisi ENDPOINT & KEYS) -->
+    <script src="./pi-config.js"></script>
 
     <style>
-        :root { --luxury-gold: #d4af37; --dark-bg: #0f0c15; --card-bg: #1a1620; --danger-color: #ff4d4d; --info-color: #3498db; }
-        body { background-color: var(--dark-bg); color: #ffffff; font-family: 'Poppins', sans-serif; margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
-        header { background: rgba(15, 12, 21, 0.95); border-bottom:1px solid rgba(212, 175, 55, 0.2); padding: 20px 8%; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
-        .back-link { color: #fff; text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: color 0.3s; cursor: pointer; }
-        .brand-name { font-family: 'Playfair Display', serif; color: var(--luxury-gold); font-size: 1.2rem; font-weight: 700; }
+        :root { 
+            --luxury-gold: #d4af37; 
+            --dark-bg: #0f0c15; 
+            --card-bg: #1a1620; 
+            --danger-color: #ff4d4d; 
+            --info-color: #3498db; 
+        }
+        body { 
+            background-color: var(--dark-bg); 
+            color: #ffffff; 
+            font-family: 'Poppins', sans-serif; 
+            margin: 0; 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        header { 
+            background: rgba(15, 12, 21, 0.95); 
+            border-bottom:1px solid rgba(212, 175, 55, 0.2); 
+            padding: 20px 8%; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            position: sticky; 
+            top: 0; 
+            z-index: 10; 
+        }
+        .back-link { 
+            color: #fff; 
+            text-decoration: none; 
+            font-weight: 500; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            transition: color 0.3s; 
+            cursor: pointer; 
+        }
+        .back-link:hover { color: var(--luxury-gold); }
+        .brand-name { 
+            font-family: 'Playfair Display', serif; 
+            color: var(--luxury-gold); 
+            font-size: 1.2rem; 
+            font-weight: 700; 
+        }
         
-        .payment-wrapper { flex:1; display: flex; align-items: center; justify-content: center; padding: 40px 8%; position: relative; }
-        .payment-card { background: var(--card-bg); width: 100%; max-width: 600px; padding: 40px; border-radius: 20px; border: 1px solid rgba(212, 175, 55, 0.2); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); position: relative; }
-        .coin-visual { width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 30px; background: linear-gradient(135deg, var(--luxury-gold), #b8860b); display: flex; justify-content: center; align-items: center; font-size: 2rem; color: white; font-weight: bold; }
-        h2 { font-family: 'Playfair Display', serif; text-align: center; color: var(--luxury-gold); margin-bottom: 10px; }
+        .payment-wrapper { 
+            flex:1; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 40px 8%; 
+            position: relative; 
+        }
+        .payment-card { 
+            background: var(--card-bg); 
+            width: 100%; 
+            max-width: 600px; 
+            padding: 40px; 
+            border-radius: 20px; 
+            border: 1px solid rgba(212, 175, 55, 0.2); 
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); 
+            position: relative; 
+        }
+        .coin-visual { 
+            width: 60px; 
+            height: 60px; 
+            border-radius: 50%; 
+            margin: 0 auto 30px; 
+            background: linear-gradient(135deg, var(--luxury-gold), #b8860b); 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-size: 2rem; 
+            color: white; 
+            font-weight: bold; 
+        }
+        h2 { 
+            font-family: 'Playfair Display', serif; 
+            text-align: center; 
+            color: var(--luxury-gold); 
+            margin-bottom: 10px; 
+        }
+        .sub-text { text-align: center; color: #aaa; margin-bottom: 25px; font-size: 0.9rem; }
+        
         .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; color: #ccc; }
-        .input-box { width: 100%; padding: 14px; background: rgba(255,255,255, 0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; box-sizing: border-box; }
-        .input-box:focus { outline: none; border-color: var(--luxury-gold); }
-        .item-summary { background: rgba(0,0, 0, 0.2); padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.05); }
-        .item-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; }
-        .total-display { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 10px; border: 1px solid rgba(212, 175, 55, 0.2); }
-        .total-amount { font-size: 1.5rem; color: var(--luxury-gold); font-weight: 700; }
+        label { display: block; margin-bottom: 8px; color: #ccc; font-size: 0.9rem; }
+        .input-box, textarea.input-box { 
+            width: 100%; 
+            padding: 12px 14px; 
+            background: rgba(255,255,255, 0.05); 
+            border: 1px solid rgba(255,255,255, 0.1); 
+            border-radius: 8px; 
+            color: white; 
+            box-sizing: border-box; 
+            font-family: 'Poppins', sans-serif;
+            resize: vertical;
+        }
+        .input-box:focus, textarea.input-box:focus { 
+            outline: none; 
+            border-color: var(--luxury-gold); 
+        }
+
+        .item-summary { 
+            background: rgba(0,0,0, 0.2); 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 25px; 
+            border: 1px solid rgba(255,255,255,0.05); 
+        }
+        .item-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 8px; 
+            border-bottom: 1px solid rgba(255,255,255,0.05); 
+            padding-bottom: 8px; 
+            font-size: 0.9rem; 
+            color: #ddd; 
+        }
+        .total-display { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-top: 30px; 
+            padding: 20px; 
+            background: rgba(0,0,0,0.3); 
+            border-radius: 10px; 
+            border: 1px solid rgba(212, 175, 55, 0.2); 
+        }
+        .total-amount { 
+            font-size: 1.5rem; 
+            color: var(--luxury-gold); 
+            font-weight: 700; 
+        }
         
-        .btn-pay { width: 100%; padding: 18px; background: var(--luxury-gold); color: #000; border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 800; cursor: pointer; margin-top: 20px; }
-        .btn-pay:hover:not(:disabled) { background: #ffed4a; }
-        .btn-pay:disabled { background: #444; cursor: not-allowed; color: #888; }
+        .btn-pay { 
+            width: 100%; 
+            padding: 18px; 
+            background: var(--luxury-gold); 
+            color: #000; 
+            border: none; 
+            border-radius: 10px; 
+            font-size: 1.1rem; 
+            font-weight: 800; 
+            cursor: pointer; 
+            margin-top: 20px; 
+            transition: background 0.3s;
+        }
+        .btn-pay:hover:not(:disabled) { 
+            background: #ffed4a; 
+            transform: translateY(-2px);
+        }
+        .btn-pay:disabled { 
+            background: #444; 
+            cursor: not-allowed; 
+            color: #888; 
+            transform: none;
+        }
         
-        .error-box { display:none; background:rgba(255, 77, 77, 0.1); border: 1px solid var(--danger-color); color:#ffcccc; padding:15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+        .error-box { 
+            display:none; 
+            background:rgba(255, 77, 77, 0.1); 
+            border: 1px solid var(--danger-color); 
+            color:#ffcccc; 
+            padding:15px; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            text-align: center; 
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -50,14 +198,23 @@
             <div class="coin-visual">π</div>
 
             <h2>Pembayaran Aman</h2>
-            <p class="sub-text" style="text-align:center; color:#aaa; margin-bottom:20px;">Sistem pembayaran otomatis via Pi Network.</p>
+            <p class="sub-text">Sistem pembayaran otomatis via Pi Network. Pastikan Anda menggunakan Pi Browser.</p>
 
             <div id="error-message" class="error-box"></div>
 
             <form id="paymentForm" onsubmit="handleAutoPayment(event)">
-                <div class="form-group"><label>Nama Lengkap</label><input type="text" id="fullName" class="input-box" required></div>
-                <div class="form-group"><label>Nomor WhatsApp</label><input type="tel" id="phoneNumber" class="input-box" required></div>
-                <div class="form-group"><label>Alamat Lengkap</label><textarea id="address" class="input-box" rows="2" required></textarea></div>
+                <div class="form-group">
+                    <label for="fullName">Nama Lengkap</label>
+                    <input type="text" id="fullName" class="input-box" placeholder="Nama Penerima" required>
+                </div>
+                <div class="form-group">
+                    <label for="phoneNumber">Nomor WhatsApp</label>
+                    <input type="tel" id="phoneNumber" class="input-box" placeholder="0812..." required>
+                </div>
+                <div class="form-group">
+                    <label for="address">Alamat Pengiriman</label>
+                    <textarea id="address" class="input-box" rows="2" placeholder="Jalan, No Rumah, Kecamatan, Kota..." required></textarea>
+                </div>
 
                 <div class="item-summary">
                     <div id="summaryList"></div>
@@ -74,22 +231,27 @@
     </div>    
 
     <script>
-        // Cek Config
+        // --- 1. CEK KONFIGURASI ---
         if (!window.APP_CONFIG) {
-            alert("Konfigurasi hilang. Pastikan pi-config.js terload.");
-            throw new Error("Config missing");
+            alert("Konfigurasi hilang. Pastikan file pi-config.js ada.");
+            // Fallback config jika file tidak ada (hanya untuk testing jangan dipakai di production)
+            window.APP_CONFIG = {
+                IS_SANDBOX: true,
+                ENDPOINTS: {
+                    PAYMENT: "https://your-backend-url.com/api/payment" 
+                },
+                SUPABASE_ANON_KEY: "" 
+            };
         }
         const config = window.APP_CONFIG;
         
-        // ==========================================
-        // FIX 1: INIT SDK DYNAMIS (BAIK SANDBOX/MAINNET)
-        // ==========================================
+        // --- 2. INISIALISASI PI SDK ---
+        // Pastikan inisialisasi menggunakan config
         Pi.init({
             version: "2.0",
-            sandbox: config.IS_SANDBOX // Gunakan config, bukan hardcode true
+            sandbox: config.IS_SANDBOX 
         });
 
-        // Backend URL dari config
         const BACKEND_URL = config.ENDPOINTS.PAYMENT;
 
         let total = 0;
@@ -97,15 +259,25 @@
         let currentUser = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
+            // Cek Login Sesi
             const userStr = localStorage.getItem('aurora_user');
-            if(!userStr) return (window.location.href = 'login.html');
+            if(!userStr) {
+                alert("Sesi tidak ditemukan. Silakan login.");
+                window.location.href = 'login.html';
+                return;
+            }
+            
             currentUser = JSON.parse(userStr);
             loadCartData();
         });
 
         function loadCartData() {
             const checkoutRaw = localStorage.getItem('aurora_checkout');
-            if (!checkoutRaw) return alert("Sesi habis") || (window.location.href = 'store.html');
+            if (!checkoutRaw) {
+                alert("Data keranjang tidak ditemukan.");
+                window.location.href = 'store.html';
+                return;
+            }
             
             const checkout = JSON.parse(checkoutRaw);
             cartItems = checkout.items;
@@ -113,31 +285,45 @@
 
             let html = '';
             cartItems.forEach(item => {
+                // Ambil nama dengan fallback jika struktur data berbeda
                 const name = item.name || item.product_name || "Produk";
-                html += `<div class="item-row"><span>${name}</span> <span>x${item.qty}</span> <span>${(item.price * item.qty).toFixed(2)} π</span></div>`;
+                const price = parseFloat(item.price) || 0;
+                const qty = parseInt(item.qty) || 1;
+                
+                html += `
+                    <div class="item-row">
+                        <span>${name} (x${qty})</span> 
+                        <span>${(price * qty).toFixed(2)} π</span>
+                    </div>`;
             });
 
             document.getElementById('summaryList').innerHTML = html;
-            document.getElementById('displayTotal').innerText = (total < 0.01 ? total.toFixed(7) : total.toFixed(2)) + " π";
+            
+            // Format tampilan total
+            const formattedTotal = (total < 0.01) ? total.toFixed(7) : total.toFixed(2);
+            document.getElementById('displayTotal').innerText = formattedTotal + " π";
+            
             document.getElementById('payBtn').disabled = false;
-            document.getElementById('payBtn').innerText = `Bayar ${total.toFixed(2)} π`;
+            document.getElementById('payBtn').innerText = `Bayar ${formattedTotal} π`;
         }
 
-        // Fungsi Pembayaran
+        // --- 3. LOGIKA PEMBAYARAN UTAMA ---
         async function handleAutoPayment(e) {
             e.preventDefault();
+            
+            // Validasi Input Form
             const name = document.getElementById('fullName').value.trim();
             const phone = document.getElementById('phoneNumber').value.trim();
             const address = document.getElementById('address').value.trim();
 
             if (name.length < 3 || phone.length < 10 || address.length < 10) {
-                return showError("Mohon lengkapi data pengiriman.");
+                return showError("Mohon lengkapi data pengiriman dengan benar.");
             }
 
             const btn = document.getElementById('payBtn');
             const originalBtnText = btn.innerText;
             btn.disabled = true;
-            btn.innerText = "Memulai Pembayaran...";
+            btn.innerText = "Menyiapkan Pembayaran...";
             document.getElementById('error-message').style.display = 'none';
 
             if (total <= 0) {
@@ -151,47 +337,46 @@
             localStorage.setItem('temp_order_id', currentOrderId);
 
             try {
-                // ==========================================
-                // FIX 2: CALLBACK WAJIB
-                // ==========================================
+                // --- STEP A: AUTHENTICATE (WAJIB) ---
+                // SDK memerlukan akses token baru setiap kali ada transaksi.
                 const onIncompletePaymentFound = (payment) => {
-                    console.log("Pembayaran pending ditemukan:", payment);
+                    console.log("Incomplete payment found:", payment);
                 };
 
-                // ==========================================
-                // FIX 3: AUTHENTICATE SAAT INI DIPERLUKAN
-                // ==========================================
-                // Meskipun sudah login di login.html, SDK Pi memerlukan 
-                // token fresh untuk transaksi pembayaran di halaman ini.
                 const auth = await Pi.authenticate(
                     ["payments", "username"], 
                     onIncompletePaymentFound
                 );
 
                 if (!auth || !auth.accessToken) {
-                    throw new Error("Gagal autentikasi ulang untuk pembayaran.");
+                    throw new Error("Gagal otentikasi. Izinkan akses Pi Browser.");
                 }
 
                 const piUser = auth.user;
-                console.log("User Authenticated for Payment:", piUser.username);
+                console.log("User Authenticated:", piUser.username);
 
-                // Lanjut ke Payment
+                // --- STEP B: CREATE PAYMENT ---
                 btn.innerText = "Membuka Dialog Pi...";
                 
+                // Pastikan amount adalah number
+                const paymentAmount = Number(total);
+
                 await Pi.createPayment(
                     {
-                        amount: Number(total.toFixed(7)), 
-                        memo: `Order ${currentOrderId} - Aurora Store`,
+                        amount: paymentAmount, 
+                        memo: `Order #${currentOrderId} - Aurora Store`,
                         metadata: { orderId: currentOrderId, user: piUser.username }
                     },
                     {
                         onReadyForServerApproval: async function (paymentId) {
+                            console.log("Payment ID:", paymentId);
                             try {
-                                // Kirim Payment ID ke backend untuk disetujui
+                                // Kirim ke Backend untuk Approval
                                 await fetch(BACKEND_URL, {
                                     method: "POST",
                                     headers: { 
                                         "Content-Type": "application/json",
+                                        // Gunakan Header Autorisasi untuk keamanan
                                         "Authorization": `Bearer ${config.SUPABASE_ANON_KEY}` 
                                     },
                                     body: JSON.stringify({
@@ -202,12 +387,16 @@
                                         username: piUser.username
                                     })
                                 });
-                            } catch (e) { console.error("Approval Error:", e); }
+                            } catch (e) { 
+                                console.error("Gagal menghubungi server approval:", e); 
+                                // Jangan throw error di sini agar flow Pi tidak crash, biarkan user cancel di UI jika perlu
+                            }
                         },
 
                         onReadyForServerCompletion: async function (paymentId, txid) {
+                            console.log("Payment Complete! TXID:", txid);
                             try {
-                                // Konfirmasi pembayaran sukses + Txid Blockchain
+                                // Kirim data lengkap pesanan ke Backend
                                 await fetch(BACKEND_URL, {
                                     method: "POST",
                                     headers: { 
@@ -217,7 +406,7 @@
                                     body: JSON.stringify({
                                         action: "complete",
                                         paymentId: paymentId,
-                                        txid: txid, // PENTING: Ini bukti transfer di blockchain
+                                        txid: txid, 
                                         orderId: currentOrderId,
                                         uid: piUser.uid,
                                         username: piUser.username,
@@ -227,33 +416,46 @@
                                     })
                                 });
 
+                                // Bersihkan local storage
                                 localStorage.removeItem('aurora_checkout');
                                 localStorage.removeItem("aurora_cart");
+                                
+                                // Redirect ke halaman sukses
                                 window.location.href = 'payment-success.html';
                             } catch (error) {
-                                showError("Gagal konfirmasi ke server: " + error.message);
+                                console.error("Gagal menyimpan pesanan:", error);
+                                showError("Pembayaran sukses, tapi gagal menyimpan data pesanan. Hubungi admin dengan TXID: " + txid);
                                 btn.disabled = false;
-                                btn.innerText = "Coba Lagi";
+                                btn.innerText = "Lanjutkan ke Store"; // Biarkan user keluar jika backend error
                             }
                         },
 
                         onCancel: function () {
+                            console.log("Payment cancelled by user");
                             btn.disabled = false;
                             btn.innerText = originalBtnText;
                             showError("Pembayaran dibatalkan.");
                         },
 
                         onError: function (err) {
+                            console.error("Payment Error:", err);
                             btn.disabled = false;
                             btn.innerText = originalBtnText;
-                            showError("Error: " + err.message);
+                            
+                            let msg = err.message || "Terjadi kesalahan pada pembayaran.";
+                            if(msg.includes("User cancelled")) msg = "Pembayaran dibatalkan.";
+                            
+                            showError(msg);
                         }
                     }
                 );
+
             } catch (err) {
-                console.error("Payment Flow Error:", err);
+                console.error("Flow Error:", err);
                 let msg = err.message || "Terjadi kesalahan tak terduga.";
-                if (msg.includes("timeout")) msg = "Waktu habis. Izinkan pop-up di browser.";
+                
+                if (msg.includes("timeout")) msg = "Waktu habis. Pastikan pop-up tidak diblokir.";
+                
                 showError(msg);
                 btn.disabled = false;
                 btn.innerText = originalBtnText;
@@ -264,6 +466,8 @@
             const div = document.getElementById('error-message');
             div.innerHTML = `<strong>Error:</strong> ${msg}`;
             div.style.display = 'block';
+            // Scroll ke atas agar error terlihat
+            div.scrollIntoView({behavior: "smooth", block: "center"});
         }
     </script>
 </body>
