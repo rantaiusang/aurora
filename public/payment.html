@@ -230,17 +230,17 @@
         </div>
     </div>    
 
-         <script>
+             <script>
         // --- 1. KONFIGURASI & VARIABEL ---
-        // Pastikan file pi-config.js sudah di-load di head
+        // Pastikan file pi-config.js ada dan berisi URL Backend & Key
         if (!window.APP_CONFIG) {
-            console.warn("Config tidak ditemukan, menggunakan Sandbox Default.");
+            alert("File pi-config.js hilang. Menggunakan mode Sandbox Default.");
             window.APP_CONFIG = {
                 IS_SANDBOX: true,
                 ENDPOINTS: {
-                    PAYMENT: "URL_BACKEND_ANDA_DISINI" // GANTI INI
+                    PAYMENT: "URL_BACKEND_ANDA_DISINI" 
                 },
-                SUPABASE_ANON_KEY: "KEY_SUPABASE_ANDA_DISINI" // GANTI INI
+                SUPABASE_ANON_KEY: "KEY_SUPABASE_ANDA_DISINI"
             };
         }
         const config = window.APP_CONFIG;
@@ -249,32 +249,30 @@
         let cartItems = [];
         let currentUser = null;
 
-        // --- 2. INISIALISASI OTOMATIS (Solusi "Menyiapkan Terus") ---
-        async function initPaymentPage() {
+        // --- 2. INISIALISASI (Sesuai Alur Anda) ---
+        async function initPayment() {
             const payBtn = document.getElementById('payBtn');
             const errorBox = document.getElementById('error-message');
 
             try {
-                // A. Cek SDK
+                // Cek SDK
                 if (typeof Pi === 'undefined') {
-                    throw new Error("Pi SDK tidak terdeteksi. Gunakan Pi Browser!");
+                    throw new Error("Buka aplikasi ini di dalam Pi Browser.");
                 }
 
-                // B. Inisialisasi SDK (Wajib)
+                // Init SDK
                 await Pi.init({ version: "2.0", sandbox: config.IS_SANDBOX });
-                console.log("Pi SDK Berhasil diinisialisasi");
+                console.log("Pi SDK Siap.");
 
-                // C. Cek Session User
+                // Cek Sesi User
                 const userStr = localStorage.getItem('aurora_user');
-                if(!userStr) {
-                    throw new Error("Sesi login habis. Silakan login ulang.");
-                }
+                if(!userStr) throw new Error("Sesi habis. Silakan login ulang.");
                 currentUser = JSON.parse(userStr);
 
-                // D. Load Data Keranjang (GUNAKAN KEY YANG SAMA DENGAN STORE.HTML)
-                loadCartData();
+                // Load Keranjang (Menggunakan Key yang sesuai dengan store.html)
+                loadCart();
 
-                // E. Aktifkan Tombol
+                // Aktifkan Tombol
                 if (currentTotal > 0) {
                     payBtn.disabled = false;
                     payBtn.innerText = "Bayar Sekarang";
@@ -290,8 +288,8 @@
             }
         }
 
-        function loadCartData() {
-            // PENTING: Kita baca 'aurora_checkout', bukan 'cart', agar sesuai dengan store.html
+        function loadCart() {
+            // PENTING: Baca 'aurora_checkout', BUKAN 'cart'
             const checkoutRaw = localStorage.getItem('aurora_checkout');
             if (!checkoutRaw) {
                 document.getElementById('summaryList').innerHTML = "<div style='color:#888; text-align:center;'>Data keranjang tidak ditemukan.</div>";
@@ -320,7 +318,7 @@
             document.getElementById('displayTotal').innerText = currentTotal.toFixed(2) + " π";
         }
 
-        // --- 3. LOGIKA PEMBAYARAN PI NETWORK (PLUS BACKEND INTEGRATION) ---
+        // --- 3. LOGIKA PEMBAYARAN LENGKAP (DITAMBAH SIMPAN KE DB) ---
         async function handleAutoPayment(event) {
             event.preventDefault();
             
@@ -330,46 +328,44 @@
             const phone = document.getElementById('phoneNumber').value.trim();
             const address = document.getElementById('address').value.trim();
 
-            // Validasi Input
+            // Validasi
             if (name.length < 3 || phone.length < 10 || address.length < 10) {
                 return showError("Mohon lengkapi data pengiriman.");
             }
 
             payBtn.disabled = true;
-            payBtn.innerText = "Memproses...";
+            payBtn.innerText = "Menunggu Wallet...";
             errorBox.style.display = 'none';
 
             const currentOrderId = "ORD-" + Date.now();
 
             try {
                 // --- LANGKAH WAJIB: AUTHENTICATE ULANG ---
-                // Diperlukan token baru untuk setiap transaksi pembayaran
                 const auth = await Pi.authenticate(
                     ["payments", "username"], 
                     (payment) => console.log("Incomplete payment:", payment)
                 );
 
                 if (!auth || !auth.accessToken) {
-                    throw new Error("Gagal otentikasi. Izinkan akses Pi Browser.");
+                    throw new Error("Gagal otentikasi ulang untuk pembayaran.");
                 }
 
                 const piUser = auth.user;
 
-                const paymentData = {
+                // --- CREATE PAYMENT ---
+                const payment = await Pi.createPayment({
                     amount: parseFloat(currentTotal),
                     memo: `Order #${currentOrderId} - Aurora Parfumerie`,
                     metadata: { 
                         orderId: currentOrderId,
                         username: piUser.username
                     }
-                };
-
-                const callbacks = {
-                    // 1. Setelah User Approve di HP
+                }, {
+                    // STEP 1: APPROVE
                     onReadyForServerApproval: async (paymentId) => {
-                        console.log("Payment ID:", paymentId);
+                        console.log("Payment ID didapat:", paymentId);
                         try {
-                            // KIRIM KE BACKEND UNTUK APPROVE
+                            // Kirim ke Backend untuk Approval
                             await fetch(config.ENDPOINTS.PAYMENT, {
                                 method: "POST",
                                 headers: { 
@@ -387,12 +383,12 @@
                         } catch (e) { console.error("Backend Approve Error:", e); }
                     },
 
-                    // 2. Setelah Blockchain Selesai (Txid Terbit)
+                    // STEP 2: COMPLETE (PENTING: SIMPAN DATA DISINI)
                     onReadyForServerCompletion: async (paymentId, txid) => {
-                        console.log("Pembayaran Selesai. TXID:", txid);
+                        console.log("Transaksi Selesai:", txid);
                         
                         try {
-                            // --- PENTING: SIMPAN DATA PESANAN KE DATABASE ---
+                            // --- SIMPAN DATA PESANAN KE DATABASE SUPABASE ---
                             await fetch(config.ENDPOINTS.PAYMENT, {
                                 method: "POST",
                                 headers: { 
@@ -412,7 +408,7 @@
                                 })
                             });
 
-                            // Bersihkan Cart & Redirect
+                            // Hapus Cart & Redirect
                             localStorage.removeItem('aurora_checkout');
                             localStorage.removeItem("aurora_cart");
                             
@@ -427,22 +423,19 @@
                         }
                     },
 
-                    // 3. User Batalkan
+                    // STEP 3: CANCEL
                     onCancel: (paymentId) => {
                         payBtn.disabled = false;
                         payBtn.innerText = "Bayar Sekarang";
-                        console.log("Pembayaran dibatalkan.");
+                        console.log("Dibatalkan.");
                     },
 
-                    // 4. Error Sistem
+                    // STEP 4: ERROR
                     onError: (error, payment) => {
-                        showError("Error: " + error.message);
+                        showError("Gagal: " + error.message);
                         payBtn.disabled = false;
                     }
-                };
-
-                // Jalankan Pembayaran
-                await Pi.createPayment(paymentData, callbacks);
+                });
 
             } catch (err) {
                 showError(err.message);
@@ -459,7 +452,7 @@
         }
 
         // Jalankan inisialisasi
-        window.onload = initPaymentPage;
+        window.onload = initPayment;
     </script>
 </body>
 </html>
