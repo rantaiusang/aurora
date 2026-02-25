@@ -78,7 +78,7 @@
         }
 
         /* Spinner */
-        .spinner-wrapper { margin: 0 auto 25px; height: 60px; display: flex; align-items: center; justify-content: center; }
+        .spinner-wrapper { margin: 0 auto 25px; height: 60px; display: flex; align-items: center; justify-content: center; position: relative; }
         .spinner {
             width: 40px;
             height: 40px;
@@ -90,8 +90,9 @@
         .pi-icon {
             font-size: 1.2rem;
             color: var(--luxury-gold);
-            margin-left: -20px;
+            position: absolute; /* Posisi absolut agar pas di tengah spinner */
             z-index: 2;
+            font-weight: bold;
         }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -128,7 +129,7 @@
         }
         .btn-retry:hover { opacity: 0.9; }
 
-        /* Console Log Visual (Untuk Debugging jika error) */
+        /* Console Log Visual (Untuk Debugging) */
         .debug-log {
             display: none;
             margin-top: 15px;
@@ -147,14 +148,13 @@
     <!-- 1. Load Pi SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     
-    <!-- 2. Load Config (PASTIKAN FILE INI ADA DI FOLDER YANG SAMA) -->
+    <!-- 2. Load Config -->
     <script src="pi-config.js"></script>
 
 </head>
 <body>
 
     <header>
-        <!-- Link Kembali ke Index -->
         <a href="index.html" class="logo">Aurora ⚡</a>
     </header>
 
@@ -175,153 +175,143 @@
                 <span id="error-msg" class="error-msg">Deskripsi error akan muncul di sini.</span>
             </div>
             
-            <!-- Area Debugging (Akan muncul jika ada error) -->
             <div id="debug-log" class="debug-log"></div>
 
             <button id="btn-retry" class="btn-retry" onclick="window.location.reload()">Coba Lagi</button>
         </div>
     </div>
 
-  <script>
-    // Fungsi Helper untuk Logging ke Layar (untuk Debug)
-    function logDebug(msg) {
-        console.log(msg);
-        const debugBox = document.getElementById('debug-log');
-        if(debugBox) {
-            debugBox.style.display = 'block';
-            debugBox.innerHTML += `> ${msg}<br>`;
-        }
-    }
-
-    async function runLoginProcess() {
-        const ui = {
-            spinner: document.getElementById('spinnerAnim'),
-            piIcon: document.querySelector('.pi-icon'),
-            title: document.getElementById('status-title'),
-            desc: document.getElementById('status-desc'),
-            errorBox: document.getElementById('error-box'),
-            errorMsg: document.getElementById('error-msg'),
-            btnRetry: document.getElementById('btn-retry')
-        };
-
-        function setLoadingState(title, desc) {
-            ui.spinner.style.display = 'block';
-            ui.piIcon.style.display = 'flex';
-            ui.title.innerText = title;
-            ui.desc.innerText = desc;
-            ui.errorBox.style.display = 'none';
-            ui.btnRetry.style.display = 'none';
+    <script>
+        // Helper untuk Debug
+        function logDebug(msg) {
+            console.log(msg);
+            const debugBox = document.getElementById('debug-log');
+            if(debugBox) {
+                debugBox.style.display = 'block';
+                debugBox.innerHTML += `> ${msg}<br>`;
+            }
         }
 
-        function showError(msg) {
-            ui.spinner.style.display = 'none';
-            ui.piIcon.style.display = 'none';
-            ui.title.innerText = "Login Gagal";
-            ui.desc.innerText = "Terjadi gangguan koneksi.";
-            ui.errorBox.style.display = 'block';
-            ui.errorMsg.innerText = msg;
-            ui.btnRetry.style.display = 'block';
-        }
+        async function runLoginProcess() {
+            const ui = {
+                spinner: document.getElementById('spinnerAnim'),
+                piIcon: document.querySelector('.pi-icon'),
+                title: document.getElementById('status-title'),
+                desc: document.getElementById('status-desc'),
+                errorBox: document.getElementById('error-box'),
+                errorMsg: document.getElementById('error-msg'),
+                btnRetry: document.getElementById('btn-retry')
+            };
 
-        setLoadingState("Menghubungkan...", "Inisialisasi sistem");
-
-        try {
-            // STEP 1: CEK PI SDK
-            logDebug("Cek Pi SDK...");
-            if (typeof Pi === 'undefined') {
-                throw new Error("Pi SDK tidak terdeteksi.\nPastikan Anda membuka ini melalui Pi Browser aplikasi (bukan Chrome biasa), dan koneksi internet lancar.");
+            function setLoadingState(title, desc) {
+                ui.spinner.style.display = 'block';
+                ui.piIcon.style.display = 'flex';
+                ui.title.innerText = title;
+                ui.desc.innerText = desc;
+                ui.errorBox.style.display = 'none';
+                ui.btnRetry.style.display = 'none';
             }
 
-            // STEP 2: CEK KONFIGURASI
-            logDebug("Cek Config...");
-            if (typeof window.APP_CONFIG === 'undefined') {
-                throw new Error("File konfigurasi (pi-config.js) tidak ditemukan atau gagal dimuat.\nPastikan file ada di folder yang sama dengan login.html.");
+            function showError(msg) {
+                ui.spinner.style.display = 'none';
+                ui.piIcon.style.display = 'none';
+                ui.title.innerText = "Login Gagal";
+                ui.desc.innerText = "Terjadi gangguan koneksi.";
+                ui.errorBox.style.display = 'block';
+                ui.errorMsg.innerText = msg;
+                ui.btnRetry.style.display = 'block';
             }
-            
-            const config = window.APP_CONFIG;
-            logDebug("Config OK. Sandbox: " + config.IS_SANDBOX);
 
-            // ==========================================
-            // 🔥 PERBAIKAN 1: Menutup blok inisialisasi dengan benar
-            // ==========================================
-            ui.title.innerText = "Autentikasi...";
-            ui.desc.innerText = "Menghubungkan ke Pi Blockchain";
-            
-            logDebug("Memulai Inisialisasi SDK...");
+            setLoadingState("Menghubungkan...", "Inisialisasi sistem");
 
-            // ==========================================
-            // 🔥 PERBAIKAN 2: Menggunakan config.IS_SANDBOX
-            // ==========================================
-            await Pi.init({
-                version: 2,
-                sandbox: config.IS_SANDBOX // Mengambil nilai dari file config, bukan hardcode 'true'
-            }); 
-            
-            // ← KURUNG KURAWAL PENUTUP BAGIAN INI SANGAT PENTING!
-            
-            logDebug("Init selesai, mulai authenticate...");
-
-            // ==========================================
-            // STEP 4: AUTHENTICATE
-            // ==========================================
-            ui.desc.innerText = "Meminta izin akses...";
-            
-            // Scope: username & payments
-            const authResult = await Pi.authenticate(
-                ['username', 'payments'],
-                {
-                    onIncompletePaymentFound: function(payment) {
-                        console.log("Incomplete payment:", payment);
-                    }
+            try {
+                // 1. Cek SDK
+                logDebug("Cek Pi SDK...");
+                if (typeof Pi === 'undefined') {
+                    throw new Error("Pi SDK tidak terdeteksi.\nGunakan Pi Browser, bukan Chrome/Safari.");
                 }
-            );
 
-            if (!authResult || !authResult.accessToken) {
-                throw new Error("Gagal mendapatkan token akses dari Pi Network (User cancelled or timeout).");
+                // 2. Cek Config
+                logDebug("Cek Config...");
+                if (typeof window.APP_CONFIG === 'undefined') {
+                    throw new Error("File pi-config.js tidak ditemukan.\nPastikan ada di folder yang sama.");
+                }
+                
+                const config = window.APP_CONFIG;
+                logDebug("Config Loaded. Sandbox Mode: " + config.IS_SANDBOX);
+
+                // 3. Init SDK
+                ui.title.innerText = "Autentikasi...";
+                ui.desc.innerText = "Menghubungkan ke Pi Blockchain";
+                logDebug("Memulai Pi.init()...");
+
+                await Pi.init({
+                    version: 2, // HARUS ANGKA (Number), BUKAN STRING "2" atau "2.0"
+                    sandbox: config.IS_SANDBOX
+                });
+                
+                logDebug("Pi.init() Sukses. Memulai authenticate...");
+
+                // 4. Authenticate
+                ui.desc.innerText = "Meminta izin akses...";
+                
+                const authResult = await Pi.authenticate(
+                    ['username', 'payments'],
+                    {
+                        onIncompletePaymentFound: function(payment) {
+                            console.log("Incomplete payment ditemukan:", payment);
+                            // Logika handle incomplete payment bisa ditambahkan di sini
+                        }
+                    }
+                );
+
+                if (!authResult || !authResult.accessToken) {
+                    throw new Error("Gagal mendapatkan akses. User mungkin membatalkan atau terjadi timeout.");
+                }
+
+                logDebug("Auth Sukses! User: " + authResult.user.username);
+
+                // 5. Sukses
+                ui.title.innerText = "Berhasil Masuk";
+                ui.desc.innerText = "Mengalihkan ke Toko...";
+                ui.spinner.style.display = 'none';
+                ui.piIcon.innerHTML = '✓'; 
+                ui.piIcon.style.color = '#10b981'; 
+                ui.piIcon.style.fontSize = '2rem';
+
+                // Simpan User Data
+                localStorage.setItem("aurora_user", JSON.stringify(authResult.user));
+
+                // Redirect ke Store
+                setTimeout(() => {
+                    window.location.href = "store.html";
+                }, 1000);
+
+            } catch (err) {
+                console.error(err);
+                logDebug("ERROR: " + err.message);
+                showError(err.message);
+            }
+        }
+
+        // Event Listener Saat Halaman Load
+        window.addEventListener('load', () => {
+            // Cek sesi yang sudah ada
+            const existingUser = localStorage.getItem('aurora_user');
+            if (existingUser) {
+                console.log("User sudah login, redirect ke store...");
+                window.location.href = "store.html";
+                return;
             }
 
-            logDebug("Auth Success User: " + authResult.user.username);
-
-            // ==========================================
-            // STEP 5: SUKSES
-            // ==========================================
-            ui.title.innerText = "Berhasil Masuk";
-            ui.desc.innerText = "Mengalihkan ke Toko...";
-            ui.spinner.style.display = 'none';
-            ui.piIcon.innerHTML = '✓'; 
-            ui.piIcon.style.color = '#10b981'; 
-            ui.piIcon.style.fontSize = '2rem';
-            ui.piIcon.style.marginLeft = '0';
-
-            localStorage.setItem("aurora_user", JSON.stringify(authResult.user));
-
+            // Jalankan proses login dengan sedikit delay agar UI siap
             setTimeout(() => {
-                window.location.href = "store.html";
-            }, 1000);
+                runLoginProcess();
+            }, 500);
+        });
 
-        } catch (err) {
-            console.error(err);
-            logDebug("FATAL ERROR: " + err.message);
-            showError(err.message);
-        }
-    }
-
-    // Cek apakah user sudah login sebelumnya, jika iya langsung lempar ke store
-    window.addEventListener('load', () => {
-        const existingUser = localStorage.getItem('aurora_user');
-        if (existingUser) {
-            console.log("User sudah login, redirect ke store...");
-            window.location.href = "store.html";
-            return;
-        }
-
-        // Jika belum, jalankan proses login
-        setTimeout(() => {
-            runLoginProcess();
-        }, 500);
-    });
-
-    window.runLoginProcess = runLoginProcess;
-</script>
+        // Expose fungsi ke window jika ingin dipanggil manual
+        window.runLoginProcess = runLoginProcess;
+    </script>
 </body>
 </html>
