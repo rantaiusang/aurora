@@ -35,7 +35,7 @@
                               radial-gradient(circle at 90% 80%, rgba(212, 175, 55, 0.03) 0%, transparent 20%);
         }
 
-        /* Header & UI Elements ... (Sama seperti sebelumnya) */
+        /* Header & UI Elements ... */
         header { padding: 24px 20px; text-align: center; z-index: 10; }
         .logo {
             font-family: 'Playfair Display', serif;
@@ -141,8 +141,6 @@
             };
 
             // --- PERBAIKAN LOGIKA: DETEKSI LOOP ---
-            // Jika kita datang dari index.html, berarti ada masalah validasi.
-            // Kita hapus semua cache agar user bisa login ulang dengan bersih.
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('retry') === 'true') {
                 console.warn("Terdeteksi Loop Login. Menghapus cache lama...");
@@ -180,9 +178,18 @@
                 ui.desc.innerText = "Selamat datang, " + auth.user.username;
                 ui.spinner.style.borderTopColor = "#10b981";
                 
-                // --- SIMPAN DATA (GUNAKAN KEY YANG PASTI SAMA) ---
-                localStorage.setItem('pi_user', JSON.stringify(auth.user));
+                // ===========================================================
+                // PERBAIKAN KRUSIAL: GANTI KEY MENJADI 'aurora_user'
+                // ===========================================================
                 
+                // Simpan user data
+                localStorage.setItem('aurora_user', JSON.stringify(auth.user));
+                
+                // Simpan access token (opsional tapi disarankan)
+                localStorage.setItem('aurora_token', auth.accessToken);
+
+                // ===========================================================
+
                 setTimeout(() => {
                     window.location.href = "index.html";
                 }, 1500);
