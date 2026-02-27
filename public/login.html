@@ -140,12 +140,18 @@
                 btnRetry: document.getElementById('btn-retry')
             };
 
-            // --- PERBAIKAN LOGIKA: DETEKSI LOOP ---
+            // --- PERBAIKAN LOGIKA 1: DETEKSI LOOP (SMART CLEANUP) ---
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('retry') === 'true') {
-                console.warn("Terdeteksi Loop Login. Menghapus cache lama...");
-                localStorage.clear(); // Hapus pi_user, aurora_user, dll
-                // Hapus parameter dari URL agar tidak terus-terusan clear
+                console.warn("Terdeteksi Loop Login. Membersihkan sesi auth lama...");
+                
+                // HAPUS HANYA kunci autentikasi, JANGAN hapus cart/checkout
+                localStorage.removeItem('aurora_user');
+                localStorage.removeItem('aurora_token');
+                localStorage.removeItem('pi_user'); // Key default SDK Pi
+                localStorage.removeItem('pi_auth'); // Potensi key cache lain
+                
+                // Hapus parameter dari URL agar tidak infinite loop
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
 
@@ -166,8 +172,14 @@
                 ui.desc.innerText = "Mohon izinkan akses akun Pi Anda...";
                 
                 const scopes = ['username', 'payments'];
+                
+                // --- PERBAIKAN LOGIKA 2: INCOMPLETE PAYMENT HANDLER ---
                 const onIncompletePaymentFound = (payment) => {
-                    logDebug("Incomplete payment: " + payment.identifier);
+                    logDebug("Incomplete payment ditemukan: " + payment.identifier);
+                    // Simpan ID pembayaran yang terputus agar bisa di-resume nanti
+                    localStorage.setItem('incomplete_payment_id', payment.identifier);
+                    // Opsional: Jika ingin langsung redirect ke payment page, uncomment baris bawah
+                    // window.location.href = "payment.html?resume=true";
                 };
 
                 const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
@@ -178,18 +190,13 @@
                 ui.desc.innerText = "Selamat datang, " + auth.user.username;
                 ui.spinner.style.borderTopColor = "#10b981";
                 
-                // ===========================================================
-                // PERBAIKAN KRUSIAL: GANTI KEY MENJADI 'aurora_user'
-                // ===========================================================
-                
                 // Simpan user data
                 localStorage.setItem('aurora_user', JSON.stringify(auth.user));
                 
-                // Simpan access token (opsional tapi disarankan)
+                // Simpan access token
                 localStorage.setItem('aurora_token', auth.accessToken);
 
-                // ===========================================================
-
+                // Redirect
                 setTimeout(() => {
                     window.location.href = "store.html";
                 }, 1500);
@@ -201,6 +208,10 @@
                 ui.errorBox.style.display = 'block';
                 ui.errorMsg.innerText = err.message;
                 ui.btnRetry.style.display = 'block';
+                
+                // --- PERBAIKAN LOGIKA 3: UI STATE ---
+                // Sembunyikan spinner saat error agar user fokus ke tombol retry
+                ui.spinner.style.display = 'none';
             }
         }
 
