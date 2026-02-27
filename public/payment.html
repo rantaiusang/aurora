@@ -437,31 +437,49 @@
                     // --- FASE 1: APPROVAL (User Setuju) ---
                     onReadyForServerApproval: async (paymentId) => {
                         console.log("Payment ID dibuat, meminta approval server:", paymentId);
-                        setLoadingState(true, "Meminta Persetujuan Server...");
+                        setLoadingState(true, "Memverifikasi ke Server (Maks 25 detik)...");
                         
-                        try {
-                            const response = await fetch(SUPABASE_URL, {
-                                method: 'POST',
-                                headers: { 
-                                    "Content-Type": "application/json"
-                                    // Jika backend membutuhkan Auth header (misal bearer token):
-                                    // "Authorization": `Bearer ${auth.accessToken}` 
-                                },
-                                body: JSON.stringify({ 
-                                    paymentId, 
-                                    action: 'approve', 
-                                    orderId,
-                                    uid: piUser.uid
-                                })
-                            });
-                            
-                            if(!response.ok) {
+                        // 1. Setup Timeout Promise (Anti-Timeout Strategy)
+                        const timeoutPromise = new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error("Waktu habis. Server terlalu lama merespons. Silakan coba lagi.")), 25000)
+                        );
+
+                        // 2. Setup Fetch Promise
+                        const fetchPromise = fetch(SUPABASE_URL, {
+                            method: 'POST',
+                            headers: { 
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({ 
+                                paymentId, 
+                                action: 'approve', 
+                                orderId,
+                                uid: piUser.uid
+                            })
+                        }).then(async (response) => {
+                            // Cek status HTTP response
+                            if (!response.ok) {
                                 const errText = await response.text();
-                                throw new Error("Server Approval Failed: " + errText);
+                                console.error("Server HTTP Error:", response.status, errText);
+                                throw new Error(`Server Error: Gagal memproses persetujuan.`);
                             }
+                            return response.json();
+                        }).catch(error => {
+                            // Tangkap Network Error (DNS down, Offline, dll)
+                            if (error instanceof TypeError) {
+                                throw new Error("Koneksi internet terputus atau server tidak dapat dijangkau.");
+                            }
+                            throw error;
+                        });
+
+                        // 3. RACE: Siapa yang duluan? Sukses atau Timeout
+                        try {
+                            await Promise.race([fetchPromise, timeoutPromise]);
+                            console.log("Server Approval Phase Completed Successfully.");
                         } catch (err) {
-                            console.error("Approval Error:", err);
-                            throw new Error("Gagal menghubungi server pembayaran.");
+                            console.error("Approval Phase Failed:", err);
+                            // LEMPAR ERROR KE SDK -> Ini akan memicu callback 'onError' di Pi.createPayment
+                            throw new Error(err.message);
                         }
                     },
                     
@@ -510,9 +528,13 @@
 
                         } catch (err) {
                             console.error("Completion Error:", err);
+                            // JANGAN LEmpar error disini jika uang sudah keluar, 
+                            // tapi user perlu tahu datanya belum masuk DB
                             alert("Pembayaran tercatat di Blockchain, namun gagal menyimpan ke database kami. Hubungi admin dengan TXID: " + txid);
+                            
+                            // Kita reset state tapi tidak redirect, biar user bisa screenshot txid
                             setLoadingState(false, "Gagal Simpan Data");
-                            isProcessing = false; // Reset agar bisa coba lagi
+                            isProcessing = false; 
                         }
                     },
                     
@@ -524,15 +546,17 @@
                     },
                     
                     onError: (error) => {
-                        console.error("Payment Error:", error);
-                        showError("Terjadi kesalahan: " + error.message);
+                        console.error("Payment SDK Error:", error);
+                        // Tampilkan pesan error yang sudah kita buat custom di fase Approval
+                        const errorMsg = error.message || "Terjadi kesalahan pada sistem pembayaran.";
+                        showError(errorMsg);
                         setLoadingState(false, "Coba Lagi");
                         isProcessing = false;
                     }
                 });
 
             } catch (err) {
-                console.error("System Error:", err);
+                console.error("System Error (Auth Phase):", err);
                 showError(err.message);
                 setLoadingState(false, "Bayar Sekarang");
                 isProcessing = false;
