@@ -385,18 +385,26 @@ if (!piUser) {
                         
                         try {
                             const response = await fetch(SUPABASE_URL, {
-                                method: 'POST',
-                                headers: { 
-                                    "Content-Type": "application/json",
-                                    "Authorization": `Bearer ${SUPABASE_KEY}` 
-                                },
-                                body: JSON.stringify({ 
-                                    paymentId, 
-                                    action: 'approve', 
-                                    orderId,
-                                    uid: piUser.uid
-                                })
-                            });
+    method: 'POST',
+    headers: { 
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ 
+        paymentId, 
+        action: 'complete', 
+        txid, 
+        orderId,
+        uid: piUser.uid,
+        username: piUser.username,
+        amount: currentTotal,
+        items: cartItems,
+        customer: { 
+            name: fullName, 
+            phone: phoneNumber, 
+            address: address 
+        }
+    })
+});
                             
                             if(!response.ok) throw new Error("Server Approval Failed");
                         } catch (err) {
