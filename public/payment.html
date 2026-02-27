@@ -237,8 +237,7 @@
 
     <script>
         // --- 1. KONFIGURASI & SETUP ---
-        // KEAMANAN: Supabase Key sudah dihapus karena menggunakan --no-verify-jwt.
-        // Jangan pernah memasukkan API Key di sini.
+        // KEAMANAN: Supabase Key dihapus. Menggunakan --no-verify-jwt.
         const SUPABASE_URL = "https://dikapquhusbwjccbqcsb.supabase.co/functions/v1/verify-pi-payment";
 
         let currentTotal = 0;
@@ -257,19 +256,22 @@
                     throw new Error("Pi SDK tidak ditemukan. Harap gunakan Pi Browser.");
                 }
                 
-                // B. Inisialisasi SDK
+                // B. Delay 800ms untuk memastikan SDK siap (Fix Android/iOS Loading Issue)
+                await new Promise(r => setTimeout(r, 800));
+
+                // C. Inisialisasi SDK
                 await Pi.init({ version: "2.0", sandbox: true });
                 console.log("Pi SDK Berhasil diinisialisasi.");
 
-                // C. Cek Session User Login
+                // D. Cek Session User Login
                 const userStr = localStorage.getItem('aurora_user');
                 if(!userStr) throw new Error("Sesi login habis. Silakan login kembali.");
                 currentUser = JSON.parse(userStr);
 
-                // D. Load Data Keranjang
+                // E. Load Data Keranjang
                 const successLoad = loadCartAndCalculateTotal();
 
-                // E. Update UI
+                // F. Update UI
                 if (successLoad && parseFloat(currentTotal) > 0) {
                     payBtn.disabled = false;
                     payBtn.innerText = "Bayar Sekarang";
@@ -357,14 +359,17 @@
             payBtn.innerText = "Menghubungkan ke Pi Wallet...";
 
             try {
-                // Langkah A: Autentikasi Ulang
-                const auth = await Pi.authenticate(
-                    ["payments", "username"], 
-                    onIncompletePaymentFound 
-                );
+                // DEBUG LOG
+                console.log("AUTH START");
 
-                if (!auth || !auth.accessToken) {
-                    throw new Error("Gagal otentikasi ulang dengan Pi Network.");
+                // Langkah A: Autentikasi Ulang (FIXED: Minimalis & Stabil)
+                const auth = await Pi.authenticate(["payments"]);
+                
+                // DEBUG LOG
+                console.log("AUTH SUCCESS", auth);
+
+                if (!auth) {
+                    throw new Error("Gagal autentikasi dengan Pi Network.");
                 }
                 
                 const piUser = auth.user;
@@ -376,7 +381,7 @@
                     metadata: { orderId: orderId, itemsCount: cartItems.length }
                 };
 
-                // Langkah C: Eksekusi Payment Flow (FIXED STRUCTURE)
+                // Langkah C: Eksekusi Payment Flow
                 await Pi.createPayment(paymentData, {
                     
                     // --- FASE 1: APPROVAL (User Setuju) ---
@@ -388,7 +393,6 @@
                                 method: 'POST',
                                 headers: { 
                                     "Content-Type": "application/json"
-                                    // Authorization header dihapus karena --no-verify-jwt
                                 },
                                 body: JSON.stringify({ 
                                     paymentId, 
@@ -477,7 +481,8 @@
             }
         }
 
-        // Callback untuk menangani payment yang terputus sebelumnya
+        // Callback untuk menangani payment yang terputus sebelumnya (Opsional)
+        // Tidak dipanggil langsung di auth karena sudah minimalis
         function onIncompletePaymentFound(payment) {
             console.log("Ditemukan pembayaran tidak lengkap:", payment);
             return; 
