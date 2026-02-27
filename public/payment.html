@@ -268,7 +268,7 @@ const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
 
 currentUser = auth.user;
 
-console.log("Re-auth sukses:", piUser.username);
+console.log("Re-auth sukses:", currentUser.username);
 
                 // D. Load Data Keranjang (PENTING: Baca 'aurora_checkout' agar nyambung dengan store.html)
                 const successLoad = loadCartAndCalculateTotal();
