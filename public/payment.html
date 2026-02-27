@@ -387,10 +387,9 @@
                         try {
                             const response = await fetch(SUPABASE_URL, {
                                 method: 'POST',
-                                headers: { 
-                                    "Content-Type": "application/json",
-                                    "Authorization": `Bearer ${SUPABASE_KEY}` 
-                                },
+                               headers: { 
+                       "Content-Type": "application/json"
+            }
                                 body: JSON.stringify({ 
                                     paymentId, 
                                     action: 'approve', 
