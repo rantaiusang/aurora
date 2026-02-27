@@ -261,10 +261,14 @@
                 await Pi.init({ version: "2.0", sandbox: true });
                 console.log("Pi SDK Berhasil diinisialisasi.");
 
-                // C. Cek Session User Login
-                const userStr = localStorage.getItem('aurora_user');
-                if(!userStr) throw new Error("Sesi login habis. Silakan login kembali.");
-                currentUser = JSON.parse(userStr);
+                // 🔥 AUTHENTICATE ULANG DENGAN PAYMENTS SCOPE
+const scopes = ['username', 'payments'];
+
+const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
+
+const piUser = auth.user;
+
+console.log("Re-auth sukses:", piUser.username);
 
                 // D. Load Data Keranjang (PENTING: Baca 'aurora_checkout' agar nyambung dengan store.html)
                 const successLoad = loadCartAndCalculateTotal();
