@@ -319,30 +319,36 @@
         const countSpan = document.getElementById('cart-count-float');
 
         // ==========================================
-        // 🔧 FUNGSI BERSIH HARGA
+        // 🔧 PERBAIKAN KRUSIAL: BERSIH & FORMAT HARGA
         // ==========================================
         function cleanPrice(priceInput) {
             if (priceInput === null || priceInput === undefined) return 0;
-            let p = String(priceInput).replace(/[^0-9.-]+/g, "");
+            // Ganti koma dengan titik (support input indo 3,14 -> 3.14)
+            // Hapus semua karakter non-angka kecuali titik dan minus
+            let p = String(priceInput).replace(/,/g, '.').replace(/[^0-9.-]+/g, "");
+            
             if (p.length === 0) return 0;
+            
             let val = parseFloat(p);
+            // Cek jika hasilnya NaN atau negatif
             return isNaN(val) || val < 0 ? 0 : val;
         }
 
-                function formatPrice(price) {
+        function formatPrice(price) {
             let numPrice = cleanPrice(price);
             
             // Cek jika harga 0, tampilkan tanpa desimal
             if (numPrice === 0) return "0";
             
-            // Jika angka sangat kecil (Pi network), pakai 7 desimal
+            // LOGIKA PI NETWORK:
+            // Pi adalah micro-currency. Jika sangat kecil (< 0.01), pakai 7 desimal
             if (numPrice < 0.01) return numPrice.toFixed(7);
             
-            // LOGIKA PERBAIKAN:
-            // Jika angka bulat (contoh: 450), tampilkan "450" (tanpa .00)
-            // Jika angka pecahan (contoh: 450.5), tampilkan "450.50"
+            // Jika angka bulat (contoh: 314), tampilkan "314" (tanpa .00)
+            // Jika angka pecahan (contoh: 314.5), tampilkan "314.50"
             return Number.isInteger(numPrice) ? numPrice.toString() : numPrice.toFixed(2);
         }
+
         // ==========================================
         // 2. RENDER HEADER DINAMIS (GUEST / USER)
         // ==========================================
@@ -395,17 +401,23 @@
         // ==========================================
         async function syncUserToSupabase(piUser) {
             try {
+                // Cek apakah user sudah ada di DB berdasarkan Pi UID
                 const { data: existingUser, error } = await supabaseClient
                     .from('users')
                     .select('*')
                     .eq('pi_uid', piUser.uid)
                     .single();
 
-                if (error && error.code !== 'PGRST116') return; 
+                // Jika error bukan karena "not found" (PGRST116), log error
+                if (error && error.code !== 'PGRST116') {
+                    console.error("Sync Error (Fetch):", error);
+                    return; 
+                }
 
                 if (existingUser) {
                     dbUser = existingUser;
                 } else {
+                    // User baru, buat record
                     const { data: newUser, error: insertError } = await supabaseClient
                         .from('users')
                         .insert([{
@@ -417,10 +429,15 @@
                         }])
                         .select()
                         .single();
-                    if (!insertError) dbUser = newUser;
+                    
+                    if (!insertError && newUser) {
+                        dbUser = newUser;
+                    } else {
+                        console.error("Sync Error (Insert):", insertError);
+                    }
                 }
             } catch (e) {
-                console.error("Sync user error:", e);
+                console.error("Sync user exception:", e);
             }
         }
 
@@ -461,8 +478,7 @@
                 return productsData;
             } catch (e) {
                 console.error("Error Fetch:", e);
-                alert("Gagal memuat produk: " + e.message + "\n\nCek: 1. Nama Tabel 'productspi' 2. RLS (Matikan RLS di Supabase) 3. Koneksi Internet");
-                productGrid.innerHTML = `<div class="error-message"><p>Error: ${e.message}</p></div>`;
+                productGrid.innerHTML = `<div class="error-message"><p>Gagal memuat produk. Cek koneksi internet.</p></div>`;
                 return [];
             }
         }
@@ -476,7 +492,7 @@
             renderSidebarCart(); 
         });
 
-        // Helper
+        // Helper: Ambil value aman (handle key yang berbeda-beda)
         function getSafeValue(obj, key1, key2, fallback) {
             if (obj && obj[key1]) return obj[key1];
             if (obj && obj[key2]) return obj[key2];
@@ -490,18 +506,22 @@
             const modal = document.getElementById('profileModal');
             modal.classList.add('show');
 
+            // Jika data user DB belum ada, coba fetch ulang sebentar
+            if (!dbUser) {
+                contentDiv.innerHTML = `<div class="profile-detail-row" style="justify-content:center;">Mensinkronkan profil...</div>`;
+                setTimeout(async () => {
+                    await syncUserToSupabase(currentUser);
+                    openProfileModal(); // Recursive call setelah sync
+                }, 800);
+                return;
+            }
+
             if (dbUser) {
                 contentDiv.innerHTML = `
                     <div class="profile-detail-row"><span class="profile-label">Username</span><span class="profile-value">${dbUser.username || "-"}</span></div>
                     <div class="profile-detail-row"><span class="profile-label">Total Belanja</span><span class="profile-value">${formatPrice(dbUser.total_spent || 0)} π</span></div>
                     <div class="profile-detail-row"><span class="profile-label">Poin Loyalitas</span><span class="profile-value points">${dbUser.points || 0} Pts</span></div>
                 `;
-            } else {
-                contentDiv.innerHTML = `<div class="profile-detail-row" style="justify-content:center;">Memuat data...</div>`;
-                setTimeout(async () => {
-                    await syncUserToSupabase(currentUser);
-                    if(dbUser) openProfileModal(); 
-                }, 500);
             }
         }
 
@@ -583,6 +603,7 @@
         function renderProducts() {
             productGrid.innerHTML = ''; 
             
+            // Deteksi nama kolom kategori secara dinamis
             let categoryKey = 'category';
             if (productsData.length > 0) {
                 const sample = productsData[0];
@@ -632,14 +653,18 @@
                 const btnDisabled = isOutOfStock ? "disabled" : "";
                 const btnText = isOutOfStock ? "Habis" : "Beli Sekarang";
                 const displayPrice = formatPrice(product.price);
-                const imgSrc = getSafeValue(product, 'image_url', 'img', 'https://via.placeholder.com/250');
+                
+                // Fallback gambar lebih aman
+                let imgSrc = getSafeValue(product, 'image_url', 'img', ''); 
+                if(!imgSrc) imgSrc = 'https://via.placeholder.com/250?text=No+Image';
+                
                 const descText = getSafeValue(product, 'description', 'desc', '-');
                 const productId = String(product.id);
 
                 card.innerHTML = `
                     <div class="category-badge">${displayCategory}</div>
                     <div class="product-img-wrapper">
-                        <img src="${imgSrc}" class="product-img" onerror="this.src='https://via.placeholder.com/250'">
+                        <img src="${imgSrc}" class="product-img" onerror="this.src='https://via.placeholder.com/250?text=Error+Img'">
                     </div>
                     <div class="product-info">
                         <div>
@@ -685,8 +710,9 @@
             const existingItem = cart.find(item => String(item.id) === String(clickedId));
 
             if (existingItem) {
+                // Validasi stok saat update qty
                 if ((existingItem.qty + 1) > currentStock) {
-                    alert("Stok tidak mencukupi.");
+                    alert("Stok tidak mencukupi untuk menambah jumlah ini.");
                     return;
                 }
                 existingItem.qty++;
@@ -694,6 +720,7 @@
                 cart.push({ 
                     ...product, 
                     qty: 1,
+                    // PASTIKAN harga disimpan sudah bersih (float)
                     price: cleanPrice(product.price) 
                 });
             }
@@ -740,6 +767,7 @@
             cart.forEach(item => {
                 totalItems += item.qty;
 
+                // Cek stok REALTIME terhadap data produk terbaru
                 const latestProduct = productsData.find(p => String(p.id) === String(item.id));
                 let currentStock = 0;
                 let isOutOfStock = false;
@@ -748,15 +776,15 @@
                     currentStock = parseInt(latestProduct.stock) || 0;
                     isOutOfStock = currentStock <= 0;
                 } else {
-                    isOutOfStock = true;
+                    isOutOfStock = true; // Produk dihapus dari DB
                 }
 
                 if (isOutOfStock) isCartValid = false;
 
                 let itemName = getSafeValue(item, 'name', 'product_name', 'Produk');
-                const imgSrc = getSafeValue(item, 'image_url', 'img', ''); 
+                const imgSrc = getSafeValue(item, 'image_url', 'img', 'https://via.placeholder.com/50'); 
                 const formattedPrice = formatPrice(item.price);
-                let stockWarning = isOutOfStock ? '<span style="color:#ff4d4d; font-size:0.7rem; display:block;">(Stok Habis)</span>' : '';
+                let stockWarning = isOutOfStock ? '<span style="color:#ff4d4d; font-size:0.7rem; display:block;">(Stok Habis/Hilang)</span>' : '';
 
                 html += `
                     <div class="sidebar-cart-item">
@@ -780,8 +808,8 @@
         // CHECKOUT LOGIC (WAJIB LOGIN DISINI)
         // ==========================================
         function proceedToCheckout() {
+            // 1. Validasi Login
             if (!localStorage.getItem('aurora_user')) {
-                // Jika Guest, tampilkan popup konfirmasi
                 const confirmLogin = confirm("Anda harus login terlebih dahulu untuk melanjutkan pembayaran. Ingin login sekarang?");
                 if (confirmLogin) {
                     window.location.href = 'login.html';
@@ -791,17 +819,31 @@
 
             const cartItems = JSON.parse(localStorage.getItem('aurora_cart')) || [];
             
+            // 2. Validasi Keranjang Kosong
+            if (cartItems.length === 0) return alert("Keranjang kosong.");
+
+            // 3. VALIDASI STOK FINAL (ANTI-RACE CONDITION)
+            // Cek satu per satu apakah stok di DB masih cukup
             for (let item of cartItems) {
                 const dbProduct = productsData.find(p => String(p.id) === String(item.id));
-                if (!dbProduct || parseInt(dbProduct.stock) <= 0) {
+                if (!dbProduct) {
+                    alert(`Maaf, produk "${item.name}" tidak lagi tersedia.`);
+                    renderSidebarCart(); // Refresh sidebar agar user sadar
+                    return; 
+                }
+                if (parseInt(dbProduct.stock) <= 0) {
                     alert(`Maaf, stok untuk ${item.name} telah habis.`);
                     renderSidebarCart(); 
                     return; 
                 }
+                // Opsional: Cek jika stok < qty (jika backend tidak handle ini)
+                if (parseInt(dbProduct.stock) < item.qty) {
+                     alert(`Maaf, stok ${item.name} tinggal ${dbProduct.stock}. Anda memilih ${item.qty}.`);
+                     return;
+                }
             }
 
-            if (cartItems.length === 0) return alert("Keranjang kosong.");
-
+            // 4. Hitung Total Ulang (Server-Side Logic Preparation)
             let total = 0;
             cartItems.forEach(item => {
                 const price = cleanPrice(item.price);
@@ -811,12 +853,14 @@
 
             if (total <= 0) return alert("Total harga tidak valid.");
 
+            // 5. Simpan ke Storage Sementara untuk Payment Page
             localStorage.setItem('aurora_checkout', JSON.stringify({
                 items: cartItems,
                 total: total,
                 currency: 'PI'
             }));
 
+            // 6. Redirect
             window.location.href = 'payment.html';
         }
 
@@ -829,11 +873,11 @@
             if(confirm("Yakin ingin keluar?")) {
                 localStorage.removeItem('aurora_user');
                 localStorage.removeItem('aurora_token');
-                // Reload halaman agar UI kembali ke Guest
                 window.location.reload(); 
             }
         }
 
+        // Tutup dropdown jika klik di luar
         window.onclick = function(event) {
             if (!event.target.closest('.user-menu-container')) {
                 const menu = document.getElementById('dropdownMenu');
