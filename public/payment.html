@@ -261,14 +261,10 @@
                 await Pi.init({ version: "2.0", sandbox: true });
                 console.log("Pi SDK Berhasil diinisialisasi.");
 
-                // 🔥 AUTHENTICATE ULANG DENGAN PAYMENTS SCOPE
-const scopes = ['username', 'payments'];
-
-const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
-
-currentUser = auth.user;
-
-console.log("Re-auth sukses:", currentUser.username);
+                // C. Cek Session User Login
+                const userStr = localStorage.getItem('aurora_user');
+                if(!userStr) throw new Error("Sesi login habis. Silakan login kembali.");
+                currentUser = JSON.parse(userStr);
 
                 // D. Load Data Keranjang (PENTING: Baca 'aurora_checkout' agar nyambung dengan store.html)
                 const successLoad = loadCartAndCalculateTotal();
@@ -294,51 +290,52 @@ console.log("Re-auth sukses:", currentUser.username);
 
         // Fungsi Khusus: Membaca & Menghitung Total dari LocalStorage
         function loadCartAndCalculateTotal() {
-    const checkoutRaw = localStorage.getItem('aurora_checkout');
+            // PERBAIKAN BUG: Gunakan key 'aurora_checkout', bukan 'cart'
+            const checkoutRaw = localStorage.getItem('aurora_checkout');
+            
+            if (!checkoutRaw) {
+                document.getElementById('summaryList').innerHTML = "<div style='color:#ff4d4d; text-align:center; padding:10px;'>Data pesanan hilang.<br>Silakan pilih produk ulang.</div>";
+                return false;
+            }
 
-    if (!checkoutRaw) {
-        document.getElementById('summaryList').innerHTML =
-            "<div style='color:#ff4d4d; text-align:center; padding:10px;'>Data pesanan hilang.<br>Silakan pilih produk ulang.</div>";
-        return false;
-    }
+            try {
+                const checkout = JSON.parse(checkoutRaw);
+                cartItems = checkout.items || []; // Ambil array items
+                
+                const summaryList = document.getElementById('summaryList');
+                let html = '';
+                let total = 0;
 
-    try {
-        const checkout = JSON.parse(checkoutRaw);
+                if (cartItems.length === 0) {
+                     summaryList.innerHTML = "<div style='text-align:center; color:#888;'>Keranjang kosong.</div>";
+                     return false;
+                }
 
-        cartItems = checkout.items || [];
-        currentTotal = parseFloat(checkout.total) || 0;
+                cartItems.forEach(item => {
+                    const name = item.name || item.product_name || "Produk Tanpa Nama";
+                    const price = parseFloat(item.price) || 0;
+                    const qty = parseInt(item.qty) || 1;
+                    const subtotal = price * qty;
+                    
+                    total += subtotal;
+                    
+                    html += `
+                        <div class="item-row">
+                            <span>${name} <small style="color:#888;">(x${qty})</small></span>
+                            <span>${subtotal.toFixed(7)} π</span>
+                        </div>`;
+                });
 
-        if (cartItems.length === 0 || currentTotal <= 0) {
-            return false;
+                summaryList.innerHTML = html;
+                currentTotal = total;
+                document.getElementById('displayTotal').innerText = total.toFixed(7) + " π";
+                return true;
+
+            } catch (e) {
+                console.error("Gagal parse cart data:", e);
+                return false;
+            }
         }
-
-        const summaryList = document.getElementById('summaryList');
-        let html = '';
-
-        cartItems.forEach(item => {
-            const name = item.name || "Produk";
-            const price = parseFloat(item.price) || 0;
-            const qty = parseInt(item.qty) || 1;
-            const subtotal = price * qty;
-
-            html += `
-                <div class="item-row">
-                    <span>${name} <small style="color:#888;">(x${qty})</small></span>
-                    <span>${subtotal.toFixed(7)} π</span>
-                </div>`;
-        });
-
-        summaryList.innerHTML = html;
-        document.getElementById('displayTotal').innerText =
-            currentTotal.toFixed(7) + " π";
-
-        return true;
-
-    } catch (e) {
-        console.error("Gagal parse checkout:", e);
-        return false;
-    }
-}
 
         // --- 3. PROSES PEMBAYARAN UTAMA ---
         async function handleAutoPayment(event) {
@@ -363,12 +360,16 @@ console.log("Re-auth sukses:", currentUser.username);
 
             try {
                 // Langkah A: Autentikasi Ulang (Wajib untuk keamanan Pi SDK)
-                
-      const piUser = currentUser;
+                const auth = await Pi.authenticate(
+                    ["payments", "username"], 
+                    onIncompletePaymentFound // Callback jika ada payment terpending
+                );
 
-if (!piUser) {
-    throw new Error("User tidak terautentikasi.");
-}
+                if (!auth || !auth.accessToken) {
+                    throw new Error("Gagal otentikasi ulang dengan Pi Network.");
+                }
+                
+                const piUser = auth.user;
 
                 // Langkah B: Buat Objek Payment
                 const paymentData = {
@@ -385,26 +386,18 @@ if (!piUser) {
                         
                         try {
                             const response = await fetch(SUPABASE_URL, {
-    method: 'POST',
-    headers: { 
-        "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ 
-        paymentId, 
-        action: 'complete', 
-        txid, 
-        orderId,
-        uid: piUser.uid,
-        username: piUser.username,
-        amount: currentTotal,
-        items: cartItems,
-        customer: { 
-            name: fullName, 
-            phone: phoneNumber, 
-            address: address 
-        }
-    })
-});
+                                method: 'POST',
+                                headers: { 
+                                    "Content-Type": "application/json",
+                                    "Authorization": `Bearer ${SUPABASE_KEY}` 
+                                },
+                                body: JSON.stringify({ 
+                                    paymentId, 
+                                    action: 'approve', 
+                                    orderId,
+                                    uid: piUser.uid
+                                })
+                            });
                             
                             if(!response.ok) throw new Error("Server Approval Failed");
                         } catch (err) {
