@@ -9,7 +9,7 @@
     
     <!-- Pi SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    <!-- Config File (Pastikan file ini ada dan berisi ENDPOINT & KEYS) -->
+    <!-- Config File -->
     <script src="./pi-config.js"></script>
 
     <style>
@@ -235,18 +235,18 @@
         </div>
     </div>    
 
-        <script>
+    <script>
         // --- 1. KONFIGURASI & SETUP ---
-        // URL Edge Function Supabase Anda
+        // KEAMANAN: Supabase Key sudah dihapus karena menggunakan --no-verify-jwt.
+        // Jangan pernah memasukkan API Key di sini.
         const SUPABASE_URL = "https://dikapquhusbwjccbqcsb.supabase.co/functions/v1/verify-pi-payment";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA";
 
         let currentTotal = 0;
         let cartItems = [];
         let currentUser = null;
         let orderId = "ORD-" + Date.now();
 
-        // --- 2. INISIALISASI HALAMAN (FIX TOTAL 0 & DATA CHECKOUT) ---
+        // --- 2. INISIALISASI HALAMAN ---
         async function initPayment() {
             const payBtn = document.getElementById('payBtn');
             const errorBox = document.getElementById('error-message');
@@ -266,10 +266,10 @@
                 if(!userStr) throw new Error("Sesi login habis. Silakan login kembali.");
                 currentUser = JSON.parse(userStr);
 
-                // D. Load Data Keranjang (PENTING: Baca 'aurora_checkout' agar nyambung dengan store.html)
+                // D. Load Data Keranjang
                 const successLoad = loadCartAndCalculateTotal();
 
-                // E. Update UI berdasarkan hasil load
+                // E. Update UI
                 if (successLoad && parseFloat(currentTotal) > 0) {
                     payBtn.disabled = false;
                     payBtn.innerText = "Bayar Sekarang";
@@ -290,7 +290,6 @@
 
         // Fungsi Khusus: Membaca & Menghitung Total dari LocalStorage
         function loadCartAndCalculateTotal() {
-            // PERBAIKAN BUG: Gunakan key 'aurora_checkout', bukan 'cart'
             const checkoutRaw = localStorage.getItem('aurora_checkout');
             
             if (!checkoutRaw) {
@@ -300,7 +299,7 @@
 
             try {
                 const checkout = JSON.parse(checkoutRaw);
-                cartItems = checkout.items || []; // Ambil array items
+                cartItems = checkout.items || []; 
                 
                 const summaryList = document.getElementById('summaryList');
                 let html = '';
@@ -341,7 +340,6 @@
         async function handleAutoPayment(event) {
             event.preventDefault();
             const payBtn = document.getElementById('payBtn');
-            const errorBox = document.getElementById('error-message');
             
             // 1. Validasi Input Form
             const fullName = document.getElementById('fullName').value.trim();
@@ -359,10 +357,10 @@
             payBtn.innerText = "Menghubungkan ke Pi Wallet...";
 
             try {
-                // Langkah A: Autentikasi Ulang (Wajib untuk keamanan Pi SDK)
+                // Langkah A: Autentikasi Ulang
                 const auth = await Pi.authenticate(
                     ["payments", "username"], 
-                    onIncompletePaymentFound // Callback jika ada payment terpending
+                    onIncompletePaymentFound 
                 );
 
                 if (!auth || !auth.accessToken) {
@@ -378,18 +376,20 @@
                     metadata: { orderId: orderId, itemsCount: cartItems.length }
                 };
 
-                // Langkah C: Eksekusi Payment Flow
+                // Langkah C: Eksekusi Payment Flow (FIXED STRUCTURE)
                 await Pi.createPayment(paymentData, {
-                    // Fase 1: User menyetujui di Wallet -> App minta approve ke Server
+                    
+                    // --- FASE 1: APPROVAL (User Setuju) ---
                     onReadyForServerApproval: async (paymentId) => {
                         console.log("Payment ID dibuat, meminta approval server:", paymentId);
                         
                         try {
                             const response = await fetch(SUPABASE_URL, {
                                 method: 'POST',
-                               headers: { 
-                       "Content-Type": "application/json"
-            }
+                                headers: { 
+                                    "Content-Type": "application/json"
+                                    // Authorization header dihapus karena --no-verify-jwt
+                                },
                                 body: JSON.stringify({ 
                                     paymentId, 
                                     action: 'approve', 
@@ -401,12 +401,11 @@
                             if(!response.ok) throw new Error("Server Approval Failed");
                         } catch (err) {
                             console.error("Approval Error:", err);
-                            // Jika server gagal approve, payment dibatalkan di client
                             throw new Error("Gagal menghubungi server pembayaran.");
                         }
                     },
                     
-                    // Fase 2: User selesai bayar -> App konfirmasi ke Server
+                    // --- FASE 2: COMPLETION (User Bayar & Txid Keluar) ---
                     onReadyForServerCompletion: async (paymentId, txid) => {
                         console.log("Pembayaran sukses dari user. TXID:", txid);
                         
@@ -414,8 +413,7 @@
                             const response = await fetch(SUPABASE_URL, {
                                 method: 'POST',
                                 headers: { 
-                                    "Content-Type": "application/json",
-                                    "Authorization": `Bearer ${SUPABASE_KEY}` 
+                                    "Content-Type": "application/json"
                                 },
                                 body: JSON.stringify({ 
                                     paymentId, 
@@ -425,7 +423,8 @@
                                     uid: piUser.uid,
                                     username: piUser.username,
                                     amount: currentTotal,
-                                    items: cartItems,
+                                    // SECURITY: Kirim item detail ke server untuk validasi harga ulang
+                                    items: cartItems, 
                                     customer: { 
                                         name: fullName, 
                                         phone: phoneNumber, 
@@ -452,10 +451,10 @@
                         } catch (err) {
                             console.error("Completion Error:", err);
                             alert("Pembayaran tercatat di Blockchain, namun gagal menyimpan ke database kami. Hubungi admin dengan TXID: " + txid);
-                            // Jangan redirect, biarkan user screenshot txid
                         }
                     },
                     
+                    // --- CALLBACKS ERROR & CANCEL ---
                     onCancel: () => {
                         console.log("User membatalkan pembayaran.");
                         payBtn.disabled = false;
@@ -481,8 +480,7 @@
         // Callback untuk menangani payment yang terputus sebelumnya
         function onIncompletePaymentFound(payment) {
             console.log("Ditemukan pembayaran tidak lengkap:", payment);
-            // Logika tambahan bisa ditambahkan di sini, misalnya auto-resume
-            return; // Default behaviour: biarkan user buat payment baru
+            return; 
         }
 
         function showError(msg) {
