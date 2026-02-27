@@ -360,16 +360,12 @@
 
             try {
                 // Langkah A: Autentikasi Ulang (Wajib untuk keamanan Pi SDK)
-                const auth = await Pi.authenticate(
-                    ["payments", "username"], 
-                    onIncompletePaymentFound // Callback jika ada payment terpending
-                );
-
-                if (!auth || !auth.accessToken) {
-                    throw new Error("Gagal otentikasi ulang dengan Pi Network.");
-                }
                 
-                const piUser = auth.user;
+      const userStr = localStorage.getItem('aurora_user');
+          if (!userStr) {
+    throw new Error("Session login tidak ditemukan. Silakan login ulang.");
+           }
+         const piUser = JSON.parse(userStr);
 
                 // Langkah B: Buat Objek Payment
                 const paymentData = {
