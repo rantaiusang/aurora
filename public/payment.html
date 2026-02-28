@@ -236,8 +236,19 @@
     </div>    
 
     <script>
-        // --- 1. KONFIGURASI & SETUP ---
-        const SUPABASE_URL = "https://dikapquhusbwjccbqcsb.supabase.co/functions/v1/verify-pi-payment";
+       // --- 1. KONFIGURASI & SETUP (SAFE VERSION) ---
+if (!window.APP_CONFIG) {
+    alert("Config tidak ditemukan. Pastikan pi-config.js terload.");
+    throw new Error("APP_CONFIG tidak ditemukan");
+}
+
+const { SUPABASE_ANON_KEY, ENDPOINTS } = window.APP_CONFIG;
+const SUPABASE_URL = ENDPOINTS?.PAYMENT;
+
+if (!SUPABASE_URL) {
+    alert("SUPABASE_URL tidak ditemukan di config.");
+    throw new Error("PAYMENT endpoint missing");
+}
 
         let currentTotal = 0;
         let cartItems = [];
@@ -292,10 +303,17 @@
                 // B. Delay 800ms untuk memastikan SDK siap (Fix Android/iOS Loading Issue)
                 await new Promise(r => setTimeout(r, 800));
 
-                // C. Inisialisasi SDK
-                const isSandbox = (typeof window.APP_CONFIG !== 'undefined') ? window.APP_CONFIG.sandbox : true;
-                await Pi.init({ version: "2.0", sandbox: isSandbox }); 
-                console.log("Pi SDK Berhasil diinisialisasi.");
+               // C. Inisialisasi SDK (FIXED CLEAN VERSION)
+const isSandbox = (typeof window.APP_CONFIG !== 'undefined') 
+    ? window.APP_CONFIG.IS_SANDBOX 
+    : true;
+
+await Pi.init({
+    version: "2.0",
+    sandbox: isSandbox
+});
+
+console.log("Pi SDK Berhasil diinisialisasi.");
 
                 // D. Cek Session User Login
                 const userStr = localStorage.getItem('aurora_user');
@@ -395,10 +413,10 @@
                 return showError("Mohon lengkapi data pengiriman dengan benar.");
             }
 
-            if (parseFloat(currentTotal) <= 0) {
-                isProcessing = false;
-                return showError("Total pembayaran tidak valid (0).");
-            }
+            if (!currentUser || !currentUser.uid) {
+    isProcessing = false;
+    return showError("Session user tidak valid. Silakan login ulang.");
+}
 
             // 2. Mulai Proses Payment
             setLoadingState(true, "Menghubungkan ke Pi Wallet...");
@@ -447,10 +465,10 @@
                         // 2. Setup Fetch Promise
                         const fetchPromise = fetch(SUPABASE_URL, {
                             method: 'POST',
-                            headers: { 
-                                "Content-Type": "application/json",
-                                 "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-                                    },
+                           headers: { 
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+},
                             body: JSON.stringify({ 
                                 paymentId, 
                                 action: 'approve', 
