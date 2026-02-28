@@ -448,8 +448,9 @@
                         const fetchPromise = fetch(SUPABASE_URL, {
                             method: 'POST',
                             headers: { 
-                                "Content-Type": "application/json"
-                            },
+                                "Content-Type": "application/json",
+                                 "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+                                    },
                             body: JSON.stringify({ 
                                 paymentId, 
                                 action: 'approve', 
