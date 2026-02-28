@@ -480,14 +480,39 @@
             }
         }
 
-        window.addEventListener('load', async () => {
-            await initApp(); 
-            await fetchProducts(); 
-            if(productsData && productsData.length > 0) {
-                renderProducts(); 
+       function enableRealtimeProducts() {
+    supabaseClient
+        .channel('realtime-productspi')
+        .on(
+            'postgres_changes',
+            {
+                event: '*',
+                schema: 'public',
+                table: 'productspi'
+            },
+            (payload) => {
+
+                if (payload.eventType === 'UPDATE') {
+                    const index = productsData.findIndex(p => p.id === payload.new.id);
+                    if (index !== -1) {
+                        productsData[index] = payload.new;
+                    }
+                }
+
+                if (payload.eventType === 'INSERT') {
+                    productsData.unshift(payload.new);
+                }
+
+                if (payload.eventType === 'DELETE') {
+                    productsData = productsData.filter(p => p.id !== payload.old.id);
+                }
+
+                renderProducts();
+                renderSidebarCart();
             }
-            renderSidebarCart(); 
-        });
+        )
+        .subscribe();
+}
 
         // Helper: Ambil value aman (handle key yang berbeda-beda)
         function getSafeValue(obj, key1, key2, fallback) {
@@ -881,6 +906,23 @@
                 if(menu) menu.classList.remove('show');
             }
         }
+
+        // ==========================================
+// INIT SAAT HALAMAN DIBUKA
+// ==========================================
+window.addEventListener('load', async () => {
+    await initApp(); 
+    await fetchProducts(); 
+    
+    if(productsData && productsData.length > 0) {
+        renderProducts(); 
+    }
+
+    renderSidebarCart();
+
+    // 🔥 AKTIFKAN REALTIME
+    enableRealtimeProducts();
+});
     </script>
 </body>
 </html>
