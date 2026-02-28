@@ -494,8 +494,23 @@
 
                 if (payload.eventType === 'UPDATE') {
                     const index = productsData.findIndex(p => p.id === payload.new.id);
+
                     if (index !== -1) {
-                        productsData[index] = payload.new;
+                        const oldProduct = productsData[index];
+                        const newProduct = payload.new;
+
+                        // 🔥 Jika harga berubah → hapus dari cart
+                        if (cleanPrice(oldProduct.price) !== cleanPrice(newProduct.price)) {
+                            let cart = JSON.parse(localStorage.getItem('aurora_cart')) || [];
+
+                            cart = cart.filter(item => String(item.id) !== String(newProduct.id));
+
+                            localStorage.setItem('aurora_cart', JSON.stringify(cart));
+
+                            console.log("Harga berubah, item dihapus dari cart");
+                        }
+
+                        productsData[index] = newProduct;
                     }
                 }
 
@@ -505,6 +520,11 @@
 
                 if (payload.eventType === 'DELETE') {
                     productsData = productsData.filter(p => p.id !== payload.old.id);
+
+                    // 🔥 Jika produk dihapus → hapus juga dari cart
+                    let cart = JSON.parse(localStorage.getItem('aurora_cart')) || [];
+                    cart = cart.filter(item => String(item.id) !== String(payload.old.id));
+                    localStorage.setItem('aurora_cart', JSON.stringify(cart));
                 }
 
                 renderProducts();
@@ -513,7 +533,6 @@
         )
         .subscribe();
 }
-
         // Helper: Ambil value aman (handle key yang berbeda-beda)
         function getSafeValue(obj, key1, key2, fallback) {
             if (obj && obj[key1]) return obj[key1];
@@ -868,17 +887,10 @@
             // 4. Hitung Total Ulang (Server-Side Logic Preparation)
             let total = 0;
             cartItems.forEach(item => {
-    const latestProduct = productsData.find(p => String(p.id) === String(item.id));
-    
-    if (!latestProduct) return;
-
-    const latestPrice = cleanPrice(latestProduct.price);
-    const qty = parseInt(item.qty) || 1;
-
-    if (latestPrice > 0) {
-        total += latestPrice * qty;
-    }
-});
+                const price = cleanPrice(item.price);
+                const qty = parseInt(item.qty) || 1;
+                if (price > 0) total += price * qty;
+            });
 
             if (total <= 0) return alert("Total harga tidak valid.");
 
