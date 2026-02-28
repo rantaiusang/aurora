@@ -304,7 +304,7 @@
         </div>
     </div>    
 
-    <script>
+        <script>
         // --- 1. GLOBAL VARIABLES ---
         let currentTotal = 0;
         let cartItems = [];
@@ -312,7 +312,7 @@
         let orderId = ""; 
         let isProcessing = false; 
 
-        // --- 2. HELPERS: PRICE FORMATTING (ANTI FLOAT BUGS) ---
+        // --- 2. HELPERS: PRICE FORMATTING ---
         function cleanPrice(priceInput) {
             if (priceInput === null || priceInput === undefined) return 0;
             let p = String(priceInput).replace(/,/g, '.').replace(/[^0-9.-]+/g, "");
@@ -328,71 +328,109 @@
             return Number.isInteger(numPrice) ? numPrice.toString() : numPrice.toFixed(2);
         }
 
-        // --- 3. INITIALIZATION ---
+        // --- 3. INITIALIZATION (REVISED FOR STABILITY) ---
         async function initPayment() {
             const payBtn = document.getElementById('payBtn');
             const errorBox = document.getElementById('error-message');
             
-            // Generate Unique Order ID
-            orderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
-            console.log("Order ID Generated:", orderId);
+            // 1. Hard Reset UI awal
+            if(payBtn) {
+                payBtn.innerText = "Memuat Sistem...";
+                payBtn.disabled = true;
+            }
 
             try {
-                // A. Validate Pi SDK
+                // A. VALIDASI CONFIG FILE (PENCEGAHAN LAYAR PUTIH)
+                if (typeof window.APP_CONFIG === 'undefined') {
+                    throw new Error("CRITICAL: File 'pi-config.js' tidak ditemukan atau gagal dimuat. Cek kembali path file.");
+                }
+
+                console.log("Config Loaded:", window.APP_CONFIG);
+
+                // B. VALIDASI PI SDK
                 if (typeof Pi === 'undefined') {
-                    throw new Error("Pi SDK tidak terdeteksi. Harap gunakan Pi Browser.");
+                    throw new Error("Pi SDK gagal dimuat. Pastikan Anda terhubung ke internet dan menggunakan Pi Browser.");
                 }
                 
-                // B. Init SDK
-                const isSandbox = (window.APP_CONFIG && window.APP_CONFIG.IS_SANDBOX) ? true : true;
+                // C. DELAY UNTUK SDK STABILITY
+                // Kadang SDK butuh waktu ekstra di Android WebView
+                await new Promise(r => setTimeout(r, 1000));
+
+                // D. INIT SDK DENGAN FALLBACK
+                const isSandbox = (window.APP_CONFIG.IS_SANDBOX !== undefined) ? window.APP_CONFIG.IS_SANDBOX : true;
+                
                 await Pi.init({ version: "2.0", sandbox: isSandbox }); 
                 console.log("Pi SDK Initialized.");
 
-                // C. Check User Session
+                // E. CHECK USER SESSION
                 const userStr = localStorage.getItem('aurora_user');
-                if (!userStr) throw new Error("Sesi habis. Silakan login ulang.");
-                currentUser = JSON.parse(userStr);
+                if (!userStr) throw new Error("Sesi login habis. Silakan login ulang dari halaman utama.");
+                
+                try {
+                    currentUser = JSON.parse(userStr);
+                } catch(e) {
+                    throw new Error("Data user rusak. Silakan login ulang.");
+                }
+                
                 console.log("User Found:", currentUser.username);
 
-                // D. Load Cart
+                // F. GENERATE ORDER ID
+                orderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+                console.log("Order ID Generated:", orderId);
+
+                // G. LOAD CART
                 const successLoad = loadCartAndCalculateTotal();
 
-                // E. Final UI State
+                // H. FINAL UI STATE
                 if (successLoad && parseFloat(currentTotal) > 0) {
-                    payBtn.disabled = false;
+                    if(payBtn) {
+                        payBtn.innerText = "Bayar Sekarang";
+                        payBtn.disabled = false;
+                    }
                 } else {
-                    payBtn.innerText = "Keranjang Kosong";
-                    payBtn.disabled = true;
-                    errorBox.style.display = "block";
-                    errorBox.innerHTML = "Tidak ada item yang valid dibayar.<br><a href='store.html' style='color:var(--luxury-gold);'>Kembali ke Toko</a>";
+                    if(payBtn) {
+                        payBtn.innerText = "Data Kosong";
+                        payBtn.disabled = true;
+                    }
+                    if(errorBox) {
+                        errorBox.style.display = "block";
+                        errorBox.innerHTML = "Keranjang belanja kosong atau data tidak valid.<br><a href='store.html' style='color:var(--luxury-gold); text-decoration:underline;'>Kembali ke Toko</a>";
+                    }
                 }
 
             } catch (err) {
                 console.error("Init Failed:", err);
-                errorBox.style.display = "block";
-                errorBox.innerText = err.message;
-                payBtn.disabled = true;
-                payBtn.innerText = "System Error";
+                // Tampilkan error jelas di layar, jangan biarkan blank
+                if(errorBox) {
+                    errorBox.style.display = 'block';
+                    errorBox.style.color = '#ffcccc';
+                    errorBox.style.borderLeftColor = 'red';
+                    errorBox.innerHTML = "<strong>SYSTEM ERROR:</strong><br>" + err.message + "<br><br><small>Refresh halaman atau cek koneksi internet.</small>";
+                } else {
+                    alert("Error: " + err.message);
+                }
             }
         }
 
         // --- 4. CART LOGIC ---
         function loadCartAndCalculateTotal() {
             const checkoutRaw = localStorage.getItem('aurora_checkout');
+            const summaryList = document.getElementById('summaryList');
+            
             if (!checkoutRaw) {
-                document.getElementById('summaryList').innerHTML = "<div style='color:#ff4d4d; text-align:center;'>Data pesanan hilang.</div>";
+                if(summaryList) summaryList.innerHTML = "<div style='color:#ff4d4d; text-align:center;'>Data pesanan hilang.</div>";
                 return false;
             }
 
             try {
                 const checkout = JSON.parse(checkoutRaw);
                 cartItems = checkout.items || []; 
-                const summaryList = document.getElementById('summaryList');
+                
                 let html = '';
                 let total = 0;
 
                 if (cartItems.length === 0) {
-                     summaryList.innerHTML = "<div style='text-align:center;'>Keranjang kosong.</div>";
+                     if(summaryList) summaryList.innerHTML = "<div style='text-align:center;'>Keranjang kosong.</div>";
                      return false;
                 }
 
@@ -410,9 +448,12 @@
                         </div>`;
                 });
 
-                summaryList.innerHTML = html;
+                if(summaryList) summaryList.innerHTML = html;
+                
                 currentTotal = total;
-                document.getElementById('displayTotal').innerText = formatPrice(total) + " π";
+                const displayEl = document.getElementById('displayTotal');
+                if(displayEl) displayEl.innerText = formatPrice(total) + " π";
+                
                 return true;
 
             } catch (e) {
@@ -455,16 +496,17 @@
                 const amount = cleanPrice(currentTotal);
                 const memo = `Order Aurora: ${orderId}`;
                 
-                // 3. REQUEST PAYMENT ID KE SERVER (Pre-Flight Check)
-                // Kita memanggil endpoint create-pi-payment yang baru kita buat
+                // 3. REQUEST PAYMENT ID KE SERVER
                 let createUrl = "";
-                if (window.getAppUrl) {
+                // Fallback mechanism untuk memastikan URL selalu ada
+                if (window.getAppUrl && typeof window.getAppUrl === 'function') {
                     createUrl = window.getAppUrl('CREATE_PAYMENT');
                 } else {
-                    // Fallback manual jika helper hilang
                     createUrl = "https://dikapquhusbwjccbqcsb.functions.supabase.co/create-pi-payment";
+                    console.warn("Helper getAppUrl hilang, menggunakan fallback URL");
                 }
 
+                console.log("Calling Create Payment URL:", createUrl);
                 setLoadingState(true, "Menyiapkan Invoice...");
 
                 const createRes = await fetch(createUrl, {
@@ -479,9 +521,9 @@
                 });
 
                 if (!createRes.ok) {
-                    const err = await createRes.text();
-                    console.error("Create Payment Failed:", err);
-                    throw new Error("Gagal membuat invoice. Server sibuk.");
+                    const errText = await createRes.text();
+                    console.error("Create Payment Failed:", createRes.status, errText);
+                    throw new Error(`Gagal membuat invoice (Server Error). Cek log backend.`);
                 }
                 
                 const createData = await createRes.json();
@@ -502,7 +544,6 @@
                         setLoadingState(true, "Verifikasi Server...");
                         
                         try {
-                            // Gunakan helper atau fallback
                             const verifyUrl = (window.getAppUrl) ? window.getAppUrl('VERIFY_PAYMENT') : "https://dikapquhusbwjccbqcsb.functions.supabase.co/verify-pi-payment";
 
                             const response = await fetch(verifyUrl, {
@@ -519,11 +560,9 @@
                             if (!response.ok) throw new Error("Server menolak transaksi.");
                             console.log("Server Approved.");
                             
-                            // Jika sukses, SDK akan lanjut ke fase input user (jika belum) atau completion
-                            
                         } catch (err) {
                             console.error("Approval Error:", err);
-                            throw err; // Memicu onError
+                            throw err; 
                         }
                     },
                     
@@ -556,17 +595,13 @@
                                 throw new Error(errData.message || "Gagal menyimpan data pesanan.");
                             }
 
-                            // SUKSES TOTAL
                             localStorage.removeItem('aurora_checkout'); 
                             localStorage.removeItem("aurora_cart");
-                            
-                            // Redirect ke halaman sukses (pastikan file ini ada)
                             window.location.href = "payment-success.html";
 
                         } catch (err) {
                             console.error("Completion Error:", err);
-                            // KASUS KRITIS: Uang sudah keluar, DB belum masuk
-                            alert("⚠️ Pembayaran SUKSES tapi data GAGAL tersimpan.\n\nSilakan screenshot pesan ini dan hubungi Admin.\n\nTXID: " + txid);
+                            alert("⚠️ Pembayaran SUKSES tapi data GAGAL tersimpan.\n\nTXID: " + txid);
                             setLoadingState(false, "Bayar Lagi");
                             isProcessing = false;
                         }
@@ -597,23 +632,27 @@
         // --- UI UTILS ---
         function setLoadingState(isLoading, text) {
             const payBtn = document.getElementById('payBtn');
+            if (!payBtn) return;
+            
             const btnText = payBtn.querySelector('.text');
             
             if (isLoading) {
                 payBtn.classList.add('loading');
                 payBtn.disabled = true;
-                btnText.innerText = text; // Text hidden by CSS but used for accessibility/screen readers if needed
+                if(btnText) btnText.innerText = text;
                 payBtn.setAttribute('aria-label', text);
             } else {
                 payBtn.classList.remove('loading');
                 payBtn.disabled = false;
-                btnText.innerText = text;
+                if(btnText) btnText.innerText = text;
                 payBtn.setAttribute('aria-label', text);
             }
         }
 
         function showError(msg) {
             const errBox = document.getElementById('error-message');
+            if (!errBox) return;
+            
             errBox.style.display = 'block';
             errBox.innerHTML = msg;
             window.scrollTo({ top: 0, behavior: 'smooth' });
