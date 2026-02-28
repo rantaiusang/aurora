@@ -364,6 +364,28 @@
             }
         }
 
+        // ==========================================
+        // 🔥 FUNGSI BARU: FORCE CLEANUP SEBELUM BAYAR
+        // ==========================================
+        async function cleanupStuckPayments(uid) {
+            try {
+                console.log("🧹 Memulai pembersihan payment pending...");
+                const response = await fetch(SUPABASE_URL, {
+                    method: 'POST',
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        uid: uid, 
+                        action: "init" // Memicu logika cleanup di index.ts
+                    })
+                });
+                const result = await response.json();
+                console.log("✅ Hasil Cleanup:", result.message);
+            } catch (err) {
+                console.warn("⚠️ Gagal cleanup otomatis:", err);
+                // Jangan throw error di sini, biarkan user mencoba bayar
+            }
+        }
+
         // --- 3. PROSES PEMBAYARAN UTAMA ---
         async function handleAutoPayment(event) {
             event.preventDefault();
@@ -413,7 +435,7 @@
                             
                             if (result.success) {
                                 alert("Sistem mendeteksi transaksi terjebak. Kami telah membersihkannya. Halaman akan dimuat ulang...");
-                                window.location.reload(); // Reload untuk membersihkan state SDK client
+                                window.location.reload(); 
                             } else {
                                 alert("Gagal mereset pembayaran lama. Coba refresh halaman.");
                                 setLoadingState(false, "Bayar Sekarang");
@@ -428,22 +450,32 @@
                     }
                 );
 
-                // Pastikan auth berhasil dan ambil object user
                 if (!authResult || !authResult.user) {
                     throw new Error("Gagal autentikasi dengan Pi Network.");
                 }
                 
-                const piUser = authResult.user; // 🔥 FIX: Definisi variabel piUser
+                const piUser = authResult.user;
+                const userUid = piUser.uid; // 🔥 FIX: Ambil UID untuk cleanup
                 console.log("AUTH SUCCESS", piUser);
 
-                // Langkah B: Buat Objek Payment
+                // =======================================================
+                // 🛡️ LANGKAH B: BERSIHKAN PAYMENT STUCK (CRITICAL)
+                // =======================================================
+                await cleanupStuckPayments(userUid);
+                
+                // Beri delay 500ms agar server Pi selesai sync cancel
+                await new Promise(r => setTimeout(r, 500));
+
+                // =======================================================
+                // LANGKAH C: BUAT OBJEK PEMBAYARAN
+                // =======================================================
                 const paymentData = {
                     amount: cleanPrice(currentTotal),
                     memo: `Order Aurora: ${orderId}`,
                     metadata: { orderId: orderId, itemsCount: cartItems.length }
                 };
 
-                // Langkah C: Eksekusi Payment Flow
+                // Langkah D: Eksekusi Payment Flow
                 await Pi.createPayment(paymentData, {
                     
                     onReadyForServerApproval: async (paymentId) => {
@@ -461,7 +493,7 @@
                                 paymentId, 
                                 action: 'approve', 
                                 orderId,
-                                uid: piUser.uid // 🔥 FIX: Sekarang piUser terdefinisi
+                                uid: piUser.uid
                             })
                         }).then(async (response) => {
                             if (!response.ok) {
@@ -532,15 +564,12 @@
                     
                     onError: (error) => {
                         console.error("Payment SDK Error:", error);
-                        
-                        // Hapus kode duplikat di sini
                         if (error && error.message && error.message.includes("pending payment")) {
                             showError("Ada pembayaran pending sebelumnya. Silakan refresh halaman.");
                         } else {
                             const errorMsg = error.message || "Terjadi kesalahan pada sistem pembayaran.";
                             showError(errorMsg);
                         }
-                        
                         setLoadingState(false, "Coba Lagi");
                         isProcessing = false;
                     }
