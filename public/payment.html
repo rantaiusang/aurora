@@ -242,7 +242,7 @@
         let currentTotal = 0;
         let cartItems = [];
         let currentUser = null;
-        let orderId = ""; // Akan di-generate unik saat init
+        let orderId = ""; 
         let isProcessing = false; // Mencegah double click
 
         // ==========================================
@@ -250,7 +250,6 @@
         // ==========================================
         function cleanPrice(priceInput) {
             if (priceInput === null || priceInput === undefined) return 0;
-            // Normalisasi koma ke titik, buang karakter non-angka
             let p = String(priceInput).replace(/,/g, '.').replace(/[^0-9.-]+/g, "");
             if (p.length === 0) return 0;
             let val = parseFloat(p);
@@ -258,58 +257,48 @@
         }
 
         function formatPrice(price) {
-    let numPrice = cleanPrice(price);
-    if (numPrice === 0) return "0";
-
-    if (numPrice < 0.01) {
-        return numPrice.toFixed(7).replace(/\.?0+$/, '');
-    }
-
-    return Number.isInteger(numPrice) 
-        ? numPrice.toString() 
-        : numPrice.toFixed(2).replace(/\.?0+$/, '');
-}
+            let numPrice = cleanPrice(price);
+            if (numPrice === 0) return "0";
+            if (numPrice < 0.01) {
+                return numPrice.toFixed(7).replace(/\.?0+$/, '');
+            }
+            return Number.isInteger(numPrice) 
+                ? numPrice.toString() 
+                : numPrice.toFixed(2).replace(/\.?0+$/, '');
+        }
 
         // --- 2. INISIALISASI HALAMAN ---
         async function initPayment() {
             const payBtn = document.getElementById('payBtn');
             const errorBox = document.getElementById('error-message');
             
-            // Generate Order ID Unik untuk sesi ini
             orderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
-            // PERBAIKAN: Deteksi Loop Login & Cleanup Sesi Lama
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('retry') === 'true') {
                 console.warn("Payment retry detected. Cleaning session...");
-                localStorage.removeItem('aurora_user'); // Hapus user lama force re-auth
+                localStorage.removeItem('aurora_user'); 
                 localStorage.removeItem('aurora_token');
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
 
             try {
-                // A. Cek Pi SDK Availability
                 if (typeof Pi === 'undefined') {
                     throw new Error("Pi SDK tidak ditemukan. Harap gunakan Pi Browser.");
                 }
                 
-                // B. Delay 800ms untuk memastikan SDK siap (Fix Android/iOS Loading Issue)
                 await new Promise(r => setTimeout(r, 800));
 
-                // C. Inisialisasi SDK
                 const isSandbox = (window.APP_CONFIG && window.APP_CONFIG.IS_SANDBOX === true);
                 await Pi.init({ version: "2.0", sandbox: isSandbox }); 
                 console.log("Pi SDK Berhasil diinisialisasi.");
 
-                // D. Cek Session User Login
                 const userStr = localStorage.getItem('aurora_user');
                 if(!userStr) throw new Error("Sesi login habis. Silakan login kembali.");
                 currentUser = JSON.parse(userStr);
 
-                // E. Load Data Keranjang
                 const successLoad = loadCartAndCalculateTotal();
 
-                // F. Update UI
                 if (successLoad && parseFloat(currentTotal) > 0) {
                     payBtn.disabled = false;
                     payBtn.innerText = "Bayar Sekarang";
@@ -353,14 +342,10 @@
 
                 cartItems.forEach(item => {
                     const name = item.name || item.product_name || "Produk Tanpa Nama";
-                    // GUNAKAN cleanPrice untuk perhitungan internal
                     const price = cleanPrice(item.price);
                     const qty = parseInt(item.qty) || 1;
                     const subtotal = price * qty;
-                    
                     total += subtotal;
-                    
-                    // Gunakan formatPrice untuk tampilan
                     html += `
                         <div class="item-row">
                             <span>${name} <small style="color:#888;">(x${qty})</small></span>
@@ -383,13 +368,11 @@
         async function handleAutoPayment(event) {
             event.preventDefault();
             
-            // Cegah Double Submit
             if (isProcessing) return;
             isProcessing = true;
 
             const payBtn = document.getElementById('payBtn');
             
-            // 1. Validasi Input Form
             const fullName = document.getElementById('fullName').value.trim();
             const phoneNumber = document.getElementById('phoneNumber').value.trim();
             const address = document.getElementById('address').value.trim();
@@ -404,57 +387,56 @@
                 return showError("Total pembayaran tidak valid (0).");
             }
 
-            // 2. Mulai Proses Payment
             setLoadingState(true, "Menghubungkan ke Pi Wallet...");
 
             try {
                 console.log("AUTH START");
 
+                // Langkah A: Autentikasi Ulang & SIMPAN RESULT KE VARIABLE piUser
+                const authResult = await Pi.authenticate(
+                    ["username", "payments"],
+                    async (payment) => {
+                        console.log("🔥 Ditemukan pembayaran terjebak (Incomplete):", payment.identifier);
+                        setLoadingState(true, "Memperbaiki sesi pembayaran yang terjebak...");
 
-                // Langkah A: Autentikasi Ulang
-const auth = await Pi.authenticate(
-    ["username", "payments"],
-    async (payment) => {
-        // 🔥 TRIGGER KETIKA DITEMUKAN PEMBAYARAN YANG NYANGKUT
-        console.log("🔥 Ditemukan pembayaran terjebak (Incomplete):", payment.identifier);
+                        try {
+                            const response = await fetch(SUPABASE_URL, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    paymentId: payment.identifier,
+                                    action: "cancel"
+                                })
+                            });
 
-        // Tampilkan pesan loading ke user
-        setLoadingState(true, "Memperbaiki sesi pembayaran yang terjebak...");
+                            const result = await response.json();
+                            
+                            if (result.success) {
+                                alert("Sistem mendeteksi transaksi terjebak. Kami telah membersihkannya. Halaman akan dimuat ulang...");
+                                window.location.reload(); // Reload untuk membersihkan state SDK client
+                            } else {
+                                alert("Gagal mereset pembayaran lama. Coba refresh halaman.");
+                                setLoadingState(false, "Bayar Sekarang");
+                                isProcessing = false;
+                            }
+                        } catch (err) {
+                            console.error("Gagal menghubungi server untuk cleanup:", err);
+                            alert("Gagal koneksi ke server untuk perbaikan.");
+                            setLoadingState(false, "Bayar Sekarang");
+                            isProcessing = false;
+                        }
+                    }
+                );
 
-        try {
-            // PANGGIL BACKEND UNTUK MEMBATALKAN (CANCEL) PEMBAYARAN LAMA
-            // Ini menghapus 'kunci' agar user bisa bayar ulang
-            const response = await fetch(SUPABASE_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    paymentId: payment.identifier,
-                    action: "cancel" // <<< INI KUNCI PERBAIKANNYA
-                })
-            });
-
-            const result = await response.json();
-            
-            if (result.success) {
-                console.log("✅ Pembayaran lama berhasil dibatalkan. Silakan coba bayar lagi.");
-                alert("Sistem mendeteksi transaksi terjebak. Kami telah membersihkannya. Silakan tekan tombol Bayar lagi.");
-            } else {
-                console.error("Gagal cancel:", result);
-                alert("Gagal mereset pembayaran lama. Coba refresh halaman.");
-            }
-        } catch (err) {
-            console.error("Gagal menghubungi server untuk cleanup:", err);
-        } finally {
-            // Kembalikan tombol ke kondisi semula
-            setLoadingState(false, "Bayar Sekarang");
-            // Pastikan flag reset agar bisa klik tombol lagi
-            isProcessing = false; 
-        }
-    }
-);
+                // Pastikan auth berhasil dan ambil object user
+                if (!authResult || !authResult.user) {
+                    throw new Error("Gagal autentikasi dengan Pi Network.");
+                }
+                
+                const piUser = authResult.user; // 🔥 FIX: Definisi variabel piUser
+                console.log("AUTH SUCCESS", piUser);
 
                 // Langkah B: Buat Objek Payment
-                // PASTIKAN amount menggunakan cleanPrice
                 const paymentData = {
                     amount: cleanPrice(currentTotal),
                     memo: `Order Aurora: ${orderId}`,
@@ -464,158 +446,114 @@ const auth = await Pi.authenticate(
                 // Langkah C: Eksekusi Payment Flow
                 await Pi.createPayment(paymentData, {
                     
-                    // --- FASE 1: APPROVAL (User Setuju) ---
                     onReadyForServerApproval: async (paymentId) => {
                         console.log("Payment ID dibuat, meminta approval server:", paymentId);
-                        setLoadingState(true, "Memverifikasi ke Server (Maks 25 detik)...");
+                        setLoadingState(true, "Memverifikasi ke Server...");
                         
-                        // 1. Setup Timeout Promise (Anti-Timeout Strategy)
                         const timeoutPromise = new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error("Waktu habis. Server terlalu lama merespons. Silakan coba lagi.")), 25000)
+                            setTimeout(() => reject(new Error("Waktu habis. Server terlalu lama merespons.")), 25000)
                         );
 
-                        // 2. Setup Fetch Promise
                         const fetchPromise = fetch(SUPABASE_URL, {
                             method: 'POST',
-                            headers: { 
-                                "Content-Type": "application/json"
-                            },
+                            headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ 
                                 paymentId, 
                                 action: 'approve', 
                                 orderId,
-                                uid: piUser.uid
+                                uid: piUser.uid // 🔥 FIX: Sekarang piUser terdefinisi
                             })
                         }).then(async (response) => {
-                            // Cek status HTTP response
                             if (!response.ok) {
                                 const errText = await response.text();
-                                console.error("Server HTTP Error:", response.status, errText);
-                                throw new Error(`Server Error: Gagal memproses persetujuan.`);
+                                throw new Error(`Server Error: ${errText}`);
                             }
                             return response.json();
-                        }).catch(error => {
-                            // Tangkap Network Error (DNS down, Offline, dll)
-                            if (error instanceof TypeError) {
-                                throw new Error("Koneksi internet terputus atau server tidak dapat dijangkau.");
-                            }
-                            throw error;
                         });
 
-                        // 3. RACE: Siapa yang duluan? Sukses atau Timeout
                         try {
                             await Promise.race([fetchPromise, timeoutPromise]);
-                            console.log("Server Approval Phase Completed Successfully.");
+                            console.log("Approval Completed.");
                         } catch (err) {
-                            console.error("Approval Phase Failed:", err);
-                            // LEMPAR ERROR KE SDK -> Ini akan memicu callback 'onError' di Pi.createPayment
+                            console.error("Approval Failed:", err);
                             throw new Error(err.message);
                         }
                     },
                     
-                    // --- FASE 2: COMPLETION (User Bayar & Txid Keluar) ---
                     onReadyForServerCompletion: async (paymentId, txid) => {
-    console.log("Pembayaran sukses dari user. TXID:", txid);
-    setLoadingState(true, "Menyelesaikan transaksi...");
+                        console.log("Pembayaran sukses dari user. TXID:", txid);
+                        setLoadingState(true, "Menyelesaikan transaksi...");
 
-    const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Server terlalu lama merespons.")), 25000)
-    );
+                        const timeoutPromise = new Promise((_, reject) =>
+                            setTimeout(() => reject(new Error("Server timeout saat completion.")), 25000)
+                        );
 
-    const fetchPromise = fetch(SUPABASE_URL, {
-        method: 'POST',
-        headers: { 
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ 
-            paymentId, 
-            action: 'complete', 
-            txid, 
-            orderId,
-            uid: piUser.uid,
-            username: piUser.username,
-            amount: cleanPrice(currentTotal),
-            items: cartItems, 
-            customer: { 
-                name: fullName, 
-                phone: phoneNumber, 
-                address: address 
-            }
-        })
-    }).then(async (response) => {
+                        const fetchPromise = fetch(SUPABASE_URL, {
+                            method: 'POST',
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ 
+                                paymentId, 
+                                action: 'complete', 
+                                txid, 
+                                orderId,
+                                uid: piUser.uid,
+                                username: piUser.username,
+                                amount: cleanPrice(currentTotal),
+                                items: cartItems, 
+                                customer: { name: fullName, phone: phoneNumber, address: address }
+                            })
+                        }).then(async (response) => {
+                            const text = await response.text();
+                            if (!response.ok) {
+                                throw new Error(text || "Server menolak completion.");
+                            }
+                            return text;
+                        });
 
-        const text = await response.text();
-
-        if (!response.ok) {
-            throw new Error(text || "Server menolak completion.");
-        }
-
-        return text;
-    });
-
-    try {
-        await Promise.race([fetchPromise, timeoutPromise]);
-
-        alert("Pembayaran Berhasil! Pesanan Anda sedang diproses.");
-
-        localStorage.removeItem('aurora_checkout'); 
-        localStorage.removeItem("aurora_cart");
-
-        window.location.href = "payment-success.html";
-
-    } catch (err) {
-        console.error("Completion Error:", err);
-
-        alert(
-            "Pembayaran tercatat di Blockchain.\n\n" +
-            "TXID: " + txid + "\n\n" +
-            "Jika status belum update, hubungi admin."
-        );
-
-        setLoadingState(false, "Selesai");
-        isProcessing = false;
-    }
-},
+                        try {
+                            await Promise.race([fetchPromise, timeoutPromise]);
+                            alert("Pembayaran Berhasil! Pesanan Anda sedang diproses.");
+                            localStorage.removeItem('aurora_checkout'); 
+                            localStorage.removeItem("aurora_cart");
+                            window.location.href = "payment-success.html";
+                        } catch (err) {
+                            console.error("Completion Error:", err);
+                            alert("Pembayaran tercatat tapi server error.\nTXID: " + txid);
+                            setLoadingState(false, "Selesai");
+                            isProcessing = false;
+                        }
+                    },
                     
-                    // --- CALLBACKS ERROR & CANCEL ---
                     onCancel: () => {
                         console.log("User membatalkan pembayaran.");
                         setLoadingState(false, "Bayar Sekarang");
                         isProcessing = false;
                     },
                     
-                   onError: (error) => {
-    console.error("Payment SDK Error:", error);
-    
-    // Cek apakah error karena pembayaran pending
-    if (error && error.message && error.message.includes("pending payment")) {
-        showError("Terjebak pembayaran sebelumnya. Mohon tutup halaman ini dan buka kembali, atau tunggu beberapa saat.");
-    } else {
-        // Error biasa
-        const errorMsg = error.message || "Terjadi kesalahan pada sistem pembayaran.";
-        showError(errorMsg);
-    }
-    
-    setLoadingState(false, "Coba Lagi");
-    isProcessing = false;
-},
-                        // Tampilkan pesan error yang sudah kita buat custom di fase Approval
-                        const errorMsg = error.message || "Terjadi kesalahan pada sistem pembayaran.";
-                        showError(errorMsg);
+                    onError: (error) => {
+                        console.error("Payment SDK Error:", error);
+                        
+                        // Hapus kode duplikat di sini
+                        if (error && error.message && error.message.includes("pending payment")) {
+                            showError("Ada pembayaran pending sebelumnya. Silakan refresh halaman.");
+                        } else {
+                            const errorMsg = error.message || "Terjadi kesalahan pada sistem pembayaran.";
+                            showError(errorMsg);
+                        }
+                        
                         setLoadingState(false, "Coba Lagi");
                         isProcessing = false;
                     }
                 });
 
             } catch (err) {
-                console.error("System Error (Auth Phase):", err);
+                console.error("System Error:", err);
                 showError(err.message);
                 setLoadingState(false, "Bayar Sekarang");
                 isProcessing = false;
             }
         }
 
-        // Helper UI untuk Mengubah Status Tombol
         function setLoadingState(isLoading, text) {
             const payBtn = document.getElementById('payBtn');
             if (isLoading) {
@@ -636,7 +574,6 @@ const auth = await Pi.authenticate(
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // Jalankan saat halaman load
         window.onload = initPayment;
     </script>
 </body>
