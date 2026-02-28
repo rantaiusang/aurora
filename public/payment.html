@@ -9,7 +9,7 @@
     
     <!-- Pi SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    <!-- Config File (Pastikan file ini ada di folder yang sama, atau logic akan pakai default) -->
+    <!-- Config File (Harus ada di folder yang sama) -->
     <script src="./pi-config.js"></script>
 
     <style>
@@ -236,14 +236,29 @@
     </div>    
 
     <script>
-        // --- 1. KONFIGURASI & SETUP ---
+        // --- 1. KONFIGURASI & SETUP (MENDUKUNG FORMAT CONFIG LAMA) ---
         
-        // URL Supabase Function Anda
-        const SUPABASE_URL = "https://dikapquhusbwjccbqcsb.supabase.co/functions/v1/verify-pi-payment";
+        // Cek apakah config ada
+        const CONFIG = (typeof window.APP_CONFIG !== 'undefined') ? window.APP_CONFIG : {};
         
-        // ⚠️ PENTING: Ganti string di bawah ini dengan 'anon' key dari Dashboard Supabase Anda
-        // Dapatkan di: Project Settings -> API -> anon / public
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...GANTI_DENGAN_KEY_ANDA_DISINI..."; 
+        // LOGIKA KHUSUS UNTUK FORMAT ANDA:
+        // Kita mengambil nilai langsung dari properti huruf kapital di config
+        
+        // 1. Ambil URL Payment (dari ENDPOINTS.PAYMENT)
+        const SUPABASE_URL = (CONFIG.ENDPOINTS && CONFIG.ENDPOINTS.PAYMENT) 
+            ? CONFIG.ENDPOINTS.PAYMENT 
+            : "https://dikapquhusbwjccbqcsb.supabase.co/functions/v1/verify-pi-payment";
+        
+        // 2. Ambil Anon Key
+        const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY || "";
+
+        // 3. Ambil status Sandbox (dari IS_SANDBOX)
+        // Jika config tidak ada, default true
+        const SANDBOX_MODE = (typeof CONFIG.IS_SANDBOX !== 'undefined') ? CONFIG.IS_SANDBOX : true;
+
+        console.log("[Payment] Configuration Loaded:");
+        console.log("- URL:", SUPABASE_URL);
+        console.log("- Sandbox:", SANDBOX_MODE);
 
         let currentTotal = 0;
         let cartItems = [];
@@ -252,7 +267,7 @@
         let isProcessing = false; 
 
         // ==========================================
-        // 🔧 HELPER: BERSIH & FORMAT HARGA (PI NETWORK)
+        // 🔧 HELPER: BERSIH & FORMAT HARGA
         // ==========================================
         function cleanPrice(priceInput) {
             if (priceInput === null || priceInput === undefined) return 0;
@@ -292,10 +307,8 @@
                 
                 await new Promise(r => setTimeout(r, 800));
 
-                // Cek config fallback jika file pi-config.js tidak ada
-                const isSandbox = (typeof window.APP_CONFIG !== 'undefined' && window.APP_CONFIG) ? window.APP_CONFIG.sandbox : true;
-                
-                await Pi.init({ version: "2.0", sandbox: isSandbox }); 
+                // PERBAIKAN: Gunakan variabel SANDBOX_MODE yang sudah kita mapping di atas
+                await Pi.init({ version: "2.0", sandbox: SANDBOX_MODE }); 
                 console.log("Pi SDK Berhasil diinisialisasi.");
 
                 const userStr = localStorage.getItem('aurora_user');
@@ -436,12 +449,12 @@
                             method: 'POST',
                             headers: { 
                                 "Content-Type": "application/json",
-                                // Menggunakan SUPABASE_ANON_KEY yang sudah didefinisikan di atas
+                                // Menggunakan Key yang sudah diambil dari Config
                                 "Authorization": `Bearer ${SUPABASE_ANON_KEY}` 
                             },
                             body: JSON.stringify({ 
                                 paymentId, 
-                                action: 'approve',  // Action untuk backend
+                                action: 'approve', 
                                 orderId,
                                 uid: piUser.uid
                             })
@@ -482,7 +495,7 @@
                                 },
                                 body: JSON.stringify({ 
                                     paymentId, 
-                                    action: 'complete', // Action untuk backend
+                                    action: 'complete', 
                                     txid, 
                                     orderId,
                                     uid: piUser.uid,
