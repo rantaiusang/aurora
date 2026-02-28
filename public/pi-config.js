@@ -14,7 +14,7 @@ window.APP_CONFIG = {
     
     // UBAH KE 'false' JIKA SUDAH SIAP LIVE DI MAINNET
     // Pastikan mengubah App Type di developers.pi.net juga
-    IS_SANDBOX: true, 
+    IS_SANDBOX: false, 
 
     // Kunci Keamanan Supabase (Public Anon Key)
     // Dapatkan dari: Project Settings > API > anon public
