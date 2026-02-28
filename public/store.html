@@ -335,19 +335,16 @@
         }
 
         function formatPrice(price) {
-            let numPrice = cleanPrice(price);
-            
-            // Cek jika harga 0, tampilkan tanpa desimal
-            if (numPrice === 0) return "0";
-            
-            // LOGIKA PI NETWORK:
-            // Pi adalah micro-currency. Jika sangat kecil (< 0.01), pakai 7 desimal
-            if (numPrice < 0.01) return numPrice.toFixed(7);
-            
-            // Jika angka bulat (contoh: 314), tampilkan "314" (tanpa .00)
-            // Jika angka pecahan (contoh: 314.5), tampilkan "314.50"
-            return Number.isInteger(numPrice) ? numPrice.toString() : numPrice.toFixed(2);
-        }
+    let numPrice = cleanPrice(price);
+
+    if (numPrice === 0) return "0";
+
+    if (numPrice < 0.01) {
+        return numPrice.toFixed(7).replace(/\.?0+$/, '');
+    }
+
+    return numPrice.toFixed(2).replace(/\.?0+$/, '');
+}
 
         // ==========================================
         // 2. RENDER HEADER DINAMIS (GUEST / USER)
