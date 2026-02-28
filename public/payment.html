@@ -258,13 +258,17 @@
         }
 
         function formatPrice(price) {
-            let numPrice = cleanPrice(price);
-            if (numPrice === 0) return "0";
-            // Jika angka sangat kecil (khas Pi), pakai 7 desimal
-            if (numPrice < 0.01) return numPrice.toFixed(7);
-            // Jika bulat, tanpa .00
-            return Number.isInteger(numPrice) ? numPrice.toString() : numPrice.toFixed(2);
-        }
+    let numPrice = cleanPrice(price);
+    if (numPrice === 0) return "0";
+
+    if (numPrice < 0.01) {
+        return numPrice.toFixed(7).replace(/\.?0+$/, '');
+    }
+
+    return Number.isInteger(numPrice) 
+        ? numPrice.toString() 
+        : numPrice.toFixed(2).replace(/\.?0+$/, '');
+}
 
         // --- 2. INISIALISASI HALAMAN ---
         async function initPayment() {
