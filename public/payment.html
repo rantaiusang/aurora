@@ -411,40 +411,47 @@
                 console.log("AUTH START");
 
 
-                // Langkah A: Autentikasi Ulang (FIXED)
+                // Langkah A: Autentikasi Ulang
 const auth = await Pi.authenticate(
     ["username", "payments"],
     async (payment) => {
+        // 🔥 TRIGGER KETIKA DITEMUKAN PEMBAYARAN YANG NYANGKUT
+        console.log("🔥 Ditemukan pembayaran terjebak (Incomplete):", payment.identifier);
 
-        console.log("🔥 Incomplete ditemukan:", payment.identifier);
+        // Tampilkan pesan loading ke user
+        setLoadingState(true, "Memperbaiki sesi pembayaran yang terjebak...");
 
         try {
-            await fetch(SUPABASE_URL, {
+            // PANGGIL BACKEND UNTUK MEMBATALKAN (CANCEL) PEMBAYARAN LAMA
+            // Ini menghapus 'kunci' agar user bisa bayar ulang
+            const response = await fetch(SUPABASE_URL, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     paymentId: payment.identifier,
-                    action: "complete"
+                    action: "cancel" // <<< INI KUNCI PERBAIKANNYA
                 })
             });
 
-            console.log("🔥 Payment lama diselesaikan otomatis");
-
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log("✅ Pembayaran lama berhasil dibatalkan. Silakan coba bayar lagi.");
+                alert("Sistem mendeteksi transaksi terjebak. Kami telah membersihkannya. Silakan tekan tombol Bayar lagi.");
+            } else {
+                console.error("Gagal cancel:", result);
+                alert("Gagal mereset pembayaran lama. Coba refresh halaman.");
+            }
         } catch (err) {
-            console.error("Gagal menyelesaikan payment lama:", err);
+            console.error("Gagal menghubungi server untuk cleanup:", err);
+        } finally {
+            // Kembalikan tombol ke kondisi semula
+            setLoadingState(false, "Bayar Sekarang");
+            // Pastikan flag reset agar bisa klik tombol lagi
+            isProcessing = false; 
         }
     }
 );
-                
-                console.log("AUTH SUCCESS", auth);
-
-                if (!auth || !auth.user) {
-                    throw new Error("Gagal autentikasi dengan Pi Network.");
-                }
-                
-                const piUser = auth.user;
 
                 // Langkah B: Buat Objek Payment
                 // PASTIKAN amount menggunakan cleanPrice
@@ -577,8 +584,21 @@ const auth = await Pi.authenticate(
                         isProcessing = false;
                     },
                     
-                    onError: (error) => {
-                        console.error("Payment SDK Error:", error);
+                   onError: (error) => {
+    console.error("Payment SDK Error:", error);
+    
+    // Cek apakah error karena pembayaran pending
+    if (error && error.message && error.message.includes("pending payment")) {
+        showError("Terjebak pembayaran sebelumnya. Mohon tutup halaman ini dan buka kembali, atau tunggu beberapa saat.");
+    } else {
+        // Error biasa
+        const errorMsg = error.message || "Terjadi kesalahan pada sistem pembayaran.";
+        showError(errorMsg);
+    }
+    
+    setLoadingState(false, "Coba Lagi");
+    isProcessing = false;
+},
                         // Tampilkan pesan error yang sudah kita buat custom di fase Approval
                         const errorMsg = error.message || "Terjadi kesalahan pada sistem pembayaran.";
                         showError(errorMsg);
