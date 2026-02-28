@@ -868,10 +868,17 @@
             // 4. Hitung Total Ulang (Server-Side Logic Preparation)
             let total = 0;
             cartItems.forEach(item => {
-                const price = cleanPrice(item.price);
-                const qty = parseInt(item.qty) || 1;
-                if (price > 0) total += price * qty;
-            });
+    const latestProduct = productsData.find(p => String(p.id) === String(item.id));
+    
+    if (!latestProduct) return;
+
+    const latestPrice = cleanPrice(latestProduct.price);
+    const qty = parseInt(item.qty) || 1;
+
+    if (latestPrice > 0) {
+        total += latestPrice * qty;
+    }
+});
 
             if (total <= 0) return alert("Total harga tidak valid.");
 
