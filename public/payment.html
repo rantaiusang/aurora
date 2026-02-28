@@ -220,7 +220,6 @@
 
                 <div class="item-summary">
                     <div id="summaryList">
-                        <!-- Daftar item akan dirender di sini via JS -->
                         <div style="text-align:center; color:#888;">Memuat ringkasan...</div>
                     </div>
                 </div>
@@ -243,10 +242,10 @@
         let cartItems = [];
         let currentUser = null;
         let orderId = ""; 
-        let isProcessing = false; // Mencegah double click
+        let isProcessing = false;
 
         // ==========================================
-        // 🔧 HELPER: BERSIH & FORMAT HARGA (PI NETWORK)
+        // 🔧 HELPER: BERSIH & FORMAT HARGA
         // ==========================================
         function cleanPrice(priceInput) {
             if (priceInput === null || priceInput === undefined) return 0;
@@ -271,30 +270,18 @@
         async function initPayment() {
             const payBtn = document.getElementById('payBtn');
             const errorBox = document.getElementById('error-message');
-            
             orderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
-
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('retry') === 'true') {
-                console.warn("Payment retry detected. Cleaning session...");
-                localStorage.removeItem('aurora_user'); 
-                localStorage.removeItem('aurora_token');
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
 
             try {
                 if (typeof Pi === 'undefined') {
-                    throw new Error("Pi SDK tidak ditemukan. Harap gunakan Pi Browser.");
+                    throw new Error("Pi SDK tidak ditemukan. Gunakan Pi Browser.");
                 }
-                
                 await new Promise(r => setTimeout(r, 800));
-
                 const isSandbox = (window.APP_CONFIG && window.APP_CONFIG.IS_SANDBOX === true);
                 await Pi.init({ version: "2.0", sandbox: isSandbox }); 
-                console.log("Pi SDK Berhasil diinisialisasi.");
 
                 const userStr = localStorage.getItem('aurora_user');
-                if(!userStr) throw new Error("Sesi login habis. Silakan login kembali.");
+                if(!userStr) throw new Error("Sesi habis. Silakan login.");
                 currentUser = JSON.parse(userStr);
 
                 const successLoad = loadCartAndCalculateTotal();
@@ -306,320 +293,170 @@
                     payBtn.innerText = "Data Tidak Valid";
                     payBtn.disabled = true;
                     errorBox.style.display = "block";
-                    errorBox.innerHTML = "Data checkout tidak ditemukan atau total 0.<br><a href='store.html' style='color:var(--luxury-gold); font-weight:bold; text-decoration:underline;'>Kembali ke Toko</a>";
+                    errorBox.innerHTML = "Keranjang kosong.<br><a href='store.html' style='color:var(--luxury-gold);'>Ke Toko</a>";
                 }
-
             } catch (err) {
                 console.error("Init Error:", err);
                 errorBox.style.display = "block";
                 errorBox.innerText = err.message;
-                payBtn.innerText = "Error System";
+                payBtn.innerText = "Error";
                 payBtn.disabled = true;
             }
         }
 
-        // Fungsi Khusus: Membaca & Menghitung Total dari LocalStorage
         function loadCartAndCalculateTotal() {
             const checkoutRaw = localStorage.getItem('aurora_checkout');
-            
-            if (!checkoutRaw) {
-                document.getElementById('summaryList').innerHTML = "<div style='color:#ff4d4d; text-align:center; padding:10px;'>Data pesanan hilang.<br>Silakan pilih produk ulang.</div>";
-                return false;
-            }
-
+            if (!checkoutRaw) return false;
             try {
                 const checkout = JSON.parse(checkoutRaw);
                 cartItems = checkout.items || []; 
-                
                 const summaryList = document.getElementById('summaryList');
                 let html = '';
                 let total = 0;
-
-                if (cartItems.length === 0) {
-                     summaryList.innerHTML = "<div style='text-align:center; color:#888;'>Keranjang kosong.</div>";
-                     return false;
-                }
-
                 cartItems.forEach(item => {
-                    const name = item.name || item.product_name || "Produk Tanpa Nama";
+                    const name = item.name || item.product_name || "Produk";
                     const price = cleanPrice(item.price);
                     const qty = parseInt(item.qty) || 1;
-                    const subtotal = price * qty;
-                    total += subtotal;
-                    html += `
-                        <div class="item-row">
-                            <span>${name} <small style="color:#888;">(x${qty})</small></span>
-                            <span>${formatPrice(subtotal)} π</span>
-                        </div>`;
+                    total += price * qty;
+                    html += `<div class="item-row"><span>${name} <small>(x${qty})</small></span><span>${formatPrice(price*qty)} π</span></div>`;
                 });
-
                 summaryList.innerHTML = html;
                 currentTotal = total;
                 document.getElementById('displayTotal').innerText = formatPrice(total) + " π";
                 return true;
-
-            } catch (e) {
-                console.error("Gagal parse cart data:", e);
-                return false;
-            }
+            } catch (e) { return false; }
         }
 
         // ==========================================
-        // 🔥 FUNGSI PERBAIKAN: FORCE CLEANUP + TIMEOUT
+        // 🧹 FUNGSI CLEANUP (VERSI LEMBUT)
         // ==========================================
+        // Fungsi ini mencoba membersihkan, tapi TIDAK AKAN MENGHALANGI pembayaran jika gagal.
         async function cleanupStuckPayments(uid) {
             try {
-                console.log("🧹 Memulai pembersihan payment pending...");
-
-                // 1. Setup Timeout (10 Detik)
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error("Waktu habis. Server terlalu lama merespons pembersihan.")), 10000)
-                );
-
-                // 2. Ambil Token User (Wajib jika Edge Function Require Auth)
+                console.log("🧹 Cek pembersihan...");
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 8000));
                 const token = localStorage.getItem('sb-access-token') || "";
                 
-                // 3. Setup Fetch Request
                 const fetchPromise = fetch(SUPABASE_URL, {
                     method: 'POST',
-                    headers: { 
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}` 
-                    },
-                    body: JSON.stringify({
-                        uid: uid, 
-                        action: "init" 
-                    })
-                }).then(async (response) => {
-                    const text = await response.text();
-                    console.log("Server Raw Response:", text);
-
-                    if (!response.ok) {
-                        throw new Error(`Server Error (${response.status}): ${text}`);
-                    }
-                    return JSON.parse(text);
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                    body: JSON.stringify({ uid: uid, action: "init" })
+                }).then(async (res) => {
+                    if (!res.ok) throw new Error(`Server ${res.status}`);
+                    return res.json();
                 });
 
-                // 4. Eksekusi Race (Fetch vs Timeout)
-                const result = await Promise.race([fetchPromise, timeoutPromise]);
-                
-                console.log("✅ Hasil Cleanup:", result.message);
-                return true; // Sukses
-
+                await Promise.race([fetchPromise, timeoutPromise]);
+                console.log("✅ Cleanup sukses.");
             } catch (err) {
-                console.error("❌ Gagal cleanup otomatis:", err);
-                
-                // Tampilkan Error Jelas ke User
-                alert("Gagal membersihkan sesi: " + err.message + "\n\nMohon coba lagi atau refresh halaman.");
-                
-                // Reset UI agar user bisa klik tombol lagi
-                setLoadingState(false, "Coba Lagi");
-                isProcessing = false;
-                
-                return false; // Gagal
+                // 🔥 PERUBAHAN PENTING: Jangan alert, jangan stop. Biarkan saja.
+                console.warn("⚠️ Cleanup gagal/timeout, mengabaikan dan melanjutkan...", err);
             }
         }
 
         // --- 3. PROSES PEMBAYARAN UTAMA ---
         async function handleAutoPayment(event) {
             event.preventDefault();
-            
             if (isProcessing) return;
             isProcessing = true;
 
-            const payBtn = document.getElementById('payBtn');
-            
             const fullName = document.getElementById('fullName').value.trim();
             const phoneNumber = document.getElementById('phoneNumber').value.trim();
             const address = document.getElementById('address').value.trim();
 
             if (fullName.length < 3 || phoneNumber.length < 10 || address.length < 10) {
                 isProcessing = false;
-                return showError("Mohon lengkapi data pengiriman dengan benar.");
+                return showError("Lengkapi data pengiriman.");
             }
-
             if (parseFloat(currentTotal) <= 0) {
                 isProcessing = false;
-                return showError("Total pembayaran tidak valid (0).");
+                return showError("Total pembayaran 0.");
             }
 
-            setLoadingState(true, "Menghubungkan ke Pi Wallet...");
+            setLoadingState(true, "Menghubungkan...");
 
             try {
-                console.log("AUTH START");
-
-                // Langkah A: Autentikasi Ulang & SIMPAN RESULT KE VARIABLE piUser
                 const authResult = await Pi.authenticate(
                     ["username", "payments"],
                     async (payment) => {
-                        console.log("🔥 Ditemukan pembayaran terjebak (Incomplete):", payment.identifier);
-                        setLoadingState(true, "Memperbaiki sesi pembayaran yang terjebak...");
-
+                        // Logic khusus jika SDK menemukan stuck payment SAAT AUTHENTICATE
+                        console.log("SDK menemukan pembayaran lama:", payment.identifier);
                         try {
-                            const response = await fetch(SUPABASE_URL, {
+                            await fetch(SUPABASE_URL, {
                                 method: "POST",
-                                headers: { 
-                                    "Content-Type": "application/json",
-                                    "Authorization": `Bearer ${localStorage.getItem('sb-access-token') || ""}`
-                                },
-                                body: JSON.stringify({
-                                    paymentId: payment.identifier,
-                                    action: "cancel"
-                                })
+                                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem('sb-access-token')||""}` },
+                                body: JSON.stringify({ paymentId: payment.identifier, action: "cancel" })
                             });
-
-                            const result = await response.json();
-                            
-                            if (result.success) {
-                                alert("Sistem mendeteksi transaksi terjebak. Kami telah membersihkannya. Halaman akan dimuat ulang...");
-                                window.location.reload(); 
-                            } else {
-                                alert("Gagal mereset pembayaran lama. Coba refresh halaman.");
-                                setLoadingState(false, "Bayar Sekarang");
-                                isProcessing = false;
-                            }
-                        } catch (err) {
-                            console.error("Gagal menghubungi server untuk cleanup:", err);
-                            alert("Gagal koneksi ke server untuk perbaikan.");
-                            setLoadingState(false, "Bayar Sekarang");
+                            alert("Transaksi lama dibatalkan. Refresh halaman.");
+                            window.location.reload();
+                        } catch (e) {
+                            alert("Gagal reset otomatis. Silakan refresh halaman.");
+                            setLoadingState(false, "Coba Lagi");
                             isProcessing = false;
                         }
                     }
                 );
 
-                if (!authResult || !authResult.user) {
-                    throw new Error("Gagal autentikasi dengan Pi Network.");
-                }
-                
+                if (!authResult || !authResult.user) throw new Error("Gagal Auth.");
                 const piUser = authResult.user;
-                const userUid = piUser.uid; 
-                console.log("AUTH SUCCESS", piUser);
 
-                // =======================================================
-                // 🛡️ LANGKAH B: BERSIHKAN PAYMENT STUCK (CRITICAL)
-                // =======================================================
-                setLoadingState(true, "Memeriksa sesi pembayaran lama...");
-                
-                const cleanupSuccess = await cleanupStuckPayments(userUid);
-                
-                // Jika cleanup gagal, hentikan proses di sini
-                if (!cleanupSuccess) {
-                    return; 
-                }
-                
-                // Beri delay 500ms agar server Pi selesai sync cancel
-                await new Promise(r => setTimeout(r, 500));
+                // 1. Jalankan Cleanup (Tanpa menunggu sukses/gagal)
+                await cleanupStuckPayments(piUser.uid);
 
-                // =======================================================
-                // LANGKAH C: BUAT OBJEK PEMBAYARAN
-                // =======================================================
+                // 2. Lanjut Buat Pembayaran
                 const paymentData = {
                     amount: cleanPrice(currentTotal),
                     memo: `Order Aurora: ${orderId}`,
-                    metadata: { orderId: orderId, itemsCount: cartItems.length }
+                    metadata: { orderId: orderId }
                 };
 
-                // Langkah D: Eksekusi Payment Flow
                 await Pi.createPayment(paymentData, {
-                    
                     onReadyForServerApproval: async (paymentId) => {
-                        console.log("Payment ID dibuat, meminta approval server:", paymentId);
-                        setLoadingState(true, "Memverifikasi ke Server...");
+                        console.log("Approving...", paymentId);
+                        setLoadingState(true, "Verifikasi Server...");
                         
-                        const timeoutPromise = new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error("Waktu habis. Server terlalu lama merespons.")), 25000)
-                        );
-
-                        const fetchPromise = fetch(SUPABASE_URL, {
-                            method: 'POST',
-                            headers: { 
-                                "Content-Type": "application/json",
-                                "Authorization": `Bearer ${localStorage.getItem('sb-access-token') || ""}`
-                            },
-                            body: JSON.stringify({ 
-                                paymentId, 
-                                action: 'approve', 
-                                orderId,
-                                uid: piUser.uid
-                            })
-                        }).then(async (response) => {
-                            if (!response.ok) {
-                                const errText = await response.text();
-                                throw new Error(`Server Error: ${errText}`);
-                            }
-                            return response.json();
-                        });
-
                         try {
-                            await Promise.race([fetchPromise, timeoutPromise]);
-                            console.log("Approval Completed.");
-                        } catch (err) {
-                            console.error("Approval Failed:", err);
-                            throw new Error(err.message);
+                            const res = await fetch(SUPABASE_URL, {
+                                method: 'POST',
+                                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem('sb-access-token')||""}` },
+                                body: JSON.stringify({ paymentId, action: 'approve', uid: piUser.uid })
+                            });
+                            if (!res.ok) throw new Error("Gagal Approve");
+                        } catch (e) {
+                            throw new Error("Server lambat merespons approval.");
                         }
                     },
-                    
                     onReadyForServerCompletion: async (paymentId, txid) => {
-                        console.log("Pembayaran sukses dari user. TXID:", txid);
-                        setLoadingState(true, "Menyelesaikan transaksi...");
-
-                        const timeoutPromise = new Promise((_, reject) =>
-                            setTimeout(() => reject(new Error("Server timeout saat completion.")), 25000)
-                        );
-
-                        const fetchPromise = fetch(SUPABASE_URL, {
-                            method: 'POST',
-                            headers: { 
-                                "Content-Type": "application/json",
-                                "Authorization": `Bearer ${localStorage.getItem('sb-access-token') || ""}`
-                            },
-                            body: JSON.stringify({ 
-                                paymentId, 
-                                action: 'complete', 
-                                txid, 
-                                orderId,
-                                uid: piUser.uid,
-                                username: piUser.username,
-                                amount: cleanPrice(currentTotal),
-                                items: cartItems, 
-                                customer: { name: fullName, phone: phoneNumber, address: address }
-                            })
-                        }).then(async (response) => {
-                            const text = await response.text();
-                            if (!response.ok) {
-                                throw new Error(text || "Server menolak completion.");
-                            }
-                            return text;
-                        });
-
+                        console.log("Completing...", txid);
+                        setLoadingState(true, "Menyelesaikan...");
                         try {
-                            await Promise.race([fetchPromise, timeoutPromise]);
-                            alert("Pembayaran Berhasil! Pesanan Anda sedang diproses.");
-                            localStorage.removeItem('aurora_checkout'); 
-                            localStorage.removeItem("aurora_cart");
+                            const res = await fetch(SUPABASE_URL, {
+                                method: 'POST',
+                                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem('sb-access-token')||""}` },
+                                body: JSON.stringify({ 
+                                    paymentId, action: 'complete', txid, uid: piUser.uid,
+                                    username: piUser.username, amount: cleanPrice(currentTotal),
+                                    items: cartItems, customer: { name: fullName, phone: phoneNumber, address: address }
+                                })
+                            });
+                            if (!res.ok) throw new Error("Gagal Complete");
+                            
+                            alert("Pembayaran Berhasil!");
+                            localStorage.removeItem('aurora_checkout');
                             window.location.href = "payment-success.html";
-                        } catch (err) {
-                            console.error("Completion Error:", err);
-                            alert("Pembayaran tercatat tapi server error.\nTXID: " + txid);
+                        } catch (e) {
+                            alert("Pembayaran sukses di blockchain, tapi server catat error.\nSimpan TXID: " + txid);
                             setLoadingState(false, "Selesai");
                             isProcessing = false;
                         }
                     },
-                    
                     onCancel: () => {
-                        console.log("User membatalkan pembayaran.");
                         setLoadingState(false, "Bayar Sekarang");
                         isProcessing = false;
                     },
-                    
                     onError: (error) => {
-                        console.error("Payment SDK Error:", error);
-                        if (error && error.message && error.message.includes("pending payment")) {
-                            showError("Ada pembayaran pending sebelumnya. Silakan refresh halaman.");
-                        } else {
-                            const errorMsg = error.message || "Terjadi kesalahan pada sistem pembayaran.";
-                            showError(errorMsg);
-                        }
+                        console.error("SDK Error:", error);
+                        showError(error.message || "Terjadi kesalahan pembayaran.");
                         setLoadingState(false, "Coba Lagi");
                         isProcessing = false;
                     }
@@ -635,15 +472,9 @@
 
         function setLoadingState(isLoading, text) {
             const payBtn = document.getElementById('payBtn');
-            if (isLoading) {
-                payBtn.disabled = true;
-                payBtn.innerText = text;
-                payBtn.style.opacity = "0.7";
-            } else {
-                payBtn.disabled = false;
-                payBtn.innerText = text;
-                payBtn.style.opacity = "1";
-            }
+            payBtn.disabled = isLoading;
+            payBtn.innerText = text;
+            payBtn.style.opacity = isLoading ? "0.7" : "1";
         }
 
         function showError(msg) {
