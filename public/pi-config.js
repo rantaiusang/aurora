@@ -96,9 +96,8 @@ window.getAppUrl = function(endpointKey) {
         console.error(`Config Error: Endpoint ${endpointKey} tidak ditemukan.`);
         return "#";
     }
-    
-    // Hapus garis miring ganda jika ada
-    return baseUrl.replace(/\/+$/, '') + endpoint.replace(/^\/+/, '');
+
+    return baseUrl.replace(/\/+$/, '') + "/" + endpoint.replace(/^\/+/, '');
 };
 
 // Debugging Log
