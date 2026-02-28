@@ -66,7 +66,7 @@ window.APP_CONFIG = {
     // ==========================================
     
     APP: {
-        NAME: "Aurora Parfumerie",
+        NAME: "aurora-4c073a664f9faa3a",
         CURRENCY_CODE: "PI", // Simbol mata uang
         CURRENCY_DECIMALS: 2, // Jumlah desimal tampilan (0.00)
         
