@@ -365,24 +365,58 @@
         }
 
         // ==========================================
-        // 🔥 FUNGSI BARU: FORCE CLEANUP SEBELUM BAYAR
+        // 🔥 FUNGSI PERBAIKAN: FORCE CLEANUP + TIMEOUT
         // ==========================================
         async function cleanupStuckPayments(uid) {
             try {
                 console.log("🧹 Memulai pembersihan payment pending...");
-                const response = await fetch(SUPABASE_URL, {
+
+                // 1. Setup Timeout (10 Detik)
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error("Waktu habis. Server terlalu lama merespons pembersihan.")), 10000)
+                );
+
+                // 2. Ambil Token User (Wajib jika Edge Function Require Auth)
+                const token = localStorage.getItem('sb-access-token') || "";
+                
+                // 3. Setup Fetch Request
+                const fetchPromise = fetch(SUPABASE_URL, {
                     method: 'POST',
-                    headers: { "Content-Type": "application/json" },
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}` 
+                    },
                     body: JSON.stringify({
                         uid: uid, 
-                        action: "init" // Memicu logika cleanup di index.ts
+                        action: "init" 
                     })
+                }).then(async (response) => {
+                    const text = await response.text();
+                    console.log("Server Raw Response:", text);
+
+                    if (!response.ok) {
+                        throw new Error(`Server Error (${response.status}): ${text}`);
+                    }
+                    return JSON.parse(text);
                 });
-                const result = await response.json();
+
+                // 4. Eksekusi Race (Fetch vs Timeout)
+                const result = await Promise.race([fetchPromise, timeoutPromise]);
+                
                 console.log("✅ Hasil Cleanup:", result.message);
+                return true; // Sukses
+
             } catch (err) {
-                console.warn("⚠️ Gagal cleanup otomatis:", err);
-                // Jangan throw error di sini, biarkan user mencoba bayar
+                console.error("❌ Gagal cleanup otomatis:", err);
+                
+                // Tampilkan Error Jelas ke User
+                alert("Gagal membersihkan sesi: " + err.message + "\n\nMohon coba lagi atau refresh halaman.");
+                
+                // Reset UI agar user bisa klik tombol lagi
+                setLoadingState(false, "Coba Lagi");
+                isProcessing = false;
+                
+                return false; // Gagal
             }
         }
 
@@ -424,7 +458,10 @@
                         try {
                             const response = await fetch(SUPABASE_URL, {
                                 method: "POST",
-                                headers: { "Content-Type": "application/json" },
+                                headers: { 
+                                    "Content-Type": "application/json",
+                                    "Authorization": `Bearer ${localStorage.getItem('sb-access-token') || ""}`
+                                },
                                 body: JSON.stringify({
                                     paymentId: payment.identifier,
                                     action: "cancel"
@@ -455,13 +492,20 @@
                 }
                 
                 const piUser = authResult.user;
-                const userUid = piUser.uid; // 🔥 FIX: Ambil UID untuk cleanup
+                const userUid = piUser.uid; 
                 console.log("AUTH SUCCESS", piUser);
 
                 // =======================================================
                 // 🛡️ LANGKAH B: BERSIHKAN PAYMENT STUCK (CRITICAL)
                 // =======================================================
-                await cleanupStuckPayments(userUid);
+                setLoadingState(true, "Memeriksa sesi pembayaran lama...");
+                
+                const cleanupSuccess = await cleanupStuckPayments(userUid);
+                
+                // Jika cleanup gagal, hentikan proses di sini
+                if (!cleanupSuccess) {
+                    return; 
+                }
                 
                 // Beri delay 500ms agar server Pi selesai sync cancel
                 await new Promise(r => setTimeout(r, 500));
@@ -488,7 +532,10 @@
 
                         const fetchPromise = fetch(SUPABASE_URL, {
                             method: 'POST',
-                            headers: { "Content-Type": "application/json" },
+                            headers: { 
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${localStorage.getItem('sb-access-token') || ""}`
+                            },
                             body: JSON.stringify({ 
                                 paymentId, 
                                 action: 'approve', 
@@ -522,7 +569,10 @@
 
                         const fetchPromise = fetch(SUPABASE_URL, {
                             method: 'POST',
-                            headers: { "Content-Type": "application/json" },
+                            headers: { 
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${localStorage.getItem('sb-access-token') || ""}`
+                            },
                             body: JSON.stringify({ 
                                 paymentId, 
                                 action: 'complete', 
