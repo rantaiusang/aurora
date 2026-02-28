@@ -18,7 +18,7 @@ window.APP_CONFIG = {
 
     // Kunci Keamanan Supabase (Public Anon Key)
     // Dapatkan dari: Project Settings > API > anon public
-    SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXh1c2J3amNjYnFjc2IiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczMjYzOTk1MywiZXhwIjoyMDQ4MjE1OTUzfQ.TmZa_gQeJ5W5gI3xX2K_KdGJj8cL7fG9vV8wZ1J0E4Y", 
+    SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpa2FwcXVodXNid2pjY2JxY3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ1NTQsImV4cCI6MjA4NDc0MDU1NH0.X278oHDF0be7oa25484eliSukSYAYvDbJyU6ysz83zA", 
     // ^^^ GANTI KEY DI ATAS DENGAN KEY ASLI ANDA ^^^
 
 
