@@ -489,58 +489,67 @@
                     
                     // --- FASE 2: COMPLETION (User Bayar & Txid Keluar) ---
                     onReadyForServerCompletion: async (paymentId, txid) => {
-                        console.log("Pembayaran sukses dari user. TXID:", txid);
-                        setLoadingState(true, "Menyimpan Pesanan...");
-                        
-                        try {
-                            const response = await fetch(SUPABASE_URL, {
-                                method: 'POST',
-                                headers: { 
-                                    "Content-Type": "application/json"
-                                },
-                                body: JSON.stringify({ 
-                                    paymentId, 
-                                    action: 'complete', 
-                                    txid, 
-                                    orderId,
-                                    uid: piUser.uid,
-                                    username: piUser.username,
-                                    amount: cleanPrice(currentTotal), // Kirim harga bersih
-                                    items: cartItems, 
-                                    customer: { 
-                                        name: fullName, 
-                                        phone: phoneNumber, 
-                                        address: address 
-                                    }
-                                })
-                            });
+    console.log("Pembayaran sukses dari user. TXID:", txid);
+    setLoadingState(true, "Menyelesaikan transaksi...");
 
-                            if(!response.ok) {
-                                const errData = await response.json().catch(() => ({}));
-                                throw new Error(errData.message || "Gagal menyimpan pesanan.");
-                            }
+    const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Server terlalu lama merespons.")), 25000)
+    );
 
-                            // SUKSES TOTAL
-                            alert("Pembayaran Berhasil! Pesanan Anda sedang diproses.");
-                            
-                            // Bersihkan LocalStorage (Cart & Checkout)
-                            localStorage.removeItem('aurora_checkout'); 
-                            localStorage.removeItem("aurora_cart");
-                            
-                            // Redirect
-                            window.location.href = "payment-success.html";
+    const fetchPromise = fetch(SUPABASE_URL, {
+        method: 'POST',
+        headers: { 
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ 
+            paymentId, 
+            action: 'complete', 
+            txid, 
+            orderId,
+            uid: piUser.uid,
+            username: piUser.username,
+            amount: cleanPrice(currentTotal),
+            items: cartItems, 
+            customer: { 
+                name: fullName, 
+                phone: phoneNumber, 
+                address: address 
+            }
+        })
+    }).then(async (response) => {
 
-                        } catch (err) {
-                            console.error("Completion Error:", err);
-                            // JANGAN LEmpar error disini jika uang sudah keluar, 
-                            // tapi user perlu tahu datanya belum masuk DB
-                            alert("Pembayaran tercatat di Blockchain, namun gagal menyimpan ke database kami. Hubungi admin dengan TXID: " + txid);
-                            
-                            // Kita reset state tapi tidak redirect, biar user bisa screenshot txid
-                            setLoadingState(false, "Gagal Simpan Data");
-                            isProcessing = false; 
-                        }
-                    },
+        const text = await response.text();
+
+        if (!response.ok) {
+            throw new Error(text || "Server menolak completion.");
+        }
+
+        return text;
+    });
+
+    try {
+        await Promise.race([fetchPromise, timeoutPromise]);
+
+        alert("Pembayaran Berhasil! Pesanan Anda sedang diproses.");
+
+        localStorage.removeItem('aurora_checkout'); 
+        localStorage.removeItem("aurora_cart");
+
+        window.location.href = "payment-success.html";
+
+    } catch (err) {
+        console.error("Completion Error:", err);
+
+        alert(
+            "Pembayaran tercatat di Blockchain.\n\n" +
+            "TXID: " + txid + "\n\n" +
+            "Jika status belum update, hubungi admin."
+        );
+
+        setLoadingState(false, "Selesai");
+        isProcessing = false;
+    }
+},
                     
                     // --- CALLBACKS ERROR & CANCEL ---
                     onCancel: () => {
