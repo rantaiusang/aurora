@@ -9,7 +9,7 @@
     
     <!-- Pi SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    <!-- Config File -->
+    <!-- Config File (Pastikan file ini ada di folder yang sama, atau logic akan pakai default) -->
     <script src="./pi-config.js"></script>
 
     <style>
@@ -237,20 +237,25 @@
 
     <script>
         // --- 1. KONFIGURASI & SETUP ---
+        
+        // URL Supabase Function Anda
         const SUPABASE_URL = "https://dikapquhusbwjccbqcsb.supabase.co/functions/v1/verify-pi-payment";
+        
+        // ⚠️ PENTING: Ganti string di bawah ini dengan 'anon' key dari Dashboard Supabase Anda
+        // Dapatkan di: Project Settings -> API -> anon / public
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...GANTI_DENGAN_KEY_ANDA_DISINI..."; 
 
         let currentTotal = 0;
         let cartItems = [];
         let currentUser = null;
-        let orderId = ""; // Akan di-generate unik saat init
-        let isProcessing = false; // Mencegah double click
+        let orderId = ""; 
+        let isProcessing = false; 
 
         // ==========================================
         // 🔧 HELPER: BERSIH & FORMAT HARGA (PI NETWORK)
         // ==========================================
         function cleanPrice(priceInput) {
             if (priceInput === null || priceInput === undefined) return 0;
-            // Normalisasi koma ke titik, buang karakter non-angka
             let p = String(priceInput).replace(/,/g, '.').replace(/[^0-9.-]+/g, "");
             if (p.length === 0) return 0;
             let val = parseFloat(p);
@@ -260,9 +265,7 @@
         function formatPrice(price) {
             let numPrice = cleanPrice(price);
             if (numPrice === 0) return "0";
-            // Jika angka sangat kecil (khas Pi), pakai 7 desimal
             if (numPrice < 0.01) return numPrice.toFixed(7);
-            // Jika bulat, tanpa .00
             return Number.isInteger(numPrice) ? numPrice.toString() : numPrice.toFixed(2);
         }
 
@@ -271,41 +274,36 @@
             const payBtn = document.getElementById('payBtn');
             const errorBox = document.getElementById('error-message');
             
-            // Generate Order ID Unik untuk sesi ini
             orderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
-            // PERBAIKAN: Deteksi Loop Login & Cleanup Sesi Lama
+            // Deteksi Retry
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('retry') === 'true') {
                 console.warn("Payment retry detected. Cleaning session...");
-                localStorage.removeItem('aurora_user'); // Hapus user lama force re-auth
+                localStorage.removeItem('aurora_user'); 
                 localStorage.removeItem('aurora_token');
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
 
             try {
-                // A. Cek Pi SDK Availability
                 if (typeof Pi === 'undefined') {
                     throw new Error("Pi SDK tidak ditemukan. Harap gunakan Pi Browser.");
                 }
                 
-                // B. Delay 800ms untuk memastikan SDK siap (Fix Android/iOS Loading Issue)
                 await new Promise(r => setTimeout(r, 800));
 
-                // C. Inisialisasi SDK
-                const isSandbox = (typeof window.APP_CONFIG !== 'undefined') ? window.APP_CONFIG.sandbox : true;
+                // Cek config fallback jika file pi-config.js tidak ada
+                const isSandbox = (typeof window.APP_CONFIG !== 'undefined' && window.APP_CONFIG) ? window.APP_CONFIG.sandbox : true;
+                
                 await Pi.init({ version: "2.0", sandbox: isSandbox }); 
                 console.log("Pi SDK Berhasil diinisialisasi.");
 
-                // D. Cek Session User Login
                 const userStr = localStorage.getItem('aurora_user');
                 if(!userStr) throw new Error("Sesi login habis. Silakan login kembali.");
                 currentUser = JSON.parse(userStr);
 
-                // E. Load Data Keranjang
                 const successLoad = loadCartAndCalculateTotal();
 
-                // F. Update UI
                 if (successLoad && parseFloat(currentTotal) > 0) {
                     payBtn.disabled = false;
                     payBtn.innerText = "Bayar Sekarang";
@@ -325,7 +323,6 @@
             }
         }
 
-        // Fungsi Khusus: Membaca & Menghitung Total dari LocalStorage
         function loadCartAndCalculateTotal() {
             const checkoutRaw = localStorage.getItem('aurora_checkout');
             
@@ -349,14 +346,10 @@
 
                 cartItems.forEach(item => {
                     const name = item.name || item.product_name || "Produk Tanpa Nama";
-                    // GUNAKAN cleanPrice untuk perhitungan internal
                     const price = cleanPrice(item.price);
                     const qty = parseInt(item.qty) || 1;
                     const subtotal = price * qty;
-                    
                     total += subtotal;
-                    
-                    // Gunakan formatPrice untuk tampilan
                     html += `
                         <div class="item-row">
                             <span>${name} <small style="color:#888;">(x${qty})</small></span>
@@ -379,7 +372,6 @@
         async function handleAutoPayment(event) {
             event.preventDefault();
             
-            // Cegah Double Submit
             if (isProcessing) return;
             isProcessing = true;
 
@@ -406,10 +398,8 @@
             try {
                 console.log("AUTH START");
 
-                // PERBAIKAN: Handler untuk pembayaran terputus sebelumnya
                 const onIncompletePaymentFound = (payment) => {
                     console.log("Incomplete payment found:", payment.identifier);
-                    // Logika recovery bisa ditambahkan di sini jika perlu
                 };
 
                 // Langkah A: Autentikasi Ulang
@@ -424,7 +414,6 @@
                 const piUser = auth.user;
 
                 // Langkah B: Buat Objek Payment
-                // PASTIKAN amount menggunakan cleanPrice
                 const paymentData = {
                     amount: cleanPrice(currentTotal),
                     memo: `Order Aurora: ${orderId}`,
@@ -439,26 +428,24 @@
                         console.log("Payment ID dibuat, meminta approval server:", paymentId);
                         setLoadingState(true, "Memverifikasi ke Server (Maks 25 detik)...");
                         
-                        // 1. Setup Timeout Promise (Anti-Timeout Strategy)
                         const timeoutPromise = new Promise((_, reject) => 
                             setTimeout(() => reject(new Error("Waktu habis. Server terlalu lama merespons. Silakan coba lagi.")), 25000)
                         );
 
-                        // 2. Setup Fetch Promise
                         const fetchPromise = fetch(SUPABASE_URL, {
                             method: 'POST',
                             headers: { 
                                 "Content-Type": "application/json",
-                                 "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-                                    },
+                                // Menggunakan SUPABASE_ANON_KEY yang sudah didefinisikan di atas
+                                "Authorization": `Bearer ${SUPABASE_ANON_KEY}` 
+                            },
                             body: JSON.stringify({ 
                                 paymentId, 
-                                action: 'approve', 
+                                action: 'approve',  // Action untuk backend
                                 orderId,
                                 uid: piUser.uid
                             })
                         }).then(async (response) => {
-                            // Cek status HTTP response
                             if (!response.ok) {
                                 const errText = await response.text();
                                 console.error("Server HTTP Error:", response.status, errText);
@@ -466,20 +453,17 @@
                             }
                             return response.json();
                         }).catch(error => {
-                            // Tangkap Network Error (DNS down, Offline, dll)
                             if (error instanceof TypeError) {
                                 throw new Error("Koneksi internet terputus atau server tidak dapat dijangkau.");
                             }
                             throw error;
                         });
 
-                        // 3. RACE: Siapa yang duluan? Sukses atau Timeout
                         try {
                             await Promise.race([fetchPromise, timeoutPromise]);
                             console.log("Server Approval Phase Completed Successfully.");
                         } catch (err) {
                             console.error("Approval Phase Failed:", err);
-                            // LEMPAR ERROR KE SDK -> Ini akan memicu callback 'onError' di Pi.createPayment
                             throw new Error(err.message);
                         }
                     },
@@ -493,16 +477,17 @@
                             const response = await fetch(SUPABASE_URL, {
                                 method: 'POST',
                                 headers: { 
-                                    "Content-Type": "application/json"
+                                    "Content-Type": "application/json",
+                                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
                                 },
                                 body: JSON.stringify({ 
                                     paymentId, 
-                                    action: 'complete', 
+                                    action: 'complete', // Action untuk backend
                                     txid, 
                                     orderId,
                                     uid: piUser.uid,
                                     username: piUser.username,
-                                    amount: cleanPrice(currentTotal), // Kirim harga bersih
+                                    amount: cleanPrice(currentTotal), 
                                     items: cartItems, 
                                     customer: { 
                                         name: fullName, 
@@ -520,7 +505,7 @@
                             // SUKSES TOTAL
                             alert("Pembayaran Berhasil! Pesanan Anda sedang diproses.");
                             
-                            // Bersihkan LocalStorage (Cart & Checkout)
+                            // Bersihkan LocalStorage
                             localStorage.removeItem('aurora_checkout'); 
                             localStorage.removeItem("aurora_cart");
                             
@@ -529,11 +514,7 @@
 
                         } catch (err) {
                             console.error("Completion Error:", err);
-                            // JANGAN LEmpar error disini jika uang sudah keluar, 
-                            // tapi user perlu tahu datanya belum masuk DB
                             alert("Pembayaran tercatat di Blockchain, namun gagal menyimpan ke database kami. Hubungi admin dengan TXID: " + txid);
-                            
-                            // Kita reset state tapi tidak redirect, biar user bisa screenshot txid
                             setLoadingState(false, "Gagal Simpan Data");
                             isProcessing = false; 
                         }
@@ -548,7 +529,6 @@
                     
                     onError: (error) => {
                         console.error("Payment SDK Error:", error);
-                        // Tampilkan pesan error yang sudah kita buat custom di fase Approval
                         const errorMsg = error.message || "Terjadi kesalahan pada sistem pembayaran.";
                         showError(errorMsg);
                         setLoadingState(false, "Coba Lagi");
@@ -564,7 +544,6 @@
             }
         }
 
-        // Helper UI untuk Mengubah Status Tombol
         function setLoadingState(isLoading, text) {
             const payBtn = document.getElementById('payBtn');
             if (isLoading) {
@@ -585,7 +564,6 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // Jalankan saat halaman load
         window.onload = initPayment;
     </script>
 </body>
