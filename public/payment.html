@@ -330,7 +330,6 @@
         // ==========================================
         // 🧹 FUNGSI CLEANUP (VERSI LEMBUT)
         // ==========================================
-        // Fungsi ini mencoba membersihkan, tapi TIDAK AKAN MENGHALANGI pembayaran jika gagal.
         async function cleanupStuckPayments(uid) {
             try {
                 console.log("🧹 Cek pembersihan...");
@@ -349,8 +348,8 @@
                 await Promise.race([fetchPromise, timeoutPromise]);
                 console.log("✅ Cleanup sukses.");
             } catch (err) {
-                // 🔥 PERUBAHAN PENTING: Jangan alert, jangan stop. Biarkan saja.
-                console.warn("⚠️ Cleanup gagal/timeout, mengabaikan dan melanjutkan...", err);
+                // Jangan menghentikan proses jika cleanup gagal
+                console.warn("⚠️ Cleanup gagal/timeout, melanjutkan...", err);
             }
         }
 
@@ -376,21 +375,39 @@
             setLoadingState(true, "Menghubungkan...");
 
             try {
+                // =======================================================
+                // 🔥 AUTH DENGAN INCOMPLETE PAYMENT RECOVERY
+                // =======================================================
                 const authResult = await Pi.authenticate(
                     ["username", "payments"],
+                    // CALLBACK: Ini adalah "Mata Rantai" yang Anda maksudkan
                     async (payment) => {
-                        // Logic khusus jika SDK menemukan stuck payment SAAT AUTHENTICATE
-                        console.log("SDK menemukan pembayaran lama:", payment.identifier);
+                        console.log("🔥 Ditemukan pembayaran yang menggantung (Incomplete):", payment.identifier);
+                        setLoadingState(true, "Memperbaiki transaksi terjebak...");
+
                         try {
-                            await fetch(SUPABASE_URL, {
+                            // 1. Kirim ke Supabase untuk Cancel
+                            const response = await fetch(SUPABASE_URL, {
                                 method: "POST",
-                                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem('sb-access-token')||""}` },
-                                body: JSON.stringify({ paymentId: payment.identifier, action: "cancel" })
+                                headers: { 
+                                    "Content-Type": "application/json", 
+                                    "Authorization": `Bearer ${localStorage.getItem('sb-access-token')||""}` 
+                                },
+                                body: JSON.stringify({ 
+                                    paymentId: payment.identifier, 
+                                    action: "cancel" 
+                                })
                             });
-                            alert("Transaksi lama dibatalkan. Refresh halaman.");
-                            window.location.reload();
+
+                            if (response.ok) {
+                                alert("Sistem mendeteksi transaksi macet. Kami telah membatalkannya. Halaman akan dimuat ulang...");
+                                window.location.reload();
+                            } else {
+                                throw new Error("Gagal reset otomatis.");
+                            }
                         } catch (e) {
-                            alert("Gagal reset otomatis. Silakan refresh halaman.");
+                            console.error("Gagal recovery transaksi:", e);
+                            alert("Gagal memperbaiki transaksi lama secara otomatis. Silakan refresh halaman.");
                             setLoadingState(false, "Coba Lagi");
                             isProcessing = false;
                         }
@@ -400,7 +417,7 @@
                 if (!authResult || !authResult.user) throw new Error("Gagal Auth.");
                 const piUser = authResult.user;
 
-                // 1. Jalankan Cleanup (Tanpa menunggu sukses/gagal)
+                // 1. Jalankan Cleanup Proaktif (Opsional)
                 await cleanupStuckPayments(piUser.uid);
 
                 // 2. Lanjut Buat Pembayaran
@@ -418,28 +435,58 @@
                         try {
                             const res = await fetch(SUPABASE_URL, {
                                 method: 'POST',
-                                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem('sb-access-token')||""}` },
-                                body: JSON.stringify({ paymentId, action: 'approve', uid: piUser.uid })
+                                headers: { 
+                                    "Content-Type": "application/json", 
+                                    "Authorization": `Bearer ${localStorage.getItem('sb-access-token')||""}` 
+                                },
+                                body: JSON.stringify({ 
+                                    paymentId, 
+                                    action: 'approve', 
+                                    uid: piUser.uid 
+                                })
                             });
-                            if (!res.ok) throw new Error("Gagal Approve");
+                            
+                            // Perbaikan: Cek body error untuk mencegah 500 silent
+                            const text = await res.text();
+                            if (!res.ok) {
+                                throw new Error(text || "Server Error 500");
+                            }
                         } catch (e) {
                             throw new Error("Server lambat merespons approval.");
                         }
                     },
+                    
                     onReadyForServerCompletion: async (paymentId, txid) => {
                         console.log("Completing...", txid);
                         setLoadingState(true, "Menyelesaikan...");
                         try {
                             const res = await fetch(SUPABASE_URL, {
                                 method: 'POST',
-                                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem('sb-access-token')||""}` },
+                                headers: { 
+                                    "Content-Type": "application/json", 
+                                    "Authorization": `Bearer ${localStorage.getItem('sb-access-token')||""}` 
+                                },
                                 body: JSON.stringify({ 
-                                    paymentId, action: 'complete', txid, uid: piUser.uid,
-                                    username: piUser.username, amount: cleanPrice(currentTotal),
-                                    items: cartItems, customer: { name: fullName, phone: phoneNumber, address: address }
+                                    paymentId, 
+                                    action: 'complete', 
+                                    txid, 
+                                    uid: piUser.uid,
+                                    username: piUser.username, 
+                                    amount: cleanPrice(currentTotal),
+                                    items: cartItems, 
+                                    customer: { name: fullName, phone: phoneNumber, address: address }
                                 })
                             });
-                            if (!res.ok) throw new Error("Gagal Complete");
+                            
+                            const text = await res.text();
+                            if (!res.ok) {
+                                // Jika backend return 500, cek apakah pesannya sudah completed
+                                if (text.includes("completed") || text.includes("Already")) {
+                                    console.log("Backend 500 tapi status selesai, dianggap sukses.");
+                                } else {
+                                    throw new Error(text || "Server Error 500");
+                                }
+                            }
                             
                             alert("Pembayaran Berhasil!");
                             localStorage.removeItem('aurora_checkout');
@@ -450,10 +497,12 @@
                             isProcessing = false;
                         }
                     },
+                    
                     onCancel: () => {
                         setLoadingState(false, "Bayar Sekarang");
                         isProcessing = false;
                     },
+                    
                     onError: (error) => {
                         console.error("SDK Error:", error);
                         showError(error.message || "Terjadi kesalahan pembayaran.");
