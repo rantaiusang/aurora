@@ -163,7 +163,7 @@
 
                 // Init
                 logDebug("Memulai Pi.init()...");
-                const isSandbox = (typeof window.APP_CONFIG !== 'undefined') ? window.APP_CONFIG.sandbox: true;
+                const isSandbox = window.APP_CONFIG?.IS_SANDBOX ?? true;
                 await Pi.init({ version: "2.0", sandbox: isSandbox }); 
                 logDebug("Pi.init() Sukses.");
 
