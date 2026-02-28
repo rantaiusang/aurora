@@ -675,7 +675,7 @@
                                 ${isOutOfStock ? 'Stok Habis' : 'Stok: ' + stockVal}
                             </div>
                         </div>
-                        <button class="btn-buy" onclick="addToCart(event,'${productId}')" ${btnDisabled}>${btnText}</button>
+                        <button class="btn-buy" onclick="addToCart('${productId}')" ${btnDisabled}>${btnText}</button>
                     </div>`;
                 productGrid.appendChild(card);
                 delay += 0.05; 
