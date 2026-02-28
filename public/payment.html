@@ -353,6 +353,40 @@
             }
         }
 
+        // ==========================================
+        // 🔥 FUNGSI RECOVERY (SOLUSI MACET)
+        // ==========================================
+        // Fungsi khusus untuk menangani "Incomplete Payment" yang ditemukan SDK
+        async function handleIncompletePaymentFound(payment) {
+            console.log("🚨 DITEMUKAN TRANSAKSI MACET:", payment.identifier);
+            
+            try {
+                // 1. Coba batalkan lewat backend Supabase
+                const res = await fetch(SUPABASE_URL, {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${localStorage.getItem('sb-access-token')||""}`
+                    },
+                    body: JSON.stringify({ 
+                        paymentId: payment.identifier, 
+                        action: "cancel" 
+                    })
+                });
+
+                if (res.ok) {
+                    alert("Transaksi macet telah dibersihkan otomatis. Halaman akan dimuat ulang...");
+                    window.location.reload();
+                } else {
+                    throw new Error("Gagal membatalkan transaksi macet.");
+                }
+            } catch (err) {
+                console.error("Gagal recovery:", err);
+                alert("Gagal membersihkan transaksi macet. Silakan refresh halaman manual.");
+                window.location.reload();
+            }
+        }
+
         // --- 3. PROSES PEMBAYARAN UTAMA ---
         async function handleAutoPayment(event) {
             event.preventDefault();
@@ -376,42 +410,11 @@
 
             try {
                 // =======================================================
-                // 🔥 AUTH DENGAN INCOMPLETE PAYMENT RECOVERY
+                // 🔥 AUTH DENGAN INCOMPLETE RECOVERY
                 // =======================================================
                 const authResult = await Pi.authenticate(
                     ["username", "payments"],
-                    // CALLBACK: Ini adalah "Mata Rantai" yang Anda maksudkan
-                    async (payment) => {
-                        console.log("🔥 Ditemukan pembayaran yang menggantung (Incomplete):", payment.identifier);
-                        setLoadingState(true, "Memperbaiki transaksi terjebak...");
-
-                        try {
-                            // 1. Kirim ke Supabase untuk Cancel
-                            const response = await fetch(SUPABASE_URL, {
-                                method: "POST",
-                                headers: { 
-                                    "Content-Type": "application/json", 
-                                    "Authorization": `Bearer ${localStorage.getItem('sb-access-token')||""}` 
-                                },
-                                body: JSON.stringify({ 
-                                    paymentId: payment.identifier, 
-                                    action: "cancel" 
-                                })
-                            });
-
-                            if (response.ok) {
-                                alert("Sistem mendeteksi transaksi macet. Kami telah membatalkannya. Halaman akan dimuat ulang...");
-                                window.location.reload();
-                            } else {
-                                throw new Error("Gagal reset otomatis.");
-                            }
-                        } catch (e) {
-                            console.error("Gagal recovery transaksi:", e);
-                            alert("Gagal memperbaiki transaksi lama secara otomatis. Silakan refresh halaman.");
-                            setLoadingState(false, "Coba Lagi");
-                            isProcessing = false;
-                        }
-                    }
+                    handleIncompletePaymentFound // Pasang fungsi recovery di sini
                 );
 
                 if (!authResult || !authResult.user) throw new Error("Gagal Auth.");
@@ -446,11 +449,8 @@
                                 })
                             });
                             
-                            // Perbaikan: Cek body error untuk mencegah 500 silent
                             const text = await res.text();
-                            if (!res.ok) {
-                                throw new Error(text || "Server Error 500");
-                            }
+                            if (!res.ok) throw new Error(text || "Server Error 500");
                         } catch (e) {
                             throw new Error("Server lambat merespons approval.");
                         }
@@ -480,9 +480,8 @@
                             
                             const text = await res.text();
                             if (!res.ok) {
-                                // Jika backend return 500, cek apakah pesannya sudah completed
                                 if (text.includes("completed") || text.includes("Already")) {
-                                    console.log("Backend 500 tapi status selesai, dianggap sukses.");
+                                    console.log("Backend error tapi status selesai, dianggap sukses.");
                                 } else {
                                     throw new Error(text || "Server Error 500");
                                 }
@@ -492,7 +491,7 @@
                             localStorage.removeItem('aurora_checkout');
                             window.location.href = "payment-success.html";
                         } catch (e) {
-                            alert("Pembayaran sukses di blockchain, tapi server catat error.\nSimpan TXID: " + txid);
+                            alert("Pembayaran tercatat di blockchain.\nSimpan TXID: " + txid);
                             setLoadingState(false, "Selesai");
                             isProcessing = false;
                         }
