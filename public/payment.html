@@ -293,7 +293,7 @@
                 await new Promise(r => setTimeout(r, 800));
 
                 // C. Inisialisasi SDK
-                const isSandbox = (window.APP_CONFIG && window.APP_CONFIG.IS_SANDBOX === true);
+                const isSandbox = (window.APP_CONFIG && window.APP_CONFIG.IS_SANDBOX === false);
                 await Pi.init({ version: "2.0", sandbox: isSandbox }); 
                 console.log("Pi SDK Berhasil diinisialisasi.");
 
