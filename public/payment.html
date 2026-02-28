@@ -9,7 +9,7 @@
     
     <!-- Pi SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    <!-- Config File (Harus ada di folder yang sama) -->
+    <!-- Config File -->
     <script src="./pi-config.js"></script>
 
     <style>
@@ -200,7 +200,7 @@
             <div class="coin-visual">π</div>
 
             <h2>Pembayaran Aman</h2>
-            <p class="sub-text">Sistem pembayaran otomatis via Pi Network. Pastikan Anda menggunakan Pi Browser.</p>
+            <p class="sub-text" id="statusText">Menghubungkan ke Pi Wallet...</p>
 
             <div id="error-message" class="error-box"></div>
 
@@ -230,35 +230,22 @@
                     <span class="total-amount" id="displayTotal">0.00 π</span>
                 </div>
 
-                <button type="submit" class="btn-pay" id="payBtn" disabled>Bayar Sekarang</button>
+                <button type="submit" class="btn-pay" id="payBtn" disabled>Menghubungkan...</button>
             </form>
         </div>
     </div>    
 
     <script>
-        // --- 1. KONFIGURASI & SETUP (MENDUKUNG FORMAT CONFIG LAMA) ---
+        // --- 1. KONFIGURASI & SETUP ---
         
-        // Cek apakah config ada
         const CONFIG = (typeof window.APP_CONFIG !== 'undefined') ? window.APP_CONFIG : {};
         
-        // LOGIKA KHUSUS UNTUK FORMAT ANDA:
-        // Kita mengambil nilai langsung dari properti huruf kapital di config
-        
-        // 1. Ambil URL Payment (dari ENDPOINTS.PAYMENT)
         const SUPABASE_URL = (CONFIG.ENDPOINTS && CONFIG.ENDPOINTS.PAYMENT) 
             ? CONFIG.ENDPOINTS.PAYMENT 
             : "https://dikapquhusbwjccbqcsb.supabase.co/functions/v1/verify-pi-payment";
         
-        // 2. Ambil Anon Key
         const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY || "";
-
-        // 3. Ambil status Sandbox (dari IS_SANDBOX)
-        // Jika config tidak ada, default true
         const SANDBOX_MODE = (typeof CONFIG.IS_SANDBOX !== 'undefined') ? CONFIG.IS_SANDBOX : true;
-
-        console.log("[Payment] Configuration Loaded:");
-        console.log("- URL:", SUPABASE_URL);
-        console.log("- Sandbox:", SANDBOX_MODE);
 
         let currentTotal = 0;
         let cartItems = [];
@@ -284,42 +271,54 @@
             return Number.isInteger(numPrice) ? numPrice.toString() : numPrice.toFixed(2);
         }
 
-        // --- 2. INISIALISASI HALAMAN ---
+        // --- 2. INISIALISASI HALAMAN (AUTO-CONNECT) ---
         async function initPayment() {
             const payBtn = document.getElementById('payBtn');
             const errorBox = document.getElementById('error-message');
+            const statusText = document.getElementById('statusText');
             
             orderId = "ORD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
-            // Deteksi Retry
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('retry') === 'true') {
-                console.warn("Payment retry detected. Cleaning session...");
-                localStorage.removeItem('aurora_user'); 
-                localStorage.removeItem('aurora_token');
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
-
             try {
+                // 1. Cek Pi SDK
                 if (typeof Pi === 'undefined') {
                     throw new Error("Pi SDK tidak ditemukan. Harap gunakan Pi Browser.");
                 }
                 
-                await new Promise(r => setTimeout(r, 800));
+                await new Promise(r => setTimeout(r, 500));
 
-                // PERBAIKAN: Gunakan variabel SANDBOX_MODE yang sudah kita mapping di atas
+                // 2. Init SDK
                 await Pi.init({ version: "2.0", sandbox: SANDBOX_MODE }); 
-                console.log("Pi SDK Berhasil diinisialisasi.");
+                console.log("Pi SDK Ready.");
 
-                const userStr = localStorage.getItem('aurora_user');
-                if(!userStr) throw new Error("Sesi login habis. Silakan login kembali.");
-                currentUser = JSON.parse(userStr);
+                // 3. AUTO AUTHENTICATE
+                let user = null;
+                
+                try {
+                    const authResult = await Pi.authenticate(["payments"]);
+                    if (authResult && authResult.user) {
+                        user = authResult.user;
+                        console.log("Auto-Connect Berhasil:", user.username);
+                    } else {
+                        throw new Error("Gagal mendapatkan data user");
+                    }
+                } catch (authErr) {
+                    console.error("Auth Error:", authErr);
+                    throw new Error("Gagal terhubung ke Pi Wallet. Silakan refresh halaman.");
+                }
 
+                currentUser = user;
+                localStorage.setItem('aurora_user', JSON.stringify(user));
+
+                // 4. Load Cart
                 const successLoad = loadCartAndCalculateTotal();
 
+                // 5. Update UI
                 if (successLoad && parseFloat(currentTotal) > 0) {
                     payBtn.disabled = false;
                     payBtn.innerText = "Bayar Sekarang";
+                    statusText.innerText = "Terhubung sebagai: " + user.username;
+                    statusText.style.color = "var(--luxury-gold)";
                 } else {
                     payBtn.innerText = "Data Tidak Valid";
                     payBtn.disabled = true;
@@ -331,8 +330,9 @@
                 console.error("Init Error:", err);
                 errorBox.style.display = "block";
                 errorBox.innerText = err.message;
-                payBtn.innerText = "Error System";
+                payBtn.innerText = "Koneksi Gagal";
                 payBtn.disabled = true;
+                statusText.innerText = "Gagal Terhubung";
             }
         }
 
@@ -390,7 +390,6 @@
 
             const payBtn = document.getElementById('payBtn');
             
-            // 1. Validasi Input Form
             const fullName = document.getElementById('fullName').value.trim();
             const phoneNumber = document.getElementById('phoneNumber').value.trim();
             const address = document.getElementById('address').value.trim();
@@ -405,38 +404,21 @@
                 return showError("Total pembayaran tidak valid (0).");
             }
 
-            // 2. Mulai Proses Payment
-            setLoadingState(true, "Menghubungkan ke Pi Wallet...");
+            setLoadingState(true, "Mempersiapkan Pembayaran...");
 
             try {
-                console.log("AUTH START");
-
-                const onIncompletePaymentFound = (payment) => {
-                    console.log("Incomplete payment found:", payment.identifier);
-                };
-
-                // Langkah A: Autentikasi Ulang
-                const auth = await Pi.authenticate(["payments"], onIncompletePaymentFound);
-                
-                console.log("AUTH SUCCESS", auth);
-
-                if (!auth || !auth.user) {
-                    throw new Error("Gagal autentikasi dengan Pi Network.");
+                if (!currentUser) {
+                    throw new Error("Sesi wallet terputus. Silakan refresh halaman.");
                 }
-                
-                const piUser = auth.user;
 
-                // Langkah B: Buat Objek Payment
                 const paymentData = {
                     amount: cleanPrice(currentTotal),
                     memo: `Order Aurora: ${orderId}`,
                     metadata: { orderId: orderId, itemsCount: cartItems.length }
                 };
 
-                // Langkah C: Eksekusi Payment Flow
                 await Pi.createPayment(paymentData, {
                     
-                    // --- FASE 1: APPROVAL (User Setuju) ---
                     onReadyForServerApproval: async (paymentId) => {
                         console.log("Payment ID dibuat, meminta approval server:", paymentId);
                         setLoadingState(true, "Memverifikasi ke Server (Maks 25 detik)...");
@@ -449,14 +431,13 @@
                             method: 'POST',
                             headers: { 
                                 "Content-Type": "application/json",
-                                // Menggunakan Key yang sudah diambil dari Config
                                 "Authorization": `Bearer ${SUPABASE_ANON_KEY}` 
                             },
                             body: JSON.stringify({ 
                                 paymentId, 
                                 action: 'approve', 
                                 orderId,
-                                uid: piUser.uid
+                                uid: currentUser.uid
                             })
                         }).then(async (response) => {
                             if (!response.ok) {
@@ -481,7 +462,6 @@
                         }
                     },
                     
-                    // --- FASE 2: COMPLETION (User Bayar & Txid Keluar) ---
                     onReadyForServerCompletion: async (paymentId, txid) => {
                         console.log("Pembayaran sukses dari user. TXID:", txid);
                         setLoadingState(true, "Menyimpan Pesanan...");
@@ -498,8 +478,8 @@
                                     action: 'complete', 
                                     txid, 
                                     orderId,
-                                    uid: piUser.uid,
-                                    username: piUser.username,
+                                    uid: currentUser.uid,
+                                    username: currentUser.username,
                                     amount: cleanPrice(currentTotal), 
                                     items: cartItems, 
                                     customer: { 
@@ -515,14 +495,9 @@
                                 throw new Error(errData.message || "Gagal menyimpan pesanan.");
                             }
 
-                            // SUKSES TOTAL
                             alert("Pembayaran Berhasil! Pesanan Anda sedang diproses.");
-                            
-                            // Bersihkan LocalStorage
                             localStorage.removeItem('aurora_checkout'); 
                             localStorage.removeItem("aurora_cart");
-                            
-                            // Redirect
                             window.location.href = "payment-success.html";
 
                         } catch (err) {
@@ -533,7 +508,6 @@
                         }
                     },
                     
-                    // --- CALLBACKS ERROR & CANCEL ---
                     onCancel: () => {
                         console.log("User membatalkan pembayaran.");
                         setLoadingState(false, "Bayar Sekarang");
@@ -550,7 +524,7 @@
                 });
 
             } catch (err) {
-                console.error("System Error (Auth Phase):", err);
+                console.error("System Error:", err);
                 showError(err.message);
                 setLoadingState(false, "Bayar Sekarang");
                 isProcessing = false;
