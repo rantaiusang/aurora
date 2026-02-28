@@ -163,9 +163,21 @@
 
                 // Init
                 logDebug("Memulai Pi.init()...");
-                const isSandbox = (typeof window.APP_CONFIG !== 'undefined') ? window.APP_CONFIG.sandbox: true;
-                await Pi.init({ version: "2.0", sandbox: isSandbox }); 
-                logDebug("Pi.init() Sukses.");
+
+// Pastikan config sudah load
+if (!window.APP_CONFIG) {
+    throw new Error("Config belum terload. Cek pi-config.js");
+}
+
+// Ambil nilai sandbox yang benar
+const isSandbox = window.APP_CONFIG.IS_SANDBOX === true;
+
+await Pi.init({
+    version: "2.0",
+    sandbox: isSandbox
+});
+
+logDebug("Pi.init() Sukses.");
 
                 // Authenticate
                 ui.title.innerText = "Autentikasi...";
