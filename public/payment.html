@@ -410,12 +410,28 @@
             try {
                 console.log("AUTH START");
 
-                // PERBAIKAN: Handler untuk pembayaran terputus sebelumnya
-                const onIncompletePaymentFound = (payment) => {
-                    console.log("Incomplete payment found:", payment.identifier);
-                    // Logika recovery bisa ditambahkan di sini jika perlu
-                };
+                // 🔥 AUTO HANDLE PENDING PAYMENT
+const onIncompletePaymentFound = async (payment) => {
+    console.log("Incomplete payment ditemukan:", payment.identifier);
 
+    try {
+        await fetch(SUPABASE_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                paymentId: payment.identifier,
+                action: "complete"
+            })
+        });
+
+        console.log("Payment lama berhasil diselesaikan otomatis.");
+
+    } catch (err) {
+        console.error("Gagal menyelesaikan payment lama:", err);
+    }
+};
                 // Langkah A: Autentikasi Ulang
                 const auth = await Pi.authenticate(["payments"], onIncompletePaymentFound);
                 
